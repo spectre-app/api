@@ -1,4 +1,4 @@
-package com.lyndir.lhunath.masterpassword;
+package com.lyndir.masterpassword;
 
 /**
  * <i>07 04, 2012</i>

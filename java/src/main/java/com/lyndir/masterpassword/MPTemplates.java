@@ -1,4 +1,4 @@
-package com.lyndir.lhunath.masterpassword;
+package com.lyndir.masterpassword;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;

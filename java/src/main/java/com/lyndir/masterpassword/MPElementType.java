@@ -1,4 +1,4 @@
-package com.lyndir.lhunath.masterpassword;
+package com.lyndir.masterpassword;
 
 import com.google.common.collect.ImmutableSet;
 import com.lyndir.lhunath.opal.system.logging.Logger;
