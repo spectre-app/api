@@ -23,13 +23,13 @@ package com.lyndir.masterpassword;
  *
  * @author lhunath
  */
-public enum MPSiteTypeClass {
+public enum MPResultTypeClass {
     Generated( 1 << 4 ),
     Stored( 1 << 5 );
 
     private final int mask;
 
-    MPSiteTypeClass(final int mask) {
+    MPResultTypeClass(final int mask) {
         this.mask = mask;
     }
 
