@@ -18,29 +18,24 @@
 
 package com.lyndir.masterpassword;
 
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
+import com.google.common.primitives.UnsignedInteger;
+import java.nio.ByteBuffer;
 
 
 /**
- * @author lhunath, 2016-10-29
+ * @author lhunath, 2017-09-20
  */
-public final class MPConstant {
+public final class MPUtils {
 
-    /* Environment */
+    public static byte[] bytesForInt(final int number) {
+        return ByteBuffer.allocate( Integer.SIZE / Byte.SIZE ).order( MasterKeyV0.mpw_byteOrder ).putInt( number ).array();
+    }
 
-    /**
-     * mpw: default path to look for run configuration files if the platform default is not desired.
-     */
-    public static final String env_rcDir        = "MPW_RCDIR";
-    /**
-     * mpw: permit automatic update checks.
-     */
-    public static final String env_checkUpdates = "MPW_CHECKUPDATES";
+    public static byte[] bytesForInt(final UnsignedInteger number) {
+        return ByteBuffer.allocate( Integer.SIZE / Byte.SIZE ).order( MasterKeyV0.mpw_byteOrder ).putInt( number.intValue() ).array();
+    }
 
-    /* Algorithm */
-
-    public static final int MS_PER_S = 1000;
-
-    public static final DateTimeFormatter dateTimeFormatter = ISODateTimeFormat.dateTimeNoMillis();
+    public static byte[] idForBytes(final byte[] bytes) {
+        return MasterKeyV0.mpw_hash.of( bytes );
+    }
 }
