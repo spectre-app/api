@@ -21,5 +21,5 @@ package com.lyndir.masterpassword;
 /**
  * @author lhunath, 2017-09-21
  */
-public class MPInvalidatedException extends Exception {
+public class MPKeyUnavailableException extends Exception {
 }

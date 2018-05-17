@@ -18,10 +18,13 @@
 
 package com.lyndir.masterpassword;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.lyndir.lhunath.opal.system.logging.Logger;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
 import javax.annotation.Nullable;
 import org.jetbrains.annotations.Contract;
 
@@ -31,11 +34,12 @@ import org.jetbrains.annotations.Contract;
  *
  * @author lhunath
  */
+@SuppressWarnings({ "RedundantTypeArguments", "SpellCheckingInspection" })
 public enum MPResultType {
     // bit 0-3 | MPResultTypeClass | MPSiteFeature
 
     /**
-     * pg^VMAUBk5x3p%HP%i4=
+     * 16: pg^VMAUBk5x3p%HP%i4=
      */
     GeneratedMaximum( "maximum", "20 characters, contains symbols.", //
                       ImmutableList.of( new MPTemplate( "anoxxxxxxxxxxxxxxxxx" ),
@@ -43,7 +47,7 @@ public enum MPResultType {
                       MPResultTypeClass.Template, 0x0 ),
 
     /**
-     * BiroYena8:Kixa
+     * 17: BiroYena8:Kixa
      */
     GeneratedLong( "long", "Copy-friendly, 14 characters, contains symbols.", //
                    ImmutableList.of( new MPTemplate( "CvcvnoCvcvCvcv" ), new MPTemplate( "CvcvCvcvnoCvcv" ),
@@ -60,7 +64,7 @@ public enum MPResultType {
                    MPResultTypeClass.Template, 0x1 ),
 
     /**
-     * BirSuj0-
+     * 18: BirSuj0-
      */
     GeneratedMedium( "medium", "Copy-friendly, 8 characters, contains symbols.", //
                      ImmutableList.of( new MPTemplate( "CvcnoCvc" ),
@@ -68,7 +72,14 @@ public enum MPResultType {
                      MPResultTypeClass.Template, 0x2 ),
 
     /**
-     * pO98MoD0
+     * 19: Bir8
+     */
+    GeneratedShort( "short", "Copy-friendly, 4 characters, no symbols.", //
+                    ImmutableList.of( new MPTemplate( "Cvcn" ) ), //
+                    MPResultTypeClass.Template, 0x4 ),
+
+    /**
+     * 20: pO98MoD0
      */
     GeneratedBasic( "basic", "8 characters, no symbols.", //
                     ImmutableList.of( new MPTemplate( "aaanaaan" ),
@@ -77,28 +88,21 @@ public enum MPResultType {
                     MPResultTypeClass.Template, 0x3 ),
 
     /**
-     * Bir8
-     */
-    GeneratedShort( "short", "Copy-friendly, 4 characters, no symbols.", //
-                    ImmutableList.of( new MPTemplate( "Cvcn" ) ), //
-                    MPResultTypeClass.Template, 0x4 ),
-
-    /**
-     * 2798
+     * 21: 2798
      */
     GeneratedPIN( "pin", "4 numbers.", //
                   ImmutableList.of( new MPTemplate( "nnnn" ) ), //
                   MPResultTypeClass.Template, 0x5 ),
 
     /**
-     * birsujano
+     * 30: birsujano
      */
     GeneratedName( "name", "9 letter name.", //
                    ImmutableList.of( new MPTemplate( "cvccvcvcv" ) ), //
                    MPResultTypeClass.Template, 0xE ),
 
     /**
-     * bir yennoquce fefi
+     * 31: bir yennoquce fefi
      */
     GeneratedPhrase( "phrase", "20 character sentence.", //
                      ImmutableList.of( new MPTemplate( "cvcc cvc cvccvcv cvc" ),
@@ -107,36 +111,34 @@ public enum MPResultType {
                      MPResultTypeClass.Template, 0xF ),
 
     /**
-     * Custom saved password.
+     * 1056: Custom saved password.
      */
     StoredPersonal( "personal", "AES-encrypted, exportable.", //
                     ImmutableList.<MPTemplate>of(), //
                     MPResultTypeClass.Stateful, 0x0, MPSiteFeature.ExportContent ),
 
     /**
-     * Custom saved password that should not be exported from the device.
+     * 2081: Custom saved password that should not be exported from the device.
      */
     StoredDevicePrivate( "device", "AES-encrypted, not exported.", //
                          ImmutableList.<MPTemplate>of(), //
                          MPResultTypeClass.Stateful, 0x1, MPSiteFeature.DevicePrivate ),
 
     /**
-     * Derive a unique binary key.
+     * 4160: Derive a unique binary key.
      */
     DeriveKey( "key", "Encryption key.", //
-                           ImmutableList.<MPTemplate>of(), //
-                           MPResultTypeClass.Derive, 0x0, MPSiteFeature.Alternative );
-
-    public static final MPResultType DEFAULT = GeneratedLong;
+               ImmutableList.<MPTemplate>of(), //
+               MPResultTypeClass.Derive, 0x0, MPSiteFeature.Alternative );
 
     static final Logger logger = Logger.get( MPResultType.class );
 
-    private final String             shortName;
-    private final String             description;
-    private final List<MPTemplate>   templates;
-    private final MPResultTypeClass  typeClass;
-    private final int                typeIndex;
-    private final Set<MPSiteFeature> typeFeatures;
+    private final String                      shortName;
+    private final String                      description;
+    private final List<MPTemplate>            templates;
+    private final MPResultTypeClass           typeClass;
+    private final int                         typeIndex;
+    private final ImmutableSet<MPSiteFeature> typeFeatures;
 
     MPResultType(final String shortName, final String description, final List<MPTemplate> templates,
                  final MPResultTypeClass typeClass, final int typeIndex, final MPSiteFeature... typeFeatures) {
@@ -168,11 +170,18 @@ public enum MPResultType {
         return typeClass;
     }
 
-    public Set<MPSiteFeature> getTypeFeatures() {
+    @SuppressWarnings("AssignmentOrReturnOfFieldWithMutableType" /* IDEA-191042 */)
+    public ImmutableSet<MPSiteFeature> getTypeFeatures() {
 
         return typeFeatures;
     }
 
+    public boolean supportsTypeFeature(final MPSiteFeature feature) {
+
+        return typeFeatures.contains( feature );
+    }
+
+    @JsonValue
     public int getType() {
         int mask = typeIndex | typeClass.getMask();
         for (final MPSiteFeature typeFeature : typeFeatures)
@@ -220,6 +229,7 @@ public enum MPResultType {
      *
      * @return The type registered with the given type.
      */
+    @JsonCreator
     public static MPResultType forType(final int type) {
 
         for (final MPResultType resultType : values())
@@ -234,6 +244,7 @@ public enum MPResultType {
      *
      * @return All types that support the given mask's class & features.
      */
+    @SuppressWarnings({ "MagicNumber", "UnnecessaryParentheses" /* IDEA-191040 */ })
     public static ImmutableList<MPResultType> forMask(final int mask) {
 
         int typeMask = mask & ~0xF; // Ignore resultType bit 0-3

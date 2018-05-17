@@ -20,7 +20,6 @@ package com.lyndir.masterpassword;
 
 import static org.testng.Assert.*;
 
-import com.google.common.base.Charsets;
 import com.lyndir.lhunath.opal.system.CodeUtils;
 import com.lyndir.lhunath.opal.system.logging.Logger;
 import java.util.Random;
@@ -46,34 +45,30 @@ public class MPMasterKeyTest {
     public void testMasterKey()
             throws Exception {
 
-        testSuite.forEach( "testMasterKey", new MPTestSuite.TestCase() {
-            @Override
-            public boolean run(final MPTests.Case testCase)
-                    throws Exception {
-                char[]      masterPassword = testCase.getMasterPassword().toCharArray();
-                MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
+        testSuite.forEach( "testMasterKey", testCase -> {
+            char[]      masterPassword = testCase.getMasterPassword().toCharArray();
+            MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
 
-                // Test key
-                assertEquals(
-                        CodeUtils.encodeHex( masterKey.getKeyID( testCase.getAlgorithm() ) ),
-                        testCase.getKeyID(),
-                        "[testMasterKey] keyID mismatch: " + testCase );
+            // Test key
+            assertEquals(
+                    CodeUtils.encodeHex( masterKey.getKeyID( testCase.getAlgorithm() ) ),
+                    testCase.getKeyID(),
+                    "[testMasterKey] keyID mismatch: " + testCase );
 
-                // Test invalidation
-                masterKey.invalidate();
-                try {
-                    masterKey.getKeyID( testCase.getAlgorithm() );
-                    fail( "[testMasterKey] invalidate ineffective: " + testCase );
-                }
-                catch (final MPInvalidatedException ignored) {
-                }
-                assertNotEquals(
-                        masterPassword,
-                        testCase.getMasterPassword().toCharArray(),
-                        "[testMasterKey] masterPassword not wiped: " + testCase );
-
-                return true;
+            // Test invalidation
+            masterKey.invalidate();
+            try {
+                masterKey.getKeyID( testCase.getAlgorithm() );
+                fail( "[testMasterKey] invalidate ineffective: " + testCase );
             }
+            catch (final MPKeyUnavailableException ignored) {
+            }
+            assertNotEquals(
+                    masterPassword,
+                    testCase.getMasterPassword().toCharArray(),
+                    "[testMasterKey] masterPassword not wiped: " + testCase );
+
+            return true;
         } );
     }
 
@@ -81,23 +76,20 @@ public class MPMasterKeyTest {
     public void testSiteResult()
             throws Exception {
 
-        testSuite.forEach( "testSiteResult", new MPTestSuite.TestCase() {
-            @Override
-            public boolean run(final MPTests.Case testCase)
-                    throws Exception {
-                char[]      masterPassword = testCase.getMasterPassword().toCharArray();
-                MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
+        testSuite.forEach( "testSiteResult", testCase -> {
+            char[]      masterPassword = testCase.getMasterPassword().toCharArray();
+            MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
 
-                // Test site result
-                assertEquals(
-                        masterKey.siteResult( testCase.getSiteName(), testCase.getSiteCounter(), testCase.getKeyPurpose(),
-                                              testCase.getKeyContext(), testCase.getResultType(),
-                                              null, testCase.getAlgorithm() ),
-                        testCase.getResult(),
-                        "[testSiteResult] result mismatch: " + testCase );
+            // Test site result
+            assertEquals(
+                    masterKey.siteResult( testCase.getSiteName(), testCase.getAlgorithm(), testCase.getSiteCounter(),
+                                          testCase.getKeyPurpose(),
+                                          testCase.getKeyContext(), testCase.getResultType(),
+                                          null ),
+                    testCase.getResult(),
+                    "[testSiteResult] result mismatch: " + testCase );
 
-                return true;
-            }
+            return true;
         } );
     }
 
@@ -109,15 +101,16 @@ public class MPMasterKeyTest {
         char[]       masterPassword = testCase.getMasterPassword().toCharArray();
         MPMasterKey  masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
 
-        String password = randomString( 8 );
-        for (final MPMasterKey.Version version : MPMasterKey.Version.values()) {
-            MPResultType resultType = MPResultType.StoredPersonal;
+        String       password   = randomString( 8 );
+        MPResultType resultType = MPResultType.StoredPersonal;
+        for (final MPAlgorithm.Version version : MPAlgorithm.Version.values()) {
+            MPAlgorithm algorithm = version.getAlgorithm();
 
             // Test site state
-            String state = masterKey.siteState( testCase.getSiteName(), testCase.getSiteCounter(), testCase.getKeyPurpose(),
-                                                testCase.getKeyContext(), resultType, password, version );
-            String result = masterKey.siteResult( testCase.getSiteName(), testCase.getSiteCounter(), testCase.getKeyPurpose(),
-                                                  testCase.getKeyContext(), resultType, state, version );
+            String state = masterKey.siteState( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
+                                                testCase.getKeyContext(), resultType, password );
+            String result = masterKey.siteResult( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
+                                                  testCase.getKeyContext(), resultType, state );
 
             assertEquals(
                     result,
@@ -126,7 +119,7 @@ public class MPMasterKeyTest {
         }
     }
 
-    public static String randomString(int length) {
+    private static String randomString(int length) {
         Random        random  = new Random();
         StringBuilder builder = new StringBuilder();
 

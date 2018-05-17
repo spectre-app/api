@@ -16,40 +16,36 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-package com.lyndir.masterpassword;
+package com.lyndir.masterpassword.impl;
 
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.UnsignedBytes;
+import com.lyndir.masterpassword.*;
 import javax.annotation.Nullable;
 
 
 /**
- * @see MPMasterKey.Version#V1
- *
  * @author lhunath, 2014-08-30
+ * @see Version#V1
  */
 public class MPAlgorithmV1 extends MPAlgorithmV0 {
 
     @Override
-    public MPMasterKey.Version getAlgorithmVersion() {
-
-        return MPMasterKey.Version.V1;
-    }
-
-    @Override
-    public String sitePasswordFromTemplate(final byte[] masterKey, final byte[] siteKey, final MPResultType resultType, @Nullable final String resultParam) {
+    public String siteResultFromTemplate(final byte[] masterKey, final byte[] siteKey,
+                                         final MPResultType resultType, @Nullable final String resultParam) {
 
         // Determine the template.
         Preconditions.checkState( siteKey.length > 0 );
-        int templateIndex = siteKey[0] & 0xFF; // Convert to unsigned int.
-        MPTemplate template = resultType.getTemplateAtRollingIndex( templateIndex );
+        int        templateIndex = UnsignedBytes.toInt( siteKey[0] );
+        MPTemplate template      = resultType.getTemplateAtRollingIndex( templateIndex );
         logger.trc( "template: %d => %s", templateIndex, template.getTemplateString() );
 
         // Encode the password from the seed using the template.
         StringBuilder password = new StringBuilder( template.length() );
         for (int i = 0; i < template.length(); ++i) {
-            int characterIndex = siteKey[i + 1] & 0xFF; // Convert to unsigned int.
-            MPTemplateCharacterClass characterClass = template.getCharacterClassAtIndex( i );
-            char passwordCharacter = characterClass.getCharacterAtRollingIndex( characterIndex );
+            int                      characterIndex    = UnsignedBytes.toInt( siteKey[i + 1] );
+            MPTemplateCharacterClass characterClass    = template.getCharacterClassAtIndex( i );
+            char                     passwordCharacter = characterClass.getCharacterAtRollingIndex( characterIndex );
             logger.trc( "  - class: %c, index: %3d (0x%2H) => character: %c",
                         characterClass.getIdentifier(), characterIndex, siteKey[i + 1], passwordCharacter );
 
@@ -58,5 +54,12 @@ public class MPAlgorithmV1 extends MPAlgorithmV0 {
         logger.trc( "  => password: %s", password );
 
         return password.toString();
+    }
+
+    // Configuration
+
+    @Override
+    public Version version() {
+        return MPAlgorithm.Version.V1;
     }
 }

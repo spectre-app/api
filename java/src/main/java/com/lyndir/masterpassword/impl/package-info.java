@@ -16,31 +16,10 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-package com.lyndir.masterpassword;
-
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
-
-
 /**
- * @author lhunath, 2016-10-29
+ * @author lhunath, 2018-05-15
  */
-public final class MPConstant {
+@ParametersAreNonnullByDefault
+package com.lyndir.masterpassword.impl;
 
-    /* Environment */
-
-    /**
-     * mpw: default path to look for run configuration files if the platform default is not desired.
-     */
-    public static final String env_rcDir        = "MPW_RCDIR";
-    /**
-     * mpw: permit automatic update checks.
-     */
-    public static final String env_checkUpdates = "MPW_CHECKUPDATES";
-
-    /* Algorithm */
-
-    public static final int MS_PER_S = 1000;
-
-    public static final DateTimeFormatter dateTimeFormatter = ISODateTimeFormat.dateTimeNoMillis();
-}
+import javax.annotation.ParametersAreNonnullByDefault;

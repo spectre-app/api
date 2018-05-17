@@ -18,7 +18,7 @@
 
 package com.lyndir.masterpassword;
 
-import static com.lyndir.lhunath.opal.system.util.StringUtils.strf;
+import static com.lyndir.lhunath.opal.system.util.StringUtils.*;
 
 import com.google.common.collect.ImmutableList;
 import com.lyndir.lhunath.opal.system.util.MetaObject;
@@ -36,7 +36,7 @@ public class MPTemplate extends MetaObject implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private final String templateString;
+    private final String                         templateString;
     private final List<MPTemplateCharacterClass> template;
 
     MPTemplate(@NonNls final String templateString) {

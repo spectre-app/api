@@ -18,82 +18,232 @@
 
 package com.lyndir.masterpassword;
 
-import com.google.common.base.Charsets;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.primitives.UnsignedInteger;
 import com.lyndir.lhunath.opal.system.MessageAuthenticationDigests;
 import com.lyndir.lhunath.opal.system.MessageDigests;
-import java.io.Serializable;
+import com.lyndir.masterpassword.impl.*;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import javax.annotation.Nullable;
 
 
 /**
- * @see MPMasterKey.Version
+ * @see Version
  */
-public interface MPAlgorithm {
+@SuppressWarnings({ "FieldMayBeStatic", "NewMethodNamingConvention", "MethodReturnAlwaysConstant" })
+public abstract class MPAlgorithm {
 
     /**
-     * mpw: validity for the time-based rolling counter.
+     * Derive a master key that describes a user's identity.
+     *
+     * @param fullName       The name of the user whose identity is described by the key.
+     * @param masterPassword The user's secret that authenticates his access to the identity.
      */
-    int mpw_otp_window = 5 * 60 /* s */;
+    public abstract byte[] masterKey(String fullName, char[] masterPassword);
+
+    /**
+     * Derive a site key that describes a user's access to a specific entity.
+     *
+     * @param masterKey   The identity of the user trying to access the entity.
+     * @param siteName    The name of the entity to access.
+     * @param siteCounter The site key's generation.
+     * @param keyPurpose  The action that the user aims to undertake with this key.
+     * @param keyContext  An action-specific context within which to scope the key.
+     */
+    public abstract byte[] siteKey(byte[] masterKey, String siteName, UnsignedInteger siteCounter,
+                                   MPKeyPurpose keyPurpose, @Nullable String keyContext);
+
+    /**
+     * Encode a templated result for a site key.
+     *
+     * @param resultType  The template to base the site key's encoding on.
+     * @param resultParam A parameter that provides contextual data specific to the type template.
+     */
+    public abstract String siteResult(byte[] masterKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
+                                      MPKeyPurpose keyPurpose, @Nullable String keyContext,
+                                      MPResultType resultType, @Nullable String resultParam);
+
+    /**
+     * The result for {@link #siteResult(byte[], byte[], String, UnsignedInteger, MPKeyPurpose, String, MPResultType, String)}
+     * for the case where {@code resultType} is a {@link MPResultTypeClass#Template}.
+     */
+    public abstract String siteResultFromTemplate(byte[] masterKey, byte[] siteKey,
+                                                  MPResultType resultType, @Nullable String resultParam);
+
+    /**
+     * The result for {@link #siteResult(byte[], byte[], String, UnsignedInteger, MPKeyPurpose, String, MPResultType, String)}
+     * for the case where {@code resultType} is a {@link MPResultTypeClass#Stateful}.
+     */
+    public abstract String siteResultFromState(byte[] masterKey, byte[] siteKey,
+                                               MPResultType resultType, @Nullable String resultParam);
+
+    /**
+     * The result for {@link #siteResult(byte[], byte[], String, UnsignedInteger, MPKeyPurpose, String, MPResultType, String)}
+     * for the case where {@code resultType} is a {@link MPResultTypeClass#Derive}.
+     */
+    public abstract String siteResultFromDerive(byte[] masterKey, byte[] siteKey,
+                                                MPResultType resultType, @Nullable String resultParam);
+
+    /**
+     * For {@link MPResultTypeClass#Stateful} {@code resultType}s, generate the {@code resultParam} to use with the
+     * {@link #siteResult(byte[], byte[], String, UnsignedInteger, MPKeyPurpose, String, MPResultType, String)} call
+     * in order to reconstruct this call's original {@code resultParam}.
+     *
+     * @param resultType  The template to base the site key's encoding on.
+     * @param resultParam A parameter that provides contextual data specific to the type template.
+     */
+    public abstract String siteState(byte[] masterKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
+                                     MPKeyPurpose keyPurpose, @Nullable String keyContext,
+                                     MPResultType resultType, String resultParam);
+
+    // Configuration
+
+    /**
+     * The linear version identifier of this algorithm's implementation.
+     */
+    public abstract Version version();
+
+    /**
+     * mpw: defaults: password result type.
+     */
+    public abstract MPResultType mpw_default_result_type();
+
+    /**
+     * mpw: defaults: login result type.
+     */
+    public abstract MPResultType mpw_default_login_type();
+
+    /**
+     * mpw: defaults: answer result type.
+     */
+    public abstract MPResultType mpw_default_answer_type();
+
+    /**
+     * mpw: defaults: initial counter value.
+     */
+    public abstract UnsignedInteger mpw_default_counter();
+
+    /**
+     * mpw: validity for the time-based rolling counter (s).
+     */
+    public abstract long mpw_otp_window();
 
     /**
      * mpw: Key ID hash.
      */
-    MessageDigests mpw_hash = MessageDigests.SHA256;
+    public abstract MessageDigests mpw_hash();
 
     /**
      * mpw: Site digest.
      */
-    MessageAuthenticationDigests mpw_digest = MessageAuthenticationDigests.HmacSHA256;
+    public abstract MessageAuthenticationDigests mpw_digest();
 
     /**
      * mpw: Platform-agnostic byte order.
      */
-    ByteOrder mpw_byteOrder = ByteOrder.BIG_ENDIAN;
+    public abstract ByteOrder mpw_byteOrder();
 
     /**
      * mpw: Input character encoding.
      */
-    Charset mpw_charset = Charsets.UTF_8;
+    public abstract Charset mpw_charset();
 
     /**
      * mpw: Master key size (byte).
      */
-    int mpw_dkLen = 64;
+    public abstract int mpw_dkLen();
+
+    /**
+     * mpw: Minimum size for derived keys (bit).
+     */
+    public abstract int mpw_keySize_min();
+
+    /**
+     * mpw: Maximum size for derived keys (bit).
+     */
+    public abstract int mpw_keySize_max();
 
     /**
      * scrypt: Parallelization parameter.
      */
-    int scrypt_p = 2;
+    public abstract int scrypt_p();
 
     /**
      * scrypt: Memory cost parameter.
      */
-    int scrypt_r = 8;
+    public abstract int scrypt_r();
 
     /**
      * scrypt: CPU cost parameter.
      */
-    int scrypt_N = 32768;
+    public abstract int scrypt_N();
 
-    MPMasterKey.Version getAlgorithmVersion();
+    // Utilities
 
-    byte[] masterKey(String fullName, char[] masterPassword);
+    protected abstract byte[] toBytes(int number);
 
-    byte[] siteKey(byte[] masterKey, String siteName, UnsignedInteger siteCounter, MPKeyPurpose keyPurpose,
-                   @Nullable String keyContext);
+    protected abstract byte[] toBytes(UnsignedInteger number);
 
-    String siteResult(byte[] masterKey, final byte[] siteKey, String siteName, UnsignedInteger siteCounter, MPKeyPurpose keyPurpose,
-                      @Nullable String keyContext, MPResultType resultType, @Nullable String resultParam);
+    protected abstract byte[] toBytes(char[] characters);
 
-    String sitePasswordFromTemplate(byte[] masterKey, byte[] siteKey, MPResultType resultType, @Nullable String resultParam);
+    protected abstract byte[] toID(byte[] bytes);
 
-    String sitePasswordFromCrypt(byte[] masterKey, byte[] siteKey, MPResultType resultType, @Nullable String resultParam);
+    /**
+     * The algorithm iterations.
+     */
+    public enum Version {
 
-    String sitePasswordFromDerive(byte[] masterKey, byte[] siteKey, MPResultType resultType, @Nullable String resultParam);
+        /**
+         * bugs:
+         * - does math with chars whose signedness was platform-dependent.
+         * - miscounted the byte-length for multi-byte site names.
+         * - miscounted the byte-length for multi-byte user names.
+         */
+        V0( new MPAlgorithmV0() ),
 
-    String siteState(byte[] masterKey, final byte[] siteKey, String siteName, UnsignedInteger siteCounter, MPKeyPurpose keyPurpose,
-                     @Nullable String keyContext, MPResultType resultType, String resultParam);
+        /**
+         * bugs:
+         * - miscounted the byte-length for multi-byte site names.
+         * - miscounted the byte-length for multi-byte user names.
+         */
+        V1( new MPAlgorithmV1() ),
+
+        /**
+         * bugs:
+         * - miscounted the byte-length for multi-byte user names.
+         */
+        V2( new MPAlgorithmV2() ),
+
+        /**
+         * bugs:
+         * - no known issues.
+         */
+        V3( new MPAlgorithmV3() );
+
+        public static final Version CURRENT = V3;
+
+        private final MPAlgorithm algorithm;
+
+        Version(final MPAlgorithm algorithm) {
+            this.algorithm = algorithm;
+        }
+
+        public MPAlgorithm getAlgorithm() {
+            return algorithm;
+        }
+
+        @JsonCreator
+        public static Version fromInt(final int algorithmVersion) {
+
+            return values()[algorithmVersion];
+        }
+
+        @JsonValue
+        public int toInt() {
+
+            return ordinal();
+        }
+    }
 }
