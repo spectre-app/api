@@ -206,7 +206,7 @@ static bool mpw_marshal_write_flat(
         if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &site->lastUsed ) ))
             mpw_string_pushf( out, "%s  %8ld  %lu:%lu:%lu  %25s\t%25s\t%s\n",
                     dateString, (long)site->uses, (long)site->type, (long)site->algorithm, (long)site->counter,
-                    loginContent?: "", site->name, content?: "" );
+                    loginContent? loginContent: "", site->name, content? content: "" );
         mpw_free_strings( &content, &loginContent, NULL );
     }
     mpw_free( &masterKey, MPMasterKeySize );
@@ -304,39 +304,43 @@ static bool mpw_marshal_write_json(
         if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &site->lastUsed ) ))
             json_object_object_add( json_site, "last_used", json_object_new_string( dateString ) );
 
-        json_object *json_site_questions = json_object_new_object();
-        json_object_object_add( json_site, "questions", json_site_questions );
-        for (size_t q = 0; q < site->questions_count; ++q) {
-            MPMarshalledQuestion *question = &site->questions[q];
-            if (!question->keyword)
-                continue;
+        if (site->questions_count) {
+            json_object *json_site_questions = json_object_new_object();
+            json_object_object_add( json_site, "questions", json_site_questions );
+            for (size_t q = 0; q < site->questions_count; ++q) {
+                MPMarshalledQuestion *question = &site->questions[q];
+                if (!question->keyword)
+                    continue;
 
-            json_object *json_site_question = json_object_new_object();
-            json_object_object_add( json_site_questions, question->keyword, json_site_question );
-            json_object_object_add( json_site_question, "type", json_object_new_int( (int32_t)question->type ) );
+                json_object *json_site_question = json_object_new_object();
+                json_object_object_add( json_site_questions, question->keyword, json_site_question );
+                json_object_object_add( json_site_question, "type", json_object_new_int( (int32_t)question->type ) );
 
-            if (!user->redacted) {
-                // Clear Text
-                const char *answerContent = mpw_siteResult( masterKey, site->name, MPCounterValueInitial,
-                        MPKeyPurposeRecovery, question->keyword, question->type, question->content, site->algorithm );
-                json_object_object_add( json_site_question, "answer", json_object_new_string( answerContent ) );
-            }
-            else {
-                // Redacted
-                if (site->type & MPSiteFeatureExportContent && question->content && strlen( question->content ))
-                    json_object_object_add( json_site_question, "answer", json_object_new_string( question->content ) );
+                if (!user->redacted) {
+                    // Clear Text
+                    const char *answerContent = mpw_siteResult( masterKey, site->name, MPCounterValueInitial,
+                            MPKeyPurposeRecovery, question->keyword, question->type, question->content, site->algorithm );
+                    json_object_object_add( json_site_question, "answer", json_object_new_string( answerContent ) );
+                }
+                else {
+                    // Redacted
+                    if (site->type & MPSiteFeatureExportContent && question->content && strlen( question->content ))
+                        json_object_object_add( json_site_question, "answer", json_object_new_string( question->content ) );
+                }
             }
         }
 
         json_object *json_site_mpw = json_object_new_object();
-        json_object_object_add( json_site, "_ext_mpw", json_site_mpw );
         if (site->url)
             json_object_object_add( json_site_mpw, "url", json_object_new_string( site->url ) );
+        if (json_object_object_length( json_site_mpw ))
+            json_object_object_add( json_site, "_ext_mpw", json_site_mpw );
 
         mpw_free_strings( &content, &loginContent, NULL );
     }
 
-    mpw_string_pushf( out, "%s\n", json_object_to_json_string_ext( json_file, JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED ) );
+    mpw_string_pushf( out, "%s\n", json_object_to_json_string_ext( json_file,
+            JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOSLASHESCAPE ) );
     mpw_free( &masterKey, MPMasterKeySize );
     json_object_put( json_file );
 
@@ -403,7 +407,7 @@ static void mpw_marshal_read_flat_info(
             if (strcmp( headerName, "Passwords" ) == 0)
                 info->redacted = strcmp( headerValue, "VISIBLE" ) != 0;
             if (strcmp( headerName, "Date" ) == 0)
-                info->date = mpw_mktime( headerValue );
+                info->date = mpw_timegm( headerValue );
 
             mpw_free_strings( &headerName, &headerValue, NULL );
             continue;
@@ -576,7 +580,7 @@ static MPMarshalledUser *mpw_marshal_read_flat(
                 return NULL;
             }
             MPAlgorithmVersion siteAlgorithm = (MPAlgorithmVersion)value;
-            time_t siteLastUsed = mpw_mktime( str_lastUsed );
+            time_t siteLastUsed = mpw_timegm( str_lastUsed );
             if (!siteLastUsed) {
                 *error = (MPMarshalError){ MPMarshalErrorIllegal, mpw_str( "Invalid site last used: %s: %s", siteName, str_lastUsed ) };
                 return NULL;
@@ -646,7 +650,7 @@ static void mpw_marshal_read_json_info(
     if (fileFormat < 1)
         return;
     info->redacted = mpw_get_json_boolean( json_file, "export.redacted", true );
-    info->date = mpw_mktime( mpw_get_json_string( json_file, "export.date", NULL ) );
+    info->date = mpw_timegm( mpw_get_json_string( json_file, "export.date", NULL ) );
 
     // Section: "user"
     info->algorithm = (MPAlgorithmVersion)mpw_get_json_int( json_file, "user.algorithm", MPAlgorithmVersionCurrent );
@@ -703,7 +707,7 @@ static MPMarshalledUser *mpw_marshal_read_json(
         *error = (MPMarshalError){ MPMarshalErrorIllegal, mpw_str( "Invalid user default type: %u", defaultType ) };
         return NULL;
     }
-    time_t lastUsed = mpw_mktime( str_lastUsed );
+    time_t lastUsed = mpw_timegm( str_lastUsed );
     if (!lastUsed) {
         *error = (MPMarshalError){ MPMarshalErrorIllegal, mpw_str( "Invalid user last used: %s", str_lastUsed ) };
         return NULL;
@@ -756,7 +760,7 @@ static MPMarshalledUser *mpw_marshal_read_json(
         MPResultType siteLoginType = (MPResultType)mpw_get_json_int( json_site.val, "login_type", MPResultTypeTemplateName );
         unsigned int siteUses = (unsigned int)mpw_get_json_int( json_site.val, "uses", 0 );
         str_lastUsed = mpw_get_json_string( json_site.val, "last_used", NULL );
-        time_t siteLastUsed = mpw_mktime( str_lastUsed );
+        time_t siteLastUsed = mpw_timegm( str_lastUsed );
         if (!siteLastUsed) {
             *error = (MPMarshalError){ MPMarshalErrorIllegal, mpw_str( "Invalid site last used: %s: %s", siteName, str_lastUsed ) };
             return NULL;
@@ -797,23 +801,25 @@ static MPMarshalledUser *mpw_marshal_read_json(
                 site->loginContent = mpw_strdup( siteLoginName );
         }
 
-        json_object_iter json_site_question;
         json_object *json_site_questions = mpw_get_json_section( json_site.val, "questions" );
-        json_object_object_foreachC( json_site_questions, json_site_question ) {
-            MPMarshalledQuestion *question = mpw_marshal_question( site, json_site_question.key );
-            const char *answerContent = mpw_get_json_string( json_site_question.val, "answer", NULL );
-            question->type = (MPResultType)mpw_get_json_int( json_site_question.val, "type", MPResultTypeTemplatePhrase );
+        if (json_site_questions) {
+            json_object_iter json_site_question;
+            json_object_object_foreachC( json_site_questions, json_site_question ) {
+                MPMarshalledQuestion *question = mpw_marshal_question( site, json_site_question.key );
+                const char *answerContent = mpw_get_json_string( json_site_question.val, "answer", NULL );
+                question->type = (MPResultType)mpw_get_json_int( json_site_question.val, "type", MPResultTypeTemplatePhrase );
 
-            if (!user->redacted) {
-                // Clear Text
-                if (answerContent && strlen( answerContent ))
-                    question->content = mpw_siteState( masterKey, site->name, MPCounterValueInitial,
-                            MPKeyPurposeRecovery, question->keyword, question->type, answerContent, site->algorithm );
-            }
-            else {
-                // Redacted
-                if (answerContent && strlen( answerContent ))
-                    question->content = mpw_strdup( answerContent );
+                if (!user->redacted) {
+                    // Clear Text
+                    if (answerContent && strlen( answerContent ))
+                        question->content = mpw_siteState( masterKey, site->name, MPCounterValueInitial,
+                                MPKeyPurposeRecovery, question->keyword, question->type, answerContent, site->algorithm );
+                }
+                else {
+                    // Redacted
+                    if (answerContent && strlen( answerContent ))
+                        question->content = mpw_strdup( answerContent );
+                }
             }
         }
     }
@@ -871,21 +877,14 @@ const MPMarshalFormat mpw_formatWithName(
     if (!formatName || !strlen( formatName ))
         return MPMarshalFormatNone;
 
-    // Lower-case to standardize it.
-    size_t stdFormatNameSize = strlen( formatName );
-    char stdFormatName[stdFormatNameSize + 1];
-    for (size_t c = 0; c < stdFormatNameSize; ++c)
-        stdFormatName[c] = (char)tolower( formatName[c] );
-    stdFormatName[stdFormatNameSize] = '\0';
-
-    if (strncmp( mpw_nameForFormat( MPMarshalFormatNone ), stdFormatName, strlen( stdFormatName ) ) == 0)
+    if (mpw_strncasecmp( mpw_nameForFormat( MPMarshalFormatNone ), formatName, strlen( formatName ) ) == 0)
         return MPMarshalFormatNone;
-    if (strncmp( mpw_nameForFormat( MPMarshalFormatFlat ), stdFormatName, strlen( stdFormatName ) ) == 0)
+    if (mpw_strncasecmp( mpw_nameForFormat( MPMarshalFormatFlat ), formatName, strlen( formatName ) ) == 0)
         return MPMarshalFormatFlat;
-    if (strncmp( mpw_nameForFormat( MPMarshalFormatJSON ), stdFormatName, strlen( stdFormatName ) ) == 0)
+    if (mpw_strncasecmp( mpw_nameForFormat( MPMarshalFormatJSON ), formatName, strlen( formatName ) ) == 0)
         return MPMarshalFormatJSON;
 
-    dbg( "Not a format name: %s", stdFormatName );
+    dbg( "Not a format name: %s", formatName );
     return (MPMarshalFormat)ERR;
 }
 

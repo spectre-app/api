@@ -1,17 +1,35 @@
 plugins {
-    id 'java'
+    id 'java-library'
 }
 
 description = 'Master Password Algorithm Implementation'
 
-dependencies {
-    compile( group: 'com.lyndir.lhunath.opal', name: 'opal-system', version: '1.7-p1' ) {
-        exclude( module: 'joda-time' )
-    }
-    compile group: 'com.lyndir.lhunath.opal', name: 'opal-crypto', version: '1.7-p1'
+tasks.withType( JavaCompile ) {
+    // Native headers
+    options.compilerArgs += ["-h", new File( new File( project.project( ':masterpassword-core' ).projectDir, 'src' ), 'java' ).absolutePath]
+}
 
-    compile group: 'com.lambdaworks', name: 'scrypt', version: '1.4.0'
-    compile 'com.fasterxml.jackson.core:jackson-annotations:2.9.5'
-    compile group: 'org.jetbrains', name: 'annotations', version: '13.0'
-    compile group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
+configurations {
+    lib
+}
+
+dependencies {
+    implementation group: 'com.lyndir.lhunath.opal', name: 'opal-system', version: '1.7-p2'
+
+    api group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.9.5'
+    api group: 'org.jetbrains', name: 'annotations', version: '13.0'
+    api group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
+    api group: 'com.google.code.findbugs', name: 'findbugs-annotations', version: '3.0.1'
+
+    lib project( path: ':masterpassword-core', configuration: 'default' )
+}
+
+processResources {
+    dependsOn task( type: Sync, 'processResources-lib', {
+        into new File( processResources.outputs.files.singleFile, "lib" )
+
+        dependsOn configurations.lib {
+            files.each { libFile -> from( zipTree( libFile ) ) }
+        }
+    } )
 }

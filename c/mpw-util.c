@@ -62,6 +62,27 @@ void mpw_uint64(const uint64_t number, uint8_t buf[8]) {
     buf[7] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
+const char **mpw_strings(size_t *count, const char *strings, ...) {
+
+    va_list args;
+    va_start( args, strings );
+    const char **array = NULL;
+    size_t size = 0;
+    for (const char *string = strings; string; (string = va_arg( args, const char * ))) {
+        size_t cursor = size / sizeof( *array );
+        if (!mpw_realloc( &array, &size, sizeof( string ) )) {
+            mpw_free( &array, size );
+            *count = 0;
+            return NULL;
+        }
+        array[cursor] = string;
+    }
+    va_end( args );
+
+    *count = size / sizeof( *array );
+    return array;
+}
+
 bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, const size_t pushSize) {
 
     if (!buffer || !bufferSize || !pushBuffer || !pushSize)
@@ -169,10 +190,10 @@ bool __mpw_free_strings(char **strings, ...) {
     return success;
 }
 
-uint8_t const *mpw_kdf_scrypt(const size_t keySize, const char *secret, const uint8_t *salt, const size_t saltSize,
+uint8_t const *mpw_kdf_scrypt(const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         uint64_t N, uint32_t r, uint32_t p) {
 
-    if (!secret || !salt)
+    if (!secret || !salt || !secretSize || !saltSize)
         return NULL;
 
     uint8_t *key = malloc( keySize );
@@ -185,7 +206,7 @@ uint8_t const *mpw_kdf_scrypt(const size_t keySize, const char *secret, const ui
         return NULL;
     }
 #elif MPW_SODIUM
-    if (crypto_pwhash_scryptsalsa208sha256_ll( (const uint8_t *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) != 0) {
+    if (crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != 0) {
         mpw_free( &key, keySize );
         return NULL;
     }
@@ -271,18 +292,19 @@ uint8_t const *mpw_hash_hmac_sha256(const uint8_t *key, const size_t keySize, co
 // We do our best to not fail on odd buf's, eg. non-padded cipher texts.
 static uint8_t const *mpw_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
-    if (!key || keySize < 16 || !*bufSize)
+    if (!key || keySize < AES_BLOCKLEN || !*bufSize)
         return NULL;
 
     // IV = zero
-    uint8_t iv[16];
-    mpw_zero( iv, sizeof iv );
+    static uint8_t *iv = NULL;
+    if (!iv)
+        iv = calloc( AES_BLOCKLEN, sizeof( uint8_t ) );
 
     // Add PKCS#7 padding
-    uint32_t aesSize = ((uint32_t)*bufSize + 15 / 16) * 16; // round up to block size.
-    if (encrypt && !(*bufSize % 16)) // add pad block if plain text fits block size.
-        encrypt += 16;
-    uint8_t aesBuf[aesSize];
+    uint32_t aesSize = ((uint32_t)*bufSize + AES_BLOCKLEN - 1) & -AES_BLOCKLEN; // round up to block size.
+    if (encrypt && !(*bufSize % AES_BLOCKLEN)) // add pad block if plain text fits block size.
+        encrypt += AES_BLOCKLEN;
+    uint8_t *aesBuf = malloc( aesSize );
     memcpy( aesBuf, buf, *bufSize );
     memset( aesBuf + *bufSize, aesSize - *bufSize, aesSize - *bufSize );
     uint8_t *resultBuf = malloc( aesSize );
@@ -291,13 +313,12 @@ static uint8_t const *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
         AES_CBC_encrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
     else
         AES_CBC_decrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
-    mpw_zero( aesBuf, aesSize );
-    mpw_zero( iv, 16 );
+    mpw_free( &aesBuf, aesSize );
 
     // Truncate PKCS#7 padding
     if (encrypt)
         *bufSize = aesSize;
-    else if (*bufSize % 16 == 0 && resultBuf[aesSize - 1] < 16)
+    else if (*bufSize % AES_BLOCKLEN == 0 && resultBuf[aesSize - 1] < AES_BLOCKLEN)
         *bufSize -= resultBuf[aesSize - 1];
 
     return resultBuf;
@@ -495,4 +516,13 @@ char *mpw_strndup(const char *src, size_t max) {
     dst[len] = '\0';
 
     return dst;
+}
+
+int mpw_strncasecmp(const char *s1, const char *s2, size_t max) {
+
+    int cmp = 0;
+    for (; !cmp && max-- > 0 && s1 && s2; ++s1, ++s2)
+        cmp = tolower( *(unsigned char *)s1 ) - tolower( *(unsigned char *)s2 );
+
+    return cmp;
 }

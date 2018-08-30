@@ -25,7 +25,8 @@ import static com.lyndir.lhunath.opal.system.util.StringUtils.*;
 import com.google.common.primitives.UnsignedInteger;
 import com.lyndir.lhunath.opal.system.logging.Logger;
 import com.lyndir.lhunath.opal.system.util.NNSupplier;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.xml.bind.annotation.XmlTransient;
@@ -41,15 +42,25 @@ public class MPTests {
     @SuppressWarnings("UnusedDeclaration")
     private static final Logger logger = Logger.get( MPTests.class );
 
+    private final Set<String> filters = new HashSet<>();
+
     List<Case> cases;
 
     @Nonnull
     public List<Case> getCases() {
-        return checkNotNull( cases );
+        if (filters.isEmpty())
+            return checkNotNull( cases );
+
+        return checkNotNull( cases ).stream().filter( testCase -> {
+            for (final String filter : filters)
+                if (testCase.getIdentifier().startsWith( filter ))
+                    return true;
+            return false;
+        } ).collect( Collectors.toList() );
     }
 
     public Case getCase(final String identifier) {
-        for (final Case testCase : getCases())
+        for (final Case testCase : cases)
             if (identifier.equals( testCase.getIdentifier() ))
                 return testCase;
 
@@ -61,8 +72,12 @@ public class MPTests {
             return getCase( ID_DEFAULT );
         }
         catch (final IllegalArgumentException e) {
-            throw new IllegalStateException( strf( "Missing default case in test suite.  Add a case with id: %d", ID_DEFAULT ), e );
+            throw new IllegalStateException( strf( "Missing default case in test suite.  Add a case with id: %s", ID_DEFAULT ), e );
         }
+    }
+
+    public boolean addFilters(final String... filters) {
+        return this.filters.addAll( Arrays.asList( filters ) );
     }
 
     public static class Case {

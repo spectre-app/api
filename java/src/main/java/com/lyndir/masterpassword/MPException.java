@@ -16,23 +16,18 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-package com.lyndir.masterpassword.impl;
-
-import com.lyndir.masterpassword.MPAlgorithm;
-import javax.annotation.Nonnull;
-
+package com.lyndir.masterpassword;
 
 /**
- * @author lhunath, 2014-08-30
- * @see Version#V3
+ * @author lhunath, 2018-06-03
  */
-public class MPAlgorithmV3 extends MPAlgorithmV2 {
+public class MPException extends Exception {
 
-    // Configuration
+    public MPException(final String message) {
+        super( message );
+    }
 
-    @Nonnull
-    @Override
-    public Version version() {
-        return MPAlgorithm.Version.V3;
+    public MPException(final String message, final Throwable cause) {
+        super( message, cause );
     }
 }
