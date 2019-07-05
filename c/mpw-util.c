@@ -308,7 +308,7 @@ static uint8_t const *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
         encrypt += AES_BLOCKLEN;
     uint8_t *aesBuf = malloc( aesSize );
     memcpy( aesBuf, buf, *bufSize );
-    memset( aesBuf + *bufSize, aesSize - *bufSize, aesSize - *bufSize );
+    memset( aesBuf + *bufSize, (int)(aesSize - *bufSize), aesSize - *bufSize );
     uint8_t *resultBuf = malloc( aesSize );
     if (!resultBuf)
         return NULL;
