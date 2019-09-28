@@ -106,11 +106,6 @@ typedef mpw_enum( uint32_t, MPResultType ) {
 
     MPResultTypeDefault = MPResultTypeTemplateLong,
 };
-static const MPResultType MPResultTypes[] = {
-        MPResultTypeTemplateMaximum, MPResultTypeTemplateLong, MPResultTypeTemplateMedium, MPResultTypeTemplateShort,
-        MPResultTypeTemplateBasic, MPResultTypeTemplatePIN, MPResultTypeTemplateName, MPResultTypeTemplatePhrase,
-        MPResultTypeStatefulPersonal, MPResultTypeStatefulDevice, MPResultTypeDeriveKey
-};
 
 typedef mpw_enum ( uint32_t, MPCounterValue ) {
     /** Use a time-based counter value, resulting in a TOTP generator. */
