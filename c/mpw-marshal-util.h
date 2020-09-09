@@ -34,7 +34,7 @@ MP_LIBS_END
 /** Get a token from a string by searching until the first character in delim, no farther than eol.
  * The input string reference is advanced beyond the token delimitor if one is found.
  * @return A string (allocated) containing the token or NULL if the delim wasn't found before eol. */
-char *mpw_get_token(
+const char *mpw_get_token(
         const char **in, const char *eol, const char *delim);
 /** Get a boolean value as expressed by the given string.
  * @return true if the string is not NULL and holds a number larger than 0, or starts with a t (for true) or y (for yes). */

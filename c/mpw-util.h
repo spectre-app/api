@@ -205,27 +205,27 @@ void mpw_zero(
 
 /** Derive a key from the given secret and salt using the scrypt KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if secret or salt is missing, key could not be allocated or the KDF failed. */
-uint8_t const *mpw_kdf_scrypt(
+const uint8_t *mpw_kdf_scrypt(
         const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p);
 /** Derive a subkey from the given key using the blake2b KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if the key or subkeySize is missing, the key sizes are out of bounds, the subkey could not be allocated or derived. */
-uint8_t const *mpw_kdf_blake2b(
+const uint8_t *mpw_kdf_blake2b(
         const size_t subkeySize, const uint8_t *key, const size_t keySize,
         const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal);
 /** Calculate the MAC for the given message with the given key using SHA256-HMAC.
  * @return A buffer (allocated, 32-byte) containing the MAC or NULL if the key or message is missing, the MAC could not be allocated or generated. */
-uint8_t const *mpw_hash_hmac_sha256(
+const uint8_t *mpw_hash_hmac_sha256(
         const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize);
 /** Encrypt a plainBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the plain buffer on input, and the size of the returned cipher buffer on output.
  * @return A buffer (allocated, bufferSize) containing the cipherBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-uint8_t const *mpw_aes_encrypt(
+const uint8_t *mpw_aes_encrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize);
 /** Decrypt a cipherBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the cipher buffer on input, and the size of the returned plain buffer on output.
  * @return A buffer (allocated, bufferSize) containing the plainBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-uint8_t const *mpw_aes_decrypt(
+const uint8_t *mpw_aes_decrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize);
 #if UNUSED
 /** Calculate an OTP using RFC-4226.
@@ -265,10 +265,10 @@ size_t mpw_utf8_strchars(const char *utf8String);
 void *mpw_memdup(const void *src, const size_t len);
 /** Drop-in for POSIX strdup(3).
  * @return A string (allocated) copied from src or NULL if src is missing or the buffer could not be allocated. */
-char *mpw_strdup(const char *src);
+const char *mpw_strdup(const char *src);
 /** Drop-in for POSIX strndup(3).
  * @return A string (allocated) with no more than max bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
-char *mpw_strndup(const char *src, const size_t max);
+const char *mpw_strndup(const char *src, const size_t max);
 /** Drop-in for POSIX strcasecmp(3). */
 int mpw_strcasecmp(const char *s1, const char *s2);
 /** Drop-in for POSIX strncasecmp(3). */

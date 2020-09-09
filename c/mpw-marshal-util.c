@@ -24,14 +24,14 @@ MP_LIBS_BEGIN
 #include <math.h>
 MP_LIBS_END
 
-char *mpw_get_token(const char **in, const char *eol, const char *delim) {
+const char *mpw_get_token(const char **in, const char *eol, const char *delim) {
 
     // Skip leading spaces.
     for (; **in == ' '; ++*in);
 
     // Find characters up to the first delim.
     size_t len = strcspn( *in, delim );
-    char *token = len <= (size_t)(eol - *in)? mpw_strndup( *in, len ): NULL;
+    const char *token = len <= (size_t)(eol - *in)? mpw_strndup( *in, len ): NULL;
 
     // Advance past the delimitor.
     *in = min( eol, *in + len + 1 );

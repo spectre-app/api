@@ -861,7 +861,7 @@ static void mpw_marshal_read_flat(
 
     // Parse import data.
     unsigned int format = 0, avatar = 0;
-    char *fullName = NULL, *keyID = NULL;
+    const char *fullName = NULL, *keyID = NULL;
     MPAlgorithmVersion algorithm = MPAlgorithmVersionCurrent;
     MPIdenticon identicon = MPIdenticonUnset;
     MPResultType defaultType = MPResultTypeDefault;
@@ -958,7 +958,7 @@ static void mpw_marshal_read_flat(
             case 0: {
                 str_lastUsed = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
                 str_uses = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
-                char *typeAndVersion = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
+                char *typeAndVersion = (char *)mpw_get_token( &positionInLine, endOfLine, " \t\n" );
                 if (typeAndVersion) {
                     str_type = mpw_strdup( strtok( typeAndVersion, ":" ) );
                     str_algorithm = mpw_strdup( strtok( NULL, "" ) );
@@ -973,7 +973,7 @@ static void mpw_marshal_read_flat(
             case 1: {
                 str_lastUsed = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
                 str_uses = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
-                char *typeAndVersionAndCounter = mpw_get_token( &positionInLine, endOfLine, " \t\n" );
+                char *typeAndVersionAndCounter = (char *)mpw_get_token( &positionInLine, endOfLine, " \t\n" );
                 if (typeAndVersionAndCounter) {
                     str_type = mpw_strdup( strtok( typeAndVersionAndCounter, ":" ) );
                     str_algorithm = mpw_strdup( strtok( NULL, ":" ) );
