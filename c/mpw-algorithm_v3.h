@@ -25,18 +25,18 @@ const char *mpw_type_template_v3(
         MPResultType type, uint16_t templateIndex);
 const char mpw_class_character_v3(
         char characterClass, uint16_t classIndex);
-MPMasterKey mpw_master_key_v3(
+const MPMasterKey *mpw_master_key_v3(
         const char *fullName, const char *masterPassword);
-MPSiteKey mpw_site_key_v3(
-        MPMasterKey masterKey, const char *siteName, MPCounterValue siteCounter,
+const MPSiteKey *mpw_site_key_v3(
+        const MPMasterKey *masterKey, const char *siteName, MPCounterValue siteCounter,
         MPKeyPurpose keyPurpose, const char *keyContext);
 const char *mpw_site_template_password_v3(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *resultParam);
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam);
 const char *mpw_site_crypted_password_v3(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *cipherText);
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText);
 const char *mpw_site_derived_password_v3(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *resultParam);
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam);
 const char *mpw_site_state_v3(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *plainText);
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *plainText);
 
 #endif // _MPW_ALGORITHM_V3_H

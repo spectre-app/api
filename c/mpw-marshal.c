@@ -28,12 +28,12 @@ MP_LIBS_BEGIN
 #include <math.h>
 MP_LIBS_END
 
-static MPMasterKey __mpw_masterKeyProvider_currentKey = NULL;
+static const MPMasterKey *__mpw_masterKeyProvider_currentKey = NULL;
 static MPAlgorithmVersion __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)-1;
 static MPMasterKeyProviderProxy __mpw_masterKeyProvider_currentProxy = NULL;
 static const char *__mpw_masterKeyProvider_currentPassword = NULL;
 
-static bool __mpw_masterKeyProvider_str(MPMasterKey *currentKey, MPAlgorithmVersion *currentAlgorithm,
+static bool __mpw_masterKeyProvider_str(const MPMasterKey **currentKey, MPAlgorithmVersion *currentAlgorithm,
         MPAlgorithmVersion algorithm, const char *fullName) {
 
     if (!currentKey)
@@ -42,7 +42,7 @@ static bool __mpw_masterKeyProvider_str(MPMasterKey *currentKey, MPAlgorithmVers
     return mpw_update_master_key( currentKey, currentAlgorithm, algorithm, fullName, __mpw_masterKeyProvider_currentPassword );
 }
 
-static MPMasterKey __mpw_masterKeyProvider_proxy(MPAlgorithmVersion algorithm, const char *fullName) {
+static const MPMasterKey *__mpw_masterKeyProvider_proxy(MPAlgorithmVersion algorithm, const char *fullName) {
 
     if (!__mpw_masterKeyProvider_currentProxy)
         return NULL;
@@ -50,7 +50,7 @@ static MPMasterKey __mpw_masterKeyProvider_proxy(MPAlgorithmVersion algorithm, c
             &__mpw_masterKeyProvider_currentKey, &__mpw_masterKeyProvider_currentAlgorithm, algorithm, fullName ))
         return NULL;
 
-    return mpw_memdup( __mpw_masterKeyProvider_currentKey, MPMasterKeySize );
+    return mpw_memdup( __mpw_masterKeyProvider_currentKey, sizeof( *__mpw_masterKeyProvider_currentKey ) );
 }
 
 MPMasterKeyProvider mpw_masterKeyProvider_str(const char *masterPassword) {
@@ -69,7 +69,7 @@ MPMasterKeyProvider mpw_masterKeyProvider_proxy(const MPMasterKeyProviderProxy p
 
 void mpw_masterKeyProvider_free() {
 
-    mpw_free( &__mpw_masterKeyProvider_currentKey, MPMasterKeySize );
+    mpw_free( &__mpw_masterKeyProvider_currentKey, sizeof( *__mpw_masterKeyProvider_currentKey ) );
     __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)-1;
     if (__mpw_masterKeyProvider_currentProxy) {
         __mpw_masterKeyProvider_currentProxy( NULL, NULL, MPAlgorithmVersionCurrent, NULL );
@@ -726,7 +726,7 @@ const char *mpw_marshal_write(
     }
     mpw_marshal_error( file, MPMarshalSuccess, NULL );
 
-    MPMasterKey masterKey = NULL;
+    const MPMasterKey *masterKey = NULL;
     if (user->masterKeyProvider)
         masterKey = user->masterKeyProvider( user->algorithm, user->fullName );
 
@@ -760,7 +760,7 @@ const char *mpw_marshal_write(
         const char *resultState = NULL, *loginState = NULL;
         if (!user->redacted) {
             // Clear Text
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( site->algorithm, user->fullName ))) {
                 if (!file_)
                     mpw_marshal_file_free( &file );
@@ -1162,21 +1162,21 @@ MPMarshalledUser *mpw_marshal_auth(
         return NULL;
     }
 
-    MPMasterKey masterKey = NULL;
+    const MPMasterKey *masterKey = NULL;
     if (masterKeyProvider && !(masterKey = masterKeyProvider( algorithm, fullName ))) {
         mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
         return NULL;
     }
-    if (keyID && masterKey && !mpw_id_buf_equals( keyID, mpw_id_buf( masterKey, MPMasterKeySize ) )) {
+    if (keyID && masterKey && !mpw_id_buf_equals( keyID, mpw_id_buf( masterKey, sizeof( *masterKey ) ) )) {
         mpw_marshal_error( file, MPMarshalErrorMasterPassword, "Master key doesn't match key ID." );
-        mpw_free( &masterKey, MPMasterKeySize );
+        mpw_free( &masterKey, sizeof( *masterKey ) );
         return NULL;
     }
 
     MPMarshalledUser *user = NULL;
     if (!(user = mpw_marshal_user( fullName, masterKeyProvider, algorithm ))) {
         mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate a new user." );
-        mpw_free( &masterKey, MPMasterKeySize );
+        mpw_free( &masterKey, sizeof( *masterKey ) );
         mpw_marshal_user_free( &user );
         return NULL;
     }
@@ -1197,21 +1197,21 @@ MPMarshalledUser *mpw_marshal_auth(
         algorithm = mpw_default_n( user->algorithm, mpw_marshal_data_get_num( siteData, "algorithm", NULL ) );
         if (algorithm < MPAlgorithmVersionFirst || algorithm > MPAlgorithmVersionLast) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site algorithm: %s: %u", siteName, algorithm );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
         MPCounterValue siteCounter = mpw_default_n( MPCounterValueDefault, mpw_marshal_data_get_num( siteData, "counter", NULL ) );
         if (siteCounter < MPCounterValueFirst || siteCounter > MPCounterValueLast) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site counter: %s: %d", siteName, siteCounter );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
         MPResultType siteType = mpw_default_n( user->defaultType, mpw_marshal_data_get_num( siteData, "type", NULL ) );
         if (!mpw_type_short_name( siteType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site type: %s: %u", siteName, siteType );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
@@ -1219,7 +1219,7 @@ MPMarshalledUser *mpw_marshal_auth(
         MPResultType siteLoginType = mpw_default_n( MPResultTypeTemplateName, mpw_marshal_data_get_num( siteData, "login_type", NULL ) );
         if (!mpw_type_short_name( siteLoginType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site login type: %s: %u", siteName, siteLoginType );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
@@ -1229,7 +1229,7 @@ MPMarshalledUser *mpw_marshal_auth(
         time_t siteLastUsed = mpw_timegm( str_lastUsed );
         if (!siteLastUsed) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site last used: %s: %s", siteName, str_lastUsed );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
@@ -1239,7 +1239,7 @@ MPMarshalledUser *mpw_marshal_auth(
         MPMarshalledSite *site = mpw_marshal_site( user, siteName, siteType, siteCounter, algorithm );
         if (!site) {
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate a new site." );
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
@@ -1250,10 +1250,10 @@ MPMarshalledUser *mpw_marshal_auth(
         site->lastUsed = siteLastUsed;
         if (!user->redacted) {
             // Clear Text
-            mpw_free( &masterKey, MPMasterKeySize );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
             if (!masterKeyProvider || !(masterKey = masterKeyProvider( site->algorithm, user->fullName ))) {
                 mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
-                mpw_free( &masterKey, MPMasterKeySize );
+                mpw_free( &masterKey, sizeof( *masterKey ) );
                 mpw_marshal_user_free( &user );
                 return NULL;
             }
@@ -1293,7 +1293,7 @@ MPMarshalledUser *mpw_marshal_auth(
             }
         }
     }
-    mpw_free( &masterKey, MPMasterKeySize );
+    mpw_free( &masterKey, sizeof( *masterKey ) );
 
     return user;
 }

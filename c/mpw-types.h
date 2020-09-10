@@ -45,8 +45,12 @@ MP_LIBS_END
 
 //// Types.
 
-extern const size_t MPMasterKeySize, MPSiteKeySize; /* bytes */
-typedef const uint8_t *MPMasterKey, *MPSiteKey;
+typedef struct {
+    const uint8_t bytes[64];
+} MPMasterKey;
+typedef struct {
+    const uint8_t bytes[256 / 8]; // Size of HMAC-SHA-256
+} MPSiteKey;
 typedef const char *MPKeyID;
 
 typedef mpw_enum( uint8_t, MPKeyPurpose ) {

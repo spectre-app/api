@@ -27,7 +27,7 @@ MP_LIBS_BEGIN
 #include <string.h>
 MP_LIBS_END
 
-const MPMasterKey mpw_master_key(const char *fullName, const char *masterPassword, const MPAlgorithmVersion algorithmVersion) {
+const MPMasterKey *mpw_master_key(const char *fullName, const char *masterPassword, const MPAlgorithmVersion algorithmVersion) {
 
     if (fullName && !strlen( fullName ))
         fullName = NULL;
@@ -61,8 +61,8 @@ const MPMasterKey mpw_master_key(const char *fullName, const char *masterPasswor
     }
 }
 
-const MPSiteKey mpw_site_key(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+const MPSiteKey *mpw_site_key(
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext, const MPAlgorithmVersion algorithmVersion) {
 
     if (keyContext && !strlen( keyContext ))
@@ -98,7 +98,7 @@ const MPSiteKey mpw_site_key(
 }
 
 const char *mpw_site_result(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext,
         const MPResultType resultType, const char *resultParam,
         const MPAlgorithmVersion algorithmVersion) {
@@ -108,7 +108,7 @@ const char *mpw_site_result(
     if (resultParam && !strlen( resultParam ))
         resultParam = NULL;
 
-    MPSiteKey siteKey = mpw_site_key( masterKey, siteName, siteCounter, keyPurpose, keyContext, algorithmVersion );
+    const MPSiteKey *siteKey = mpw_site_key( masterKey, siteName, siteCounter, keyPurpose, keyContext, algorithmVersion );
 
     trc( "-- mpw_site_result (algorithm: %u)", algorithmVersion );
     trc( "resultType: %d (%s)", resultType, mpw_type_short_name( resultType ) );
@@ -175,7 +175,7 @@ const char *mpw_site_result(
 }
 
 const char *mpw_site_state(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext,
         const MPResultType resultType, const char *resultParam,
         const MPAlgorithmVersion algorithmVersion) {
@@ -185,7 +185,7 @@ const char *mpw_site_state(
     if (resultParam && !strlen( resultParam ))
         resultParam = NULL;
 
-    MPSiteKey siteKey = mpw_site_key( masterKey, siteName, siteCounter, keyPurpose, keyContext, algorithmVersion );
+    const MPSiteKey *siteKey = mpw_site_key( masterKey, siteName, siteCounter, keyPurpose, keyContext, algorithmVersion );
 
     trc( "-- mpw_site_state (algorithm: %u)", algorithmVersion );
     trc( "resultType: %d (%s)", resultType, mpw_type_short_name( resultType ) );

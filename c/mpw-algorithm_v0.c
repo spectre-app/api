@@ -51,7 +51,7 @@ const char mpw_class_character_v0(char characterClass, uint16_t classIndex) {
 }
 
 // Algorithm version overrides.
-MPMasterKey mpw_master_key_v0(
+const MPMasterKey *mpw_master_key_v0(
         const char *fullName, const char *masterPassword) {
 
     const char *keyScope = mpw_purpose_scope( MPKeyPurposeAuthentication );
@@ -73,20 +73,20 @@ MPMasterKey mpw_master_key_v0(
 
     // Calculate the master key.
     trc( "masterKey: scrypt( masterPassword, masterKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
-    MPMasterKey masterKey = mpw_kdf_scrypt( MPMasterKeySize,
+    const MPMasterKey *masterKey = mpw_kdf_scrypt( sizeof( *masterKey ),
             (uint8_t *)masterPassword, strlen( masterPassword ), masterKeySalt, masterKeySaltSize, MP_N, MP_r, MP_p );
     mpw_free( &masterKeySalt, masterKeySaltSize );
     if (!masterKey) {
         err( "Could not derive master key: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => masterKey.id: %s", mpw_id_buf( masterKey, MPMasterKeySize ) );
+    trc( "  => masterKey.id: %s", mpw_id_buf( masterKey, sizeof( *masterKey ) ) );
 
     return masterKey;
 }
 
-MPSiteKey mpw_site_key_v0(
-        MPMasterKey masterKey, const char *siteName, MPCounterValue siteCounter,
+const MPSiteKey *mpw_site_key_v0(
+        const MPMasterKey *masterKey, const char *siteName, MPCounterValue siteCounter,
         MPKeyPurpose keyPurpose, const char *keyContext) {
 
     const char *keyScope = mpw_purpose_scope( keyPurpose );
@@ -117,20 +117,20 @@ MPSiteKey mpw_site_key_v0(
     trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ) );
 
     trc( "siteKey: hmac-sha256( masterKey.id=%s, siteSalt )",
-            mpw_id_buf( masterKey, MPMasterKeySize ) );
-    MPSiteKey siteKey = mpw_hash_hmac_sha256( masterKey, MPMasterKeySize, siteSalt, siteSaltSize );
+            mpw_id_buf( masterKey, sizeof( *masterKey ) ) );
+    const MPSiteKey *siteKey = mpw_hash_hmac_sha256( masterKey, sizeof( *masterKey ), siteSalt, siteSaltSize );
     mpw_free( &siteSalt, siteSaltSize );
     if (!siteKey) {
         err( "Could not derive site key: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, MPSiteKeySize ) );
+    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, sizeof( *siteKey ) ) );
 
     return siteKey;
 }
 
 const char *mpw_site_template_password_v0(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *resultParam) {
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
     const char *_siteKey = (const char *)siteKey;
 
@@ -141,7 +141,7 @@ const char *mpw_site_template_password_v0(
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
-    if (strlen( template ) > MPSiteKeySize) {
+    if (strlen( template ) > sizeof( *siteKey )) {
         err( "Template too long for password seed: %zu", strlen( template ) );
         return NULL;
     }
@@ -160,7 +160,7 @@ const char *mpw_site_template_password_v0(
 }
 
 const char *mpw_site_crypted_password_v0(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *cipherText) {
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
 
     if (!cipherText) {
         err( "Missing encrypted state." );
@@ -183,7 +183,7 @@ const char *mpw_site_crypted_password_v0(
     trc( "b64 decoded: %zu bytes = %s", bufSize, mpw_hex( cipherBuf, bufSize ) );
 
     // Decrypt
-    const uint8_t *plainBytes = mpw_aes_decrypt( masterKey, MPMasterKeySize, cipherBuf, &bufSize );
+    const uint8_t *plainBytes = mpw_aes_decrypt( masterKey, sizeof( *masterKey ), cipherBuf, &bufSize );
     mpw_free( &cipherBuf, cipherBufSize );
     const char *plainText = mpw_strndup( (char *)plainBytes, bufSize );
     mpw_free( &plainBytes, bufSize );
@@ -198,7 +198,7 @@ const char *mpw_site_crypted_password_v0(
 }
 
 const char *mpw_site_derived_password_v0(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *resultParam) {
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
     switch (resultType) {
         case MPResultTypeDeriveKey: {
@@ -217,7 +217,7 @@ const char *mpw_site_derived_password_v0(
             trc( "keySize: %u", keySize );
 
             // Derive key
-            const uint8_t *resultKey = mpw_kdf_blake2b( keySize, siteKey, MPSiteKeySize, NULL, 0, 0, NULL );
+            const uint8_t *resultKey = mpw_kdf_blake2b( keySize, siteKey, sizeof( *siteKey ), NULL, 0, 0, NULL );
             if (!resultKey) {
                 err( "Could not derive result key: %s", strerror( errno ) );
                 return NULL;
@@ -243,11 +243,11 @@ const char *mpw_site_derived_password_v0(
 }
 
 const char *mpw_site_state_v0(
-        MPMasterKey masterKey, MPSiteKey siteKey, MPResultType resultType, const char *plainText) {
+        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *plainText) {
 
     // Encrypt
     size_t bufSize = strlen( plainText );
-    const uint8_t *cipherBuf = mpw_aes_encrypt( masterKey, MPMasterKeySize, (const uint8_t *)plainText, &bufSize );
+    const uint8_t *cipherBuf = mpw_aes_encrypt( masterKey, sizeof( *masterKey ), (const uint8_t *)plainText, &bufSize );
     if (!cipherBuf) {
         err( "AES encryption error: %s", strerror( errno ) );
         return NULL;

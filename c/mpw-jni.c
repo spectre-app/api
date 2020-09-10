@@ -111,9 +111,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
     if (!masterKeyBytes)
         return NULL;
 
-    jbyteArray masterKey = (*env)->NewByteArray( env, (jsize)MPMasterKeySize );
-    (*env)->SetByteArrayRegion( env, masterKey, 0, (jsize)MPMasterKeySize, (jbyte *)masterKeyBytes );
-    mpw_free( &masterKeyBytes, MPMasterKeySize );
+    jbyteArray masterKey = (*env)->NewByteArray( env, (jsize)sizeof( *masterKey ) );
+    (*env)->SetByteArrayRegion( env, masterKey, 0, (jsize)sizeof( *masterKey ), (jbyte *)masterKeyBytes );
+    mpw_free( &masterKeyBytes, sizeof( *masterKey ) );
 
     return masterKey;
 }
@@ -140,9 +140,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
     if (!siteKeyBytes)
         return NULL;
 
-    jbyteArray siteKey = (*env)->NewByteArray( env, (jsize)MPMasterKeySize );
-    (*env)->SetByteArrayRegion( env, siteKey, 0, (jsize)MPMasterKeySize, (jbyte *)siteKeyBytes );
-    mpw_free( &siteKeyBytes, MPSiteKeySize );
+    jbyteArray siteKey = (*env)->NewByteArray( env, (jsize)sizeof( *masterKey ) );
+    (*env)->SetByteArrayRegion( env, siteKey, 0, (jsize)sizeof( *masterKey ), (jbyte *)siteKeyBytes );
+    mpw_free( &siteKeyBytes, sizeof( *siteKey ) );
 
     return siteKey;
 }

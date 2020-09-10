@@ -38,20 +38,20 @@ typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
 
 /** Derive the master key for a user based on their name and master password.
  * @return A buffer (allocated, MPMasterKeySize) or NULL if the fullName or masterPassword is missing, the algorithm is unknown, or an algorithm error occurred. */
-const MPMasterKey mpw_master_key(
+const MPMasterKey *mpw_master_key(
         const char *fullName, const char *masterPassword, const MPAlgorithmVersion algorithmVersion);
 
 /** Derive the site key for a user's site from the given master key and site parameters.
  * @return A buffer (allocated, MPSiteKeySize) or NULL if the masterKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
-const MPSiteKey mpw_site_key(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+const MPSiteKey *mpw_site_key(
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext, const MPAlgorithmVersion algorithmVersion);
 
 /** Generate a site result token from the given parameters.
  * @param resultParam A parameter for the resultType.  For stateful result types, the output of mpw_site_state.
  * @return A string (allocated) or NULL if the masterKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
 const char *mpw_site_result(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext,
         const MPResultType resultType, const char *resultParam,
         const MPAlgorithmVersion algorithmVersion);
@@ -60,7 +60,7 @@ const char *mpw_site_result(
  * @param resultParam A parameter for the resultType.  For stateful result types, the desired mpw_site_result.
  * @return A string (allocated) or NULL if the masterKey, siteName or resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
 const char *mpw_site_state(
-        const MPMasterKey masterKey, const char *siteName, const MPCounterValue siteCounter,
+        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
         const MPKeyPurpose keyPurpose, const char *keyContext,
         const MPResultType resultType, const char *resultParam,
         const MPAlgorithmVersion algorithmVersion);

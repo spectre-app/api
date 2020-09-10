@@ -303,18 +303,18 @@ bool __mpw_free_strings(char **strings, ...) {
     return success;
 }
 
-const uint8_t *mpw_kdf_scrypt(const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
+const void *mpw_kdf_scrypt(const size_t keySize, const void *secret, const size_t secretSize, const void *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p) {
 
     if (!secret || !salt || !secretSize || !saltSize)
         return NULL;
 
-    uint8_t *key = malloc( keySize );
+    void *key = malloc( keySize );
     if (!key)
         return NULL;
 
 #if MPW_CPERCIVA
-    if (crypto_scrypt( (const uint8_t *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
+    if (crypto_scrypt( (const void *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
         mpw_free( &key, keySize );
         return NULL;
     }
@@ -330,8 +330,8 @@ const uint8_t *mpw_kdf_scrypt(const size_t keySize, const uint8_t *secret, const
     return key;
 }
 
-const uint8_t *mpw_kdf_blake2b(const size_t subkeySize, const uint8_t *key, const size_t keySize,
-        const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal) {
+const void *mpw_kdf_blake2b(const size_t subkeySize, const void *key, const size_t keySize,
+        const void *context, const size_t contextSize, const uint64_t id, const char *personal) {
 
     if (!key || !keySize || !subkeySize) {
         errno = EINVAL;
@@ -372,7 +372,7 @@ const uint8_t *mpw_kdf_blake2b(const size_t subkeySize, const uint8_t *key, cons
     return subkey;
 }
 
-const uint8_t *mpw_hash_hmac_sha256(const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize) {
+const void *mpw_hash_hmac_sha256(const void *key, const size_t keySize, const void *message, const size_t messageSize) {
 
     if (!key || !keySize || !message || !messageSize)
         return NULL;
@@ -402,7 +402,7 @@ const uint8_t *mpw_hash_hmac_sha256(const uint8_t *key, const size_t keySize, co
     return mac;
 }
 
-const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
+const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySize, const void *buf, size_t *bufSize) {
 
     if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize)
         return NULL;
@@ -443,18 +443,18 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
     return resultBuf;
 }
 
-const uint8_t *mpw_aes_encrypt(const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize) {
+const void *mpw_aes_encrypt(const void *key, const size_t keySize, const void *plainBuffer, size_t *bufferSize) {
 
     return mpw_aes( true, key, keySize, plainBuffer, bufferSize );
 }
 
-const uint8_t *mpw_aes_decrypt(const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize) {
+const void *mpw_aes_decrypt(const void *key, const size_t keySize, const void *cipherBuffer, size_t *bufferSize) {
 
     return mpw_aes( false, key, keySize, cipherBuffer, bufferSize );
 }
 
 #if UNUSED
-const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
+const char *mpw_hotp(const void *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
 
     // Hash the moving factor with the key.
     uint8_t counter[8];

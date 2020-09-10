@@ -88,13 +88,13 @@ size_t mpw_base64_decode_max(const char *b64Text) {
     return 3 /*bytes*/ * ((b64Size + 4 /*chars*/ - 1) / 4 /*chars*/);
 }
 
-size_t mpw_base64_decode(uint8_t *plainBuf, const char *b64Text) {
+size_t mpw_base64_decode(void *plainBuf, const char *b64Text) {
 
-    register const uint8_t *b64Cursor = (uint8_t *)b64Text;
-    for (; b64ToBits[(uint8_t)*b64Cursor] <= 63; ++b64Cursor);
-    size_t b64Remaining = b64Cursor - (uint8_t *)b64Text;
+    register const uint8_t *b64Cursor = (const uint8_t *)b64Text;
+    for (; b64ToBits[*b64Cursor] <= 63; ++b64Cursor);
+    size_t b64Remaining = b64Cursor - (const uint8_t *)b64Text;
 
-    b64Cursor = (uint8_t *)b64Text;
+    b64Cursor = (const uint8_t *)b64Text;
     register uint8_t *plainCursor = plainBuf;
     while (b64Remaining > 4) {
         *(plainCursor++) = (uint8_t)(b64ToBits[b64Cursor[0]] << 2 | b64ToBits[b64Cursor[1]] >> 4);
@@ -112,7 +112,7 @@ size_t mpw_base64_decode(uint8_t *plainBuf, const char *b64Text) {
     if (b64Remaining > 3)
         *(plainCursor++) = (uint8_t)(b64ToBits[b64Cursor[2]] << 6 | b64ToBits[b64Cursor[3]]);
 
-    return plainCursor - plainBuf;
+    return plainCursor - (uint8_t *)plainBuf;
 }
 
 static const char basis_64[] =
@@ -124,28 +124,29 @@ size_t mpw_base64_encode_max(size_t plainSize) {
     return 4 /*chars*/ * (plainSize + 3 /*bytes*/ - 1) / 3 /*bytes*/;
 }
 
-size_t mpw_base64_encode(char *b64Text, const uint8_t *plainBuf, size_t plainSize) {
+size_t mpw_base64_encode(char *b64Text, const void *plainBuf, size_t plainSize) {
 
     size_t plainCursor = 0;
     char *b64Cursor = b64Text;
+    const uint8_t *plainBits = plainBuf;
     for (; plainCursor < plainSize - 2; plainCursor += 3) {
-        *b64Cursor++ = basis_64[((plainBuf[plainCursor] >> 2)) & 0x3F];
-        *b64Cursor++ = basis_64[((plainBuf[plainCursor] & 0x3) << 4) |
-                                ((plainBuf[plainCursor + 1] & 0xF0) >> 4)];
-        *b64Cursor++ = basis_64[((plainBuf[plainCursor + 1] & 0xF) << 2) |
-                                ((plainBuf[plainCursor + 2] & 0xC0) >> 6)];
-        *b64Cursor++ = basis_64[plainBuf[plainCursor + 2] & 0x3F];
+        *b64Cursor++ = basis_64[((plainBits[plainCursor] >> 2)) & 0x3F];
+        *b64Cursor++ = basis_64[((plainBits[plainCursor] & 0x3) << 4) |
+                                ((plainBits[plainCursor + 1] & 0xF0) >> 4)];
+        *b64Cursor++ = basis_64[((plainBits[plainCursor + 1] & 0xF) << 2) |
+                                ((plainBits[plainCursor + 2] & 0xC0) >> 6)];
+        *b64Cursor++ = basis_64[plainBits[plainCursor + 2] & 0x3F];
     }
     if (plainCursor < plainSize) {
-        *b64Cursor++ = basis_64[(plainBuf[plainCursor] >> 2) & 0x3F];
+        *b64Cursor++ = basis_64[(plainBits[plainCursor] >> 2) & 0x3F];
         if (plainCursor == (plainSize - 1)) {
-            *b64Cursor++ = basis_64[((plainBuf[plainCursor] & 0x3) << 4)];
+            *b64Cursor++ = basis_64[((plainBits[plainCursor] & 0x3) << 4)];
             *b64Cursor++ = '=';
         }
         else {
-            *b64Cursor++ = basis_64[((plainBuf[plainCursor] & 0x3) << 4) |
-                                    ((plainBuf[plainCursor + 1] & 0xF0) >> 4)];
-            *b64Cursor++ = basis_64[((plainBuf[plainCursor + 1] & 0xF) << 2)];
+            *b64Cursor++ = basis_64[((plainBits[plainCursor] & 0x3) << 4) |
+                                    ((plainBits[plainCursor + 1] & 0xF0) >> 4)];
+            *b64Cursor++ = basis_64[((plainBits[plainCursor + 1] & 0xF) << 2)];
         }
         *b64Cursor++ = '=';
     }

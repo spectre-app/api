@@ -63,11 +63,11 @@ time_t mpw_timegm(const char *time) {
     return ERR;
 }
 
-bool mpw_update_master_key(MPMasterKey *masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+bool mpw_update_master_key(const MPMasterKey **masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
         const char *fullName, const char *masterPassword) {
 
     if (masterKey && (!*masterKey || *masterKeyAlgorithm != targetKeyAlgorithm)) {
-        mpw_free( masterKey, MPMasterKeySize );
+        mpw_free( masterKey, sizeof( **masterKey ) );
         *masterKeyAlgorithm = targetKeyAlgorithm;
         *masterKey = mpw_master_key( fullName, masterPassword, *masterKeyAlgorithm );
     }

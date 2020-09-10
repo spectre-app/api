@@ -64,7 +64,7 @@ typedef mpw_enum( unsigned int, MPMarshalErrorType ) {
 
 /** A function that can resolve a master key of the given algorithm for the user with the given name.
  * @return A master key (allocated), or NULL if the key could not be resolved. */
-typedef MPMasterKey (*MPMasterKeyProvider)(
+typedef const MPMasterKey *(*MPMasterKeyProvider)(
         MPAlgorithmVersion algorithm, const char *fullName);
 /** A function that updates the currentKey with the masterKey of the given algorithm for the user with the given name.
  * @param currentKey A pointer to where the current masterKey (allocated) can be found and a new one can be placed.  Must be freed if updated.
@@ -73,7 +73,7 @@ typedef MPMasterKey (*MPMasterKeyProvider)(
  * @param fullName The name of the user whose masterKey should be placed in currentKey.
  * @return false if not able to resolve the requested masterKey. */
 typedef bool (*MPMasterKeyProviderProxy)(
-        MPMasterKey *currentKey, MPAlgorithmVersion *currentAlgorithm, MPAlgorithmVersion algorithm, const char *fullName);
+        const MPMasterKey **currentKey, MPAlgorithmVersion *currentAlgorithm, MPAlgorithmVersion algorithm, const char *fullName);
 
 /** Create a key provider which handles key generation by proxying the given function.
  * The proxy function receives the currently cached key and its algorithm.  If those are NULL, the proxy function should clean up its state. */

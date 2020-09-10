@@ -52,7 +52,7 @@ time_t mpw_timegm(
  * @param masterKey A buffer (allocated, MPMasterKeySize).
  * @return false if an error occurred during the derivation of the master key. */
 bool mpw_update_master_key(
-        MPMasterKey *masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+        const MPMasterKey **masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
         const char *fullName, const char *masterPassword);
 
 
