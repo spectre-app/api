@@ -174,7 +174,7 @@ const char *mpw_site_crypted_password_v0(
 
     // Base64-decode
     uint8_t *cipherBuf = calloc( 1, mpw_base64_decode_max( cipherText ) );
-    size_t bufSize = mpw_base64_decode( cipherBuf, cipherText ), cipherBufSize = bufSize;
+    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
         mpw_free( &cipherBuf, mpw_base64_decode_max( cipherText ) );
@@ -226,7 +226,7 @@ const char *mpw_site_derived_password_v0(
             // Base64-encode
             size_t b64Max = mpw_base64_encode_max( keySize );
             char *b64Key = calloc( 1, b64Max + 1 );
-            if (mpw_base64_encode( b64Key, resultKey, keySize ) < 0) {
+            if (mpw_base64_encode( resultKey, keySize, b64Key ) < 0) {
                 err( "Base64 encoding error." );
                 mpw_free_string( &b64Key );
             }
@@ -257,7 +257,7 @@ const char *mpw_site_state_v0(
     // Base64-encode
     size_t b64Max = mpw_base64_encode_max( bufSize );
     char *cipherText = calloc( 1, b64Max + 1 );
-    if (mpw_base64_encode( cipherText, cipherBuf, bufSize ) < 0) {
+    if (mpw_base64_encode( cipherBuf, bufSize, cipherText ) < 0) {
         err( "Base64 encoding error." );
         mpw_free_string( &cipherText );
     }
