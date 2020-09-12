@@ -105,7 +105,7 @@ void mpw_log_ssink(LogLevel level, const char *file, int line, const char *funct
             sunk |= sink( &record );
     }
     if (!sunk)
-        sunk = mpw_log_sink_file( &record );
+        mpw_log_sink_file( &record );
 
     if (record.level <= LogLevelError) {
         /* error breakpoint */;
