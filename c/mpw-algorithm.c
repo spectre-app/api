@@ -122,7 +122,10 @@ const char *mpw_site_result(
         return NULL;
     }
 
-    if (resultType & MPResultTypeClassTemplate) {
+    if (resultType == MPResultTypeNone) {
+        return NULL;
+    }
+    else if (resultType & MPResultTypeClassTemplate) {
         switch (algorithmVersion) {
             case MPAlgorithmVersionV0:
                 return mpw_site_template_password_v0( masterKey, siteKey, resultType, resultParam );
@@ -200,6 +203,10 @@ const char *mpw_site_state(
     }
     if (!resultParam) {
         err( "Missing resultParam" );
+        return NULL;
+    }
+
+    if (resultType == MPResultTypeNone) {
         return NULL;
     }
 

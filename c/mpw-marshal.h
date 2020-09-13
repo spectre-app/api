@@ -192,6 +192,10 @@ typedef struct MPMarshalledUser {
     MPKeyID keyID;
     /** The initial result type to use for new sites created by the user. */
     MPResultType defaultType;
+    /** The result type to use for generating the user's standard login. */
+    MPResultType loginType;
+    /** State data (base64), if any, necessary for generating the user's standard login. */
+    const char *loginState;
     /** User metadata: Date of the most recent action taken by this user. */
     time_t lastUsed;
 

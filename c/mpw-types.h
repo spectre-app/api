@@ -84,6 +84,9 @@ typedef mpw_opts( uint16_t, MPSiteFeature ) {
 
 // bit 0-3 | MPResultTypeClass | MPSiteFeature
 typedef mpw_enum( uint32_t, MPResultType ) {
+    /** 0: Don't produce a result */
+            MPResultTypeNone = 0,
+
     /** 16: pg^VMAUBk5x3p%HP%i4= */
             MPResultTypeTemplateMaximum = 0x0 | MPResultTypeClassTemplate | 0x0,
     /** 17: BiroYena8:Kixa */
@@ -109,7 +112,8 @@ typedef mpw_enum( uint32_t, MPResultType ) {
     /** 4160: Derive a unique binary key. */
             MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPSiteFeatureAlternative,
 
-    MPResultTypeDefault = MPResultTypeTemplateLong,
+    MPResultTypeDefaultResult = MPResultTypeTemplateLong,
+    MPResultTypeDefaultLogin = MPResultTypeTemplateName,
 };
 
 typedef mpw_enum ( uint32_t, MPCounterValue ) {

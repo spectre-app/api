@@ -36,6 +36,8 @@ const MPResultType mpw_type_named(const char *typeName) {
 
     // Find what password type is represented by the type letter.
     if (strlen( typeName ) == 1) {
+        if ('0' == typeName[0])
+            return MPResultTypeNone;
         if ('x' == typeName[0])
             return MPResultTypeTemplateMaximum;
         if ('l' == typeName[0])
@@ -61,6 +63,8 @@ const MPResultType mpw_type_named(const char *typeName) {
     }
 
     // Find what password type is represented by the type name.
+    if (mpw_strncasecmp( mpw_type_short_name( MPResultTypeNone ), typeName, strlen( typeName ) ) == OK)
+        return MPResultTypeNone;
     if (mpw_strncasecmp( mpw_type_short_name( MPResultTypeTemplateMaximum ), typeName, strlen( typeName ) ) == OK)
         return MPResultTypeTemplateMaximum;
     if (mpw_strncasecmp( mpw_type_short_name( MPResultTypeTemplateLong ), typeName, strlen( typeName ) ) == OK)
@@ -91,6 +95,8 @@ const MPResultType mpw_type_named(const char *typeName) {
 const char *mpw_type_abbreviation(const MPResultType resultType) {
 
     switch (resultType) {
+        case MPResultTypeNone:
+            return "no";
         case MPResultTypeTemplateMaximum:
             return "max";
         case MPResultTypeTemplateLong:
@@ -123,6 +129,8 @@ const char *mpw_type_abbreviation(const MPResultType resultType) {
 const char *mpw_type_short_name(const MPResultType resultType) {
 
     switch (resultType) {
+        case MPResultTypeNone:
+            return "none";
         case MPResultTypeTemplateMaximum:
             return "maximum";
         case MPResultTypeTemplateLong:
@@ -155,6 +163,8 @@ const char *mpw_type_short_name(const MPResultType resultType) {
 const char *mpw_type_long_name(const MPResultType resultType) {
 
     switch (resultType) {
+        case MPResultTypeNone:
+            return "None";
         case MPResultTypeTemplateMaximum:
             return "Maximum Security Password";
         case MPResultTypeTemplateLong:

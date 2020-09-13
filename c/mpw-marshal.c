@@ -93,7 +93,9 @@ MPMarshalledUser *mpw_marshal_user(
             .fullName = mpw_strdup( fullName ),
             .identicon = MPIdenticonUnset,
             .keyID = NULL,
-            .defaultType = MPResultTypeDefault,
+            .defaultType = MPResultTypeDefaultResult,
+            .loginType = MPResultTypeDefaultLogin,
+            .loginState = NULL,
             .lastUsed = 0,
 
             .sites_count = 0,
@@ -122,7 +124,7 @@ MPMarshalledSite *mpw_marshal_site(
             .resultType = resultType,
             .resultState = NULL,
 
-            .loginType = MPResultTypeTemplateName,
+            .loginType = MPResultTypeNone,
             .loginState = NULL,
 
             .url = NULL,
@@ -739,6 +741,27 @@ const char *mpw_marshal_write(
     mpw_marshal_data_set_bool( user->redacted, data_export, "redacted", NULL );
 
     // Section: "user"
+    const char *loginState = NULL;
+    if (!user->redacted) {
+        // Clear Text
+        mpw_free( &masterKey, sizeof( *masterKey ) );
+        if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( user->algorithm, user->fullName ))) {
+            if (!file_)
+                mpw_marshal_file_free( &file );
+            else
+                mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
+            return NULL;
+        }
+
+        loginState = mpw_site_result( masterKey, user->fullName, MPCounterValueInitial,
+                MPKeyPurposeIdentification, NULL, user->loginType, user->loginState, user->algorithm );
+    }
+    else {
+        // Redacted
+        if (user->loginType & MPSiteFeatureExportContent && user->loginState && strlen( user->loginState ))
+            loginState = mpw_strdup( user->loginState );
+    }
+
     MPMarshalledData *data_user = mpw_marshal_data_get( file->data, "user", NULL );
     mpw_marshal_data_set_num( user->avatar, data_user, "avatar", NULL );
     mpw_marshal_data_set_str( user->fullName, data_user, "full_name", NULL );
@@ -746,6 +769,8 @@ const char *mpw_marshal_write(
     mpw_marshal_data_set_num( user->algorithm, data_user, "algorithm", NULL );
     mpw_marshal_data_set_str( user->keyID, data_user, "key_id", NULL );
     mpw_marshal_data_set_num( user->defaultType, data_user, "default_type", NULL );
+    mpw_marshal_data_set_num( user->loginType, data_user, "login_type", NULL );
+    mpw_marshal_data_set_str( loginState, data_user, "login_name", NULL );
     if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &user->lastUsed ) ))
         mpw_marshal_data_set_str( dateString, data_user, "last_used", NULL );
 
@@ -864,7 +889,7 @@ static void mpw_marshal_read_flat(
     const char *fullName = NULL, *keyID = NULL;
     MPAlgorithmVersion algorithm = MPAlgorithmVersionCurrent;
     MPIdenticon identicon = MPIdenticonUnset;
-    MPResultType defaultType = MPResultTypeDefault;
+    MPResultType defaultType = MPResultTypeDefaultResult;
     time_t exportDate = 0;
     bool headerStarted = false, headerEnded = false, importRedacted = false;
     for (const char *endOfLine, *positionInLine = in; (endOfLine = strstr( positionInLine, "\n" )); positionInLine = endOfLine + 1) {
@@ -1020,7 +1045,7 @@ static void mpw_marshal_read_flat(
             mpw_marshal_data_set_num( siteAlgorithm, file->data, "sites", siteName, "algorithm", NULL );
             mpw_marshal_data_set_num( siteType, file->data, "sites", siteName, "type", NULL );
             mpw_marshal_data_set_str( siteResultState, file->data, "sites", siteName, "password", NULL );
-            mpw_marshal_data_set_num( MPResultTypeDefault, file->data, "sites", siteName, "login_type", NULL );
+            mpw_marshal_data_set_num( MPResultTypeStatefulPersonal, file->data, "sites", siteName, "login_type", NULL );
             mpw_marshal_data_set_str( siteLoginState, file->data, "sites", siteName, "login_name", NULL );
             mpw_marshal_data_set_num( strtol( str_uses, NULL, 10 ), file->data, "sites", siteName, "uses", NULL );
             if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &siteLastUsed ) ))
@@ -1150,11 +1175,17 @@ MPMarshalledUser *mpw_marshal_auth(
     }
     MPIdenticon identicon = mpw_identicon_encoded( mpw_marshal_data_get_str( file->data, "user", "identicon", NULL ) );
     const char *keyID = mpw_marshal_data_get_str( file->data, "user", "key_id", NULL );
-    MPResultType defaultType = mpw_default_n( MPResultTypeDefault, mpw_marshal_data_get_num( file->data, "user", "default_type", NULL ) );
+    MPResultType defaultType = mpw_default_n( MPResultTypeDefaultResult, mpw_marshal_data_get_num( file->data, "user", "default_type", NULL ) );
     if (!mpw_type_short_name( defaultType )) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user default type: %u", defaultType );
         return NULL;
     }
+    MPResultType loginType = mpw_default_n( MPResultTypeDefaultLogin, mpw_marshal_data_get_num( file->data, "user", "login_type", NULL ) );
+    if (!mpw_type_short_name( loginType )) {
+        mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user login type: %u", loginType );
+        return NULL;
+    }
+    const char *loginState = mpw_marshal_data_get_str( file->data, "user", "login_name", NULL );
     const char *str_lastUsed = mpw_marshal_data_get_str( file->data, "user", "last_used", NULL );
     time_t lastUsed = mpw_timegm( str_lastUsed );
     if (!lastUsed) {
@@ -1186,7 +1217,27 @@ MPMarshalledUser *mpw_marshal_auth(
     user->identicon = identicon;
     user->keyID = mpw_strdup( keyID );
     user->defaultType = defaultType;
+    user->loginType = loginType;
     user->lastUsed = lastUsed;
+    if (!user->redacted) {
+        // Clear Text
+        mpw_free( &masterKey, sizeof( *masterKey ) );
+        if (!masterKeyProvider || !(masterKey = masterKeyProvider( user->algorithm, user->fullName ))) {
+            mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
+            mpw_free( &masterKey, sizeof( *masterKey ) );
+            mpw_marshal_user_free( &user );
+            return NULL;
+        }
+
+        if (loginState && strlen( loginState ) && masterKey)
+            user->loginState = mpw_site_state( masterKey, user->fullName, MPCounterValueInitial,
+                    MPKeyPurposeIdentification, NULL, user->loginType, loginState, user->algorithm );
+    }
+    else {
+        // Redacted
+        if (loginState && strlen( loginState ))
+            user->loginState = mpw_strdup( loginState );
+    }
 
     // Section "sites"
     const MPMarshalledData *sites = mpw_marshal_data_find( file->data, "sites", NULL );
@@ -1216,7 +1267,7 @@ MPMarshalledUser *mpw_marshal_auth(
             return NULL;
         }
         const char *siteResultState = mpw_marshal_data_get_str( siteData, "password", NULL );
-        MPResultType siteLoginType = mpw_default_n( MPResultTypeTemplateName, mpw_marshal_data_get_num( siteData, "login_type", NULL ) );
+        MPResultType siteLoginType = mpw_default_n( MPResultTypeNone, mpw_marshal_data_get_num( siteData, "login_type", NULL ) );
         if (!mpw_type_short_name( siteLoginType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site login type: %s: %u", siteName, siteLoginType );
             mpw_free( &masterKey, sizeof( *masterKey ) );
@@ -1258,10 +1309,10 @@ MPMarshalledUser *mpw_marshal_auth(
                 return NULL;
             }
 
-            if (siteResultState && strlen( siteResultState ))
+            if (siteResultState && strlen( siteResultState ) && masterKey)
                 site->resultState = mpw_site_state( masterKey, site->siteName, site->counter,
                         MPKeyPurposeAuthentication, NULL, site->resultType, siteResultState, site->algorithm );
-            if (siteLoginState && strlen( siteLoginState ))
+            if (siteLoginState && strlen( siteLoginState ) && masterKey)
                 site->loginState = mpw_site_state( masterKey, site->siteName, MPCounterValueInitial,
                         MPKeyPurposeIdentification, NULL, site->loginType, siteLoginState, site->algorithm );
         }
@@ -1282,7 +1333,7 @@ MPMarshalledUser *mpw_marshal_auth(
 
             if (!user->redacted) {
                 // Clear Text
-                if (answerState && strlen( answerState ))
+                if (answerState && strlen( answerState ) && masterKey)
                     question->state = mpw_site_state( masterKey, site->siteName, MPCounterValueInitial,
                             MPKeyPurposeRecovery, question->keyword, question->type, answerState, site->algorithm );
             }
