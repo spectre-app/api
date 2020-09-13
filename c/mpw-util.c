@@ -408,7 +408,7 @@ const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySiz
         return NULL;
 
     // IV = zero
-    static uint8_t *iv = NULL;
+    static const uint8_t *iv = NULL;
     if (!iv)
         iv = calloc( AES_BLOCKLEN, sizeof( uint8_t ) );
 
@@ -439,6 +439,7 @@ const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySiz
         *bufSize = aesSize;
     else if (resultBuf[aesSize - 1] <= AES_BLOCKLEN)
         *bufSize -= resultBuf[aesSize - 1];
+    memset( resultBuf + *bufSize, 0, aesSize - *bufSize );
 
     return resultBuf;
 }
