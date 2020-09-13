@@ -660,7 +660,7 @@ static const char *mpw_marshal_write_json(
     }
 
     json_object *json_export = mpw_get_json_object( json_file, "export", true );
-    json_object_object_add( json_export, "format", json_object_new_int( 1 ) );
+    json_object_object_add( json_export, "format", json_object_new_int( 2 ) );
 
     // Section "sites"
     const char *out = mpw_strdup( json_object_to_json_string_ext( json_file,
@@ -1089,7 +1089,16 @@ static void mpw_marshal_read_json(
     mpw_set_json_data( file->data, json_file );
     json_object_put( json_file );
 
-    // mpw_marshal_data_get_num( data, "export", "format", NULL ) == 1
+    // version 1 fixes:
+    // - default login_type "name" written to file, preventing adoption of user-level standard login_type.
+    if (mpw_marshal_data_get_num( file->data, "export", "format", NULL ) == 1) {
+        const MPMarshalledData *sites = mpw_marshal_data_find( file->data, "sites", NULL );
+        for (size_t s = 0; s < (sites? sites->children_count: 0); ++s) {
+            MPMarshalledData *site = &sites->children[s];
+            if (mpw_marshal_data_get_num( site, "login_type", NULL ) == MPResultTypeTemplateName)
+                mpw_marshal_data_set_null( site, "login_type", NULL );
+        }
+    }
 
     return;
 }
