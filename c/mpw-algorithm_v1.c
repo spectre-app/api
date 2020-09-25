@@ -61,7 +61,7 @@ const char *mpw_site_template_password_v1(
     for (size_t c = 0; c < strlen( template ); ++c) {
         seedByte = siteKey->bytes[c + 1];
         sitePassword[c] = mpw_class_character( template[c], seedByte );
-        trc( "  - class: %c, index: %3u (0x%02hhX) => character: %c",
+        trc( "  - class: %c, index: %3u (0x%.2hhX) => character: %c",
                 template[c], seedByte, seedByte, sitePassword[c] );
     }
     trc( "  => password: %s", sitePassword );

@@ -58,8 +58,9 @@ const MPMasterKey *mpw_master_key_v0(
     trc( "keyScope: %s", keyScope );
 
     // Calculate the master key salt.
+    char fullNameHex[9];
     trc( "masterKeySalt: keyScope=%s | #fullName=%s | fullName=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( fullName ) ), fullName );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( fullName ), fullNameHex ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
     mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope );
@@ -69,7 +70,7 @@ const MPMasterKey *mpw_master_key_v0(
         err( "Could not allocate master key salt: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => masterKeySalt.id: %s", mpw_id_buf( masterKeySalt, masterKeySaltSize ) );
+    trc( "  => masterKeySalt.id: %s", mpw_id_buf( masterKeySalt, masterKeySaltSize ).hex );
 
     // Calculate the master key.
     trc( "masterKey: scrypt( masterPassword, masterKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
@@ -80,7 +81,7 @@ const MPMasterKey *mpw_master_key_v0(
         err( "Could not derive master key: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => masterKey.id: %s", mpw_id_buf( masterKey, sizeof( *masterKey ) ) );
+    trc( "  => masterKey.id: %s", mpw_id_buf( masterKey, sizeof( *masterKey ) ).hex );
 
     return masterKey;
 }
@@ -97,9 +98,10 @@ const MPSiteKey *mpw_site_key_v0(
         siteCounter = ((uint32_t)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the site seed.
+    char siteNameHex[9], siteCounterHex[9], keyContextHex[9];
     trc( "siteSalt: keyScope=%s | #siteName=%s | siteName=%s | siteCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( siteName ) ), siteName, mpw_hex_l( siteCounter ),
-            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_strchars( keyContext ) ): NULL, keyContext );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( siteName ), siteNameHex ), siteName, mpw_hex_l( siteCounter, siteCounterHex ),
+            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_strchars( keyContext ), keyContextHex ): NULL, keyContext );
     size_t siteSaltSize = 0;
     uint8_t *siteSalt = NULL;
     mpw_push_string( &siteSalt, &siteSaltSize, keyScope );
@@ -114,17 +116,16 @@ const MPSiteKey *mpw_site_key_v0(
         err( "Could not allocate site salt: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ) );
+    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ).hex );
 
-    trc( "siteKey: hmac-sha256( masterKey.id=%s, siteSalt )",
-            mpw_id_buf( masterKey, sizeof( *masterKey ) ) );
+    trc( "siteKey: hmac-sha256( masterKey.id=%s, siteSalt )", mpw_id_buf( masterKey, sizeof( *masterKey ) ).hex );
     const MPSiteKey *siteKey = mpw_hash_hmac_sha256( masterKey, sizeof( *masterKey ), siteSalt, siteSaltSize );
     mpw_free( &siteSalt, siteSaltSize );
     if (!siteKey) {
         err( "Could not derive site key: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, sizeof( *siteKey ) ) );
+    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, sizeof( *siteKey ) ).hex );
 
     return siteKey;
 }
@@ -151,7 +152,7 @@ const char *mpw_site_template_password_v0(
     for (size_t c = 0; c < strlen( template ); ++c) {
         mpw_uint16( (uint16_t)_siteKey[c + 1], (uint8_t *)&seedByte );
         sitePassword[c] = mpw_class_character_v0( template[c], seedByte );
-        trc( "  - class: %c, index: %5u (0x%02hX) => character: %c",
+        trc( "  - class: %c, index: %5u (0x%.2hX) => character: %c",
                 template[c], seedByte, seedByte, sitePassword[c] );
     }
     trc( "  => password: %s", sitePassword );
@@ -173,14 +174,15 @@ const char *mpw_site_crypted_password_v0(
     }
 
     // Base64-decode
+    char *hex = NULL;
     uint8_t *cipherBuf = calloc( 1, mpw_base64_decode_max( cipherText ) );
-    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize;
+    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexLength;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
         mpw_free( &cipherBuf, mpw_base64_decode_max( cipherText ) );
         return NULL;
     }
-    trc( "b64 decoded: %zu bytes = %s", bufSize, mpw_hex( cipherBuf, bufSize ) );
+    trc( "b64 decoded: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexLength ) );
 
     // Decrypt
     const uint8_t *plainBytes = mpw_aes_decrypt( masterKey, sizeof( *masterKey ), cipherBuf, &bufSize );
@@ -190,9 +192,12 @@ const char *mpw_site_crypted_password_v0(
     if (!plainText)
         err( "AES decryption error: %s", strerror( errno ) );
     else if (!mpw_utf8_strchars( plainText ))
-        wrn( "decrypted -> plainText: %zu bytes = illegal UTF-8 = %s", strlen( plainText ), mpw_hex( plainText, bufSize ) );
+        wrn( "decrypted -> plainText: %zu bytes = illegal UTF-8 = %s",
+                strlen( plainText ), hex = mpw_hex( plainText, bufSize, hex, &hexLength ) );
     else
-        trc( "decrypted -> plainText: %zu bytes = %s = %s", strlen( plainText ), plainText, mpw_hex( plainText, bufSize ) );
+        trc( "decrypted -> plainText: %zu bytes = %s = %s",
+                strlen( plainText ), plainText, hex = mpw_hex( plainText, bufSize, hex, &hexLength ) );
+    mpw_free_string( &hex );
 
     return plainText;
 }
@@ -246,13 +251,14 @@ const char *mpw_site_state_v0(
         const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *plainText) {
 
     // Encrypt
-    size_t bufSize = strlen( plainText );
+    char *hex = NULL;
+    size_t bufSize = strlen( plainText ), hexLength;
     const uint8_t *cipherBuf = mpw_aes_encrypt( masterKey, sizeof( *masterKey ), (const uint8_t *)plainText, &bufSize );
     if (!cipherBuf) {
         err( "AES encryption error: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "cipherBuf: %zu bytes = %s", bufSize, mpw_hex( cipherBuf, bufSize ) );
+    trc( "cipherBuf: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexLength ) );
 
     // Base64-encode
     size_t b64Max = mpw_base64_encode_max( bufSize );
@@ -264,6 +270,7 @@ const char *mpw_site_state_v0(
     else
         trc( "b64 encoded -> cipherText: %s", cipherText );
     mpw_free( &cipherBuf, bufSize );
+    mpw_free_string( &hex );
 
     return cipherText;
 }

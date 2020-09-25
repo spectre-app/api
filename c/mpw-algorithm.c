@@ -36,7 +36,7 @@ const MPMasterKey *mpw_master_key(const char *fullName, const char *masterPasswo
 
     trc( "-- mpw_master_key (algorithm: %u)", algorithmVersion );
     trc( "fullName: %s", fullName );
-    trc( "masterPassword.id: %s", masterPassword? mpw_id_buf( masterPassword, strlen( masterPassword ) ): NULL );
+    trc( "masterPassword.id: %s", masterPassword? mpw_id_buf( masterPassword, strlen( masterPassword ) ).hex: NULL );
     if (!fullName) {
         err( "Missing fullName" );
         return NULL;

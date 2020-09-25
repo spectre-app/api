@@ -80,7 +80,9 @@ void mpw_log_vsink(LogLevel level, const char *file, int line, const char *funct
     if (mpw_verbosity < level)
         return;
 
-    return mpw_log_ssink( level, file, line, function, mpw_vstr( format, args ) );
+    const char *message = mpw_vstr( format, args );
+    mpw_log_ssink( level, file, line, function, message );
+    mpw_free_string( &message );
 }
 
 void mpw_log_ssink(LogLevel level, const char *file, int line, const char *function, const char *message) {
@@ -149,13 +151,13 @@ bool mpw_log_sink_file(const MPLogEvent *record) {
     return true;
 }
 
-void mpw_uint16(const uint16_t number, uint8_t buf[2]) {
+void mpw_uint16(const uint16_t number, uint8_t buf[static 2]) {
 
     buf[0] = (uint8_t)((number >> 8L) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
-void mpw_uint32(const uint32_t number, uint8_t buf[4]) {
+void mpw_uint32(const uint32_t number, uint8_t buf[static 4]) {
 
     buf[0] = (uint8_t)((number >> 24) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 16) & UINT8_MAX);
@@ -163,7 +165,7 @@ void mpw_uint32(const uint32_t number, uint8_t buf[4]) {
     buf[3] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
-void mpw_uint64(const uint64_t number, uint8_t buf[8]) {
+void mpw_uint64(const uint64_t number, uint8_t buf[static 8]) {
 
     buf[0] = (uint8_t)((number >> 56) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 48) & UINT8_MAX);
@@ -183,7 +185,7 @@ const char **mpw_strings(size_t *count, const char *strings, ...) {
     size_t size = 0;
     for (const char *string = strings; string; (string = va_arg( args, const char * ))) {
         size_t cursor = size / sizeof( *array );
-        if (!mpw_realloc( &array, &size, sizeof( string ) )) {
+        if (!mpw_realloc( &array, &size, size + sizeof( string ) )) {
             mpw_free( &array, size );
             *count = 0;
             return NULL;
@@ -204,7 +206,7 @@ bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, 
         // The buffer was marked as broken, it is missing a previous push.  Abort to avoid corrupt content.
         return false;
 
-    if (!mpw_realloc( buffer, bufferSize, pushSize )) {
+    if (!mpw_realloc( buffer, bufferSize, *bufferSize + pushSize )) {
         // realloc failed, we can't push.  Mark the buffer as broken.
         mpw_free( buffer, *bufferSize );
         *bufferSize = (size_t)ERR;
@@ -236,7 +238,9 @@ bool mpw_string_pushf(char **string, const char *pushFormat, ...) {
 
     va_list args;
     va_start( args, pushFormat );
-    bool success = mpw_string_push( string, mpw_vstr( pushFormat, args ) );
+    const char *pushString = mpw_vstr( pushFormat, args );
+    bool success = mpw_string_push( string, pushString );
+    mpw_free_string( &pushString );
     va_end( args );
 
     return success;
@@ -249,18 +253,20 @@ bool mpw_push_int(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) 
     return mpw_push_buf( buffer, bufferSize, &pushBuf, sizeof( pushBuf ) );
 }
 
-bool __mpw_realloc(const void **buffer, size_t *bufferSize, const size_t deltaSize) {
+bool __mpw_realloc(const void **buffer, size_t *bufferSize, const size_t targetSize) {
 
     if (!buffer)
         return false;
+    if (bufferSize && *bufferSize == targetSize)
+        return true;
 
-    void *newBuffer = realloc( (void *)*buffer, (bufferSize? *bufferSize: 0) + deltaSize );
+    void *newBuffer = realloc( (void *)*buffer, targetSize );
     if (!newBuffer)
         return false;
 
     *buffer = newBuffer;
     if (bufferSize)
-        *bufferSize += deltaSize;
+        *bufferSize = targetSize;
 
     return true;
 }
@@ -408,9 +414,7 @@ const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySiz
         return NULL;
 
     // IV = zero
-    static const uint8_t *iv = NULL;
-    if (!iv)
-        iv = calloc( AES_BLOCKLEN, sizeof( uint8_t ) );
+    static const uint8_t iv[AES_BLOCKLEN] = { 0 };
 
     // Add PKCS#7 padding
     uint32_t aesSize = ((uint32_t)*bufSize + AES_BLOCKLEN - 1) & -AES_BLOCKLEN; // round up to block size.
@@ -483,104 +487,117 @@ const char *mpw_hotp(const void *key, size_t keySize, uint64_t movingFactor, uin
 }
 #endif
 
-const MPKeyID mpw_id_buf(const void *buf, const size_t length) {
+bool mpw_id_valid(const MPKeyID *id) {
 
-    if (!buf)
-        return NULL;
-
-#if MPW_CPERCIVA
-    uint8_t hash[32];
-    SHA256_Buf( buf, length, hash );
-#elif MPW_SODIUM
-    uint8_t hash[crypto_hash_sha256_BYTES];
-    crypto_hash_sha256( hash, buf, length );
-#else
-#error No crypto support for mpw_id_buf.
-#endif
-
-    return mpw_hex( hash, sizeof( hash ) / sizeof( uint8_t ) );
+    return id && strlen( id->hex ) == sizeof( id->hex );
 }
 
-bool mpw_id_buf_equals(MPKeyID id1, MPKeyID id2) {
+bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
 
     if (!id1 || !id2)
         return !id1 && !id2;
 
-    size_t size = strlen( id1 );
-    if (size != strlen( id2 ))
-        return false;
+    return memcmp( id1->bytes, id2->bytes, sizeof( id1->bytes ) ) == OK;
+}
 
-    return mpw_strncasecmp( id1, id2, size ) == OK;
+const MPKeyID mpw_id_buf(const void *buf, const size_t length) {
+
+    MPKeyID keyID = MPNoKeyID;
+
+    if (!buf)
+        return keyID;
+
+#if MPW_CPERCIVA
+    SHA256_Buf( buf, length, keyID.bytes );
+#elif MPW_SODIUM
+    crypto_hash_sha256( keyID.bytes, buf, length );
+#else
+#error No crypto support for mpw_id_buf.
+#endif
+
+    size_t hexLength = sizeof( keyID.hex );
+    if (mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexLength ) != keyID.hex)
+        err( "KeyID string pointer mismatch." );
+
+    return keyID;
+}
+
+const MPKeyID mpw_id_str(const char hex[static 65]) {
+
+    MPKeyID keyID = MPNoKeyID;
+
+    size_t hexSize;
+    const uint8_t *hexBytes = mpw_unhex( hex, &hexSize );
+    if (hexSize != sizeof( keyID.bytes ))
+        wrn( "Not a valid key ID: %s", hex );
+
+    else {
+        memcpy( keyID.bytes, hexBytes, sizeof( keyID.bytes ) );
+        size_t hexLength = sizeof( keyID.hex );
+        mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexLength );
+    }
+
+    mpw_free( &hexBytes, hexSize );
+    return keyID;
 }
 
 const char *mpw_str(const char *format, ...) {
 
     va_list args;
     va_start( args, format );
-    const char *str_str = mpw_vstr( format, args );
+    const char *str = mpw_vstr( format, args );
     va_end( args );
 
-    return str_str;
+    return str;
 }
 
 const char *mpw_vstr(const char *format, va_list args) {
 
-    if (!format)
+    if (!format || !*format)
         return NULL;
 
-    // TODO: shared storage leaks information, has an implicit recursion cap and isn't thread-safe.
-    static char *str_str[10];
-    static size_t str_str_i;
-    str_str_i = (str_str_i + 1) % (sizeof( str_str ) / sizeof( *str_str ));
+    char *str = NULL;
+    size_t size = 0;
 
-    do {
+    while (true) {
         va_list args_copy;
         va_copy( args_copy, args );
-        // FIXME: size is determined by string length, potentially unsafe if string can be modified.
-        size_t str_size = str_str[str_str_i]? strlen( str_str[str_str_i] ) + 1: 0;
-        size_t str_chars = (size_t)vsnprintf( str_str[str_str_i], str_size, format, args_copy );
+        size_t chars = (size_t)vsnprintf( str, size, format, args_copy );
         va_end( args_copy );
 
-        if (str_chars < 0)
-            return NULL;
-        if (str_chars < str_size)
+        if (chars < 0)
             break;
+        if (chars < size)
+            return str;
+        if (!mpw_realloc( &str, NULL, chars + 1 ))
+            break;
+        size = chars + 1;
+    }
 
-        if (!mpw_realloc( &str_str[str_str_i], NULL, str_chars + 1 ))
-            return NULL;
-        memset( str_str[str_str_i], '.', str_chars );
-        str_str[str_str_i][str_chars] = '\0';
-    } while (true);
-
-    return str_str[str_str_i];
+    mpw_free( &str, size );
+    return NULL;
 }
 
-const char *mpw_hex(const void *buf, const size_t length) {
+char *mpw_hex(const void *buf, const size_t length, char *hex, size_t *hexLength) {
 
     if (!buf || !length)
         return NULL;
-
-    // TODO: shared storage leaks information, has an implicit recursion cap and isn't thread-safe.
-    static char *mpw_hex_buf[10];
-    static size_t mpw_hex_buf_i;
-    mpw_hex_buf_i = (mpw_hex_buf_i + 1) % (sizeof( mpw_hex_buf ) / sizeof( *mpw_hex_buf ));
-    if (!mpw_realloc( &mpw_hex_buf[mpw_hex_buf_i], NULL, length * 2 + 1 ))
+    if (!mpw_realloc( &hex, hexLength, length * 2 + 1 ))
         return NULL;
 
     for (size_t kH = 0; kH < length; kH++)
-        sprintf( &(mpw_hex_buf[mpw_hex_buf_i][kH * 2]), "%02hhX", ((const uint8_t *)buf)[kH] );
+        sprintf( &(hex[kH * 2]), "%.2hhX", ((const uint8_t *)buf)[kH] );
 
-    return mpw_hex_buf[mpw_hex_buf_i];
+    return hex;
 }
 
-const char *mpw_hex_l(const uint32_t number) {
+const char *mpw_hex_l(const uint32_t number, char hex[static 9]) {
 
     uint8_t buf[4 /* 32 / 8 */];
-    buf[0] = (uint8_t)((number >> 24) & UINT8_MAX);
-    buf[1] = (uint8_t)((number >> 16) & UINT8_MAX);
-    buf[2] = (uint8_t)((number >> 8L) & UINT8_MAX);
-    buf[3] = (uint8_t)((number >> 0L) & UINT8_MAX);
-    return mpw_hex( &buf, sizeof( buf ) );
+    mpw_uint32( number, buf );
+
+    size_t hexLength = 9;
+    return mpw_hex( &buf, sizeof( buf ), hex, &hexLength );
 }
 
 const uint8_t *mpw_unhex(const char *hex, size_t *length) {

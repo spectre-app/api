@@ -49,9 +49,10 @@ const MPSiteKey *mpw_site_key_v2(
         siteCounter = ((uint32_t)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the site seed.
+    char siteNameHex[9], siteCounterHex[9], keyContextHex[9];
     trc( "siteSalt: keyScope=%s | #siteName=%s | siteName=%s | siteCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)strlen( siteName ) ), siteName, mpw_hex_l( siteCounter ),
-            keyContext? mpw_hex_l( (uint32_t)strlen( keyContext ) ): NULL, keyContext );
+            keyScope, mpw_hex_l( (uint32_t)strlen( siteName ), siteNameHex ), siteName, mpw_hex_l( siteCounter, siteCounterHex ),
+            keyContext? mpw_hex_l( (uint32_t)strlen( keyContext ), keyContextHex ): NULL, keyContext );
     size_t siteSaltSize = 0;
     uint8_t *siteSalt = NULL;
     mpw_push_string( &siteSalt, &siteSaltSize, keyScope );
@@ -66,17 +67,16 @@ const MPSiteKey *mpw_site_key_v2(
         err( "Could not allocate site salt: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ) );
+    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ).hex );
 
-    trc( "siteKey: hmac-sha256( masterKey.id=%s, siteSalt )",
-            mpw_id_buf( masterKey, sizeof( *masterKey ) ) );
+    trc( "siteKey: hmac-sha256( masterKey.id=%s, siteSalt )", mpw_id_buf( masterKey, sizeof( *masterKey ) ).hex );
     const MPSiteKey *siteKey = mpw_hash_hmac_sha256( masterKey, sizeof( *masterKey ), siteSalt, siteSaltSize );
     mpw_free( &siteSalt, siteSaltSize );
     if (!siteKey) {
         err( "Could not derive site key: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, sizeof( *siteKey ) ) );
+    trc( "  => siteKey.id: %s", mpw_id_buf( siteKey, sizeof( *siteKey ) ).hex );
 
     return siteKey;
 }

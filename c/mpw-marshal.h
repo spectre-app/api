@@ -325,12 +325,15 @@ bool mpw_marshal_data_set_num(
         const double value, MPMarshalledData *data, ...);
 bool mpw_marshal_data_vset_num(
         const double value, MPMarshalledData *data, va_list nodes);
-/** Look up the string value at the given path in the data store.
+/** Look up string value at the given path in the data store.
  * @return The string value (shared) or string representation of the number at this path; NULL if there is no such value at this path. */
 const char *mpw_marshal_data_get_str(
         const MPMarshalledData *data, ...);
 const char *mpw_marshal_data_vget_str(
         const MPMarshalledData *data, va_list nodes);
+/** Save a string value at the given path into the data store.
+ * @param value The string value to save into the data store.  The data store will hold a copy of this object.
+ * @return true if the value has been saved into the data store.  false if a node at the path didn't exist and couldn't be created or initialized. */
 bool mpw_marshal_data_set_str(
         const char *value, MPMarshalledData *data, ...);
 bool mpw_marshal_data_vset_str(

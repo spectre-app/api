@@ -24,6 +24,8 @@ MP_LIBS_BEGIN
 #include <ctype.h>
 MP_LIBS_END
 
+const MPKeyID MPNoKeyID = { .hex = "" };
+
 const MPIdenticon MPIdenticonUnset = {
         .leftArm = "",
         .body = "",

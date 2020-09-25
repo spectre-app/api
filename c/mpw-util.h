@@ -151,13 +151,13 @@ bool mpw_string_pushf(
  * and the buffer pointer may be updated to a new memory address.
  * On failure, the pointers will remain unaffected.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to reallocate.
- * @param bufferSize A pointer to the buffer's current size.
- * @param deltaSize The amount to increase the buffer's size by.
+ * @param bufferSize A pointer to the buffer's current size, or NULL.
+ * @param targetSize The amount to reallocate the buffer's size into.
  * @return true if successful, false if reallocation failed.
  */
 #define mpw_realloc(\
-        /* const void** */buffer, /* size_t* */bufferSize, /* const size_t */deltaSize) \
-        ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __mpw_realloc( (const void **)_b, bufferSize, deltaSize ); })
+        /* const void** */buffer, /* size_t* */bufferSize, /* const size_t */targetSize) \
+        ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __mpw_realloc( (const void **)_b, bufferSize, targetSize ); })
 /** Free a buffer after zero'ing its contents, then set the reference to NULL.
  * @param bufferSize The byte-size of the buffer, these bytes will be zeroed prior to deallocation. */
 #define mpw_free(\
@@ -178,8 +178,8 @@ bool mpw_string_pushf(
         do { const char *replacement_ = replacement; mpw_free_string( &string ); string = replacement_; } while (0)
 #ifdef _MSC_VER
 #undef mpw_realloc
-#define mpw_realloc(buffer, bufferSize, deltaSize) \
-        __mpw_realloc( (const void **)buffer, bufferSize, deltaSize )
+#define mpw_realloc(buffer, bufferSize, targetSize) \
+        __mpw_realloc( (const void **)buffer, bufferSize, targetSize )
 #undef mpw_free
 #define mpw_free(buffer, bufferSize) \
         __mpw_free( (void **)buffer, bufferSize )
@@ -191,7 +191,7 @@ bool mpw_string_pushf(
         __mpw_free_strings( (char **)strings, __VA_ARGS__ )
 #endif
 bool __mpw_realloc(
-        const void **buffer, size_t *bufferSize, const size_t deltaSize);
+        const void **buffer, size_t *bufferSize, const size_t targetSize);
 bool __mpw_free(
         void **buffer, size_t bufferSize);
 bool __mpw_free_string(
@@ -237,22 +237,27 @@ const char *mpw_hotp(
 //// Visualizers.
 
 /** Compose a formatted string.
- * @return A string (shared); or NULL if the format is missing or the result could not be allocated or formatted. */
+ * @return A string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
 const char *mpw_str(const char *format, ...);
 const char *mpw_vstr(const char *format, va_list args);
 /** Encode length-bytes from a buffer as a string of hexadecimal characters.
- * @return A string (shared); or NULL if the buffer is missing or the result could not be allocated. */
-const char *mpw_hex(const void *buf, const size_t length);
-const char *mpw_hex_l(const uint32_t number);
+ * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.
+ * @return A string (allocated); or NULL if the buffer is missing or the result could not be allocated. */
+char *mpw_hex(const void *buf, const size_t length, char *hex, size_t *hexLength);
+const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
 /** Decode a string of hexadecimal characters into a buffer of length-bytes.
  * @return A buffer (allocated, *length); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
 const uint8_t *mpw_unhex(const char *hex, size_t *length);
-/** Encode a fingerprint for a buffer.
- * @return A string (shared); or NULL if the buffer is missing or the result could not be allocated. */
-const MPKeyID mpw_id_buf(const void *buf, const size_t length);
+/** Check whether the fingerprint is valid.
+ * @return true if the fingerprints represents a fully complete print for a buffer. */
+bool mpw_id_valid(const MPKeyID *id1);
 /** Compare two fingerprints for equality.
  * @return true if the buffers represent identical fingerprints or are both NULL. */
-bool mpw_id_buf_equals(MPKeyID id1, MPKeyID id2);
+bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2);
+/** Encode a fingerprint for a buffer. */
+const MPKeyID mpw_id_buf(const void *buf, const size_t length);
+/** Reconstruct a fingerprint from its hexadecimal string representation. */
+const MPKeyID mpw_id_str(const char hex[static 65]);
 
 //// String utilities.
 

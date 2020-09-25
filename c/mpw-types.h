@@ -51,7 +51,13 @@ typedef struct {
 typedef struct {
     const uint8_t bytes[256 / 8]; // Size of HMAC-SHA-256
 } MPSiteKey;
-typedef const char *MPKeyID;
+typedef struct {
+    /** SHA-256-sized hash */
+    uint8_t bytes[256 / 8];
+    /** Hex c-string of the hash */
+    char hex[2 * (256 / 8) + 1];
+} MPKeyID;
+extern const MPKeyID MPNoKeyID;
 
 typedef mpw_enum( uint8_t, MPKeyPurpose ) {
     /** Generate a key for authentication. */
