@@ -776,7 +776,7 @@ const char *mpw_marshal_write(
     mpw_marshal_data_set_str( loginState, data_user, "login_name", NULL );
     if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &user->lastUsed ) ))
         mpw_marshal_data_set_str( dateString, data_user, "last_used", NULL );
-    mpw_free_string( &identiconString );
+    mpw_free_strings( &identiconString, &loginState, NULL );
 
     // Section "sites"
     MPMarshalledData *data_sites = mpw_marshal_data_get( file->data, "sites", NULL );
@@ -786,7 +786,7 @@ const char *mpw_marshal_write(
         if (!site->siteName || !strlen( site->siteName ))
             continue;
 
-        const char *resultState = NULL, *loginState = NULL;
+        const char *resultState = NULL;
         if (!user->redacted) {
             // Clear Text
             mpw_free( &masterKey, sizeof( *masterKey ) );
@@ -1044,13 +1044,14 @@ static void mpw_marshal_read_flat(
                 mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid site last used: %s: %s", siteName, str_lastUsed );
                 continue;
             }
+            MPResultType siteLoginType = siteLoginState && strlen( siteLoginState )? MPResultTypeStatefulPersonal: MPResultTypeNone;
 
             char dateString[21];
             mpw_marshal_data_set_num( siteCounter, file->data, "sites", siteName, "counter", NULL );
             mpw_marshal_data_set_num( siteAlgorithm, file->data, "sites", siteName, "algorithm", NULL );
             mpw_marshal_data_set_num( siteType, file->data, "sites", siteName, "type", NULL );
             mpw_marshal_data_set_str( siteResultState, file->data, "sites", siteName, "password", NULL );
-            mpw_marshal_data_set_num( MPResultTypeStatefulPersonal, file->data, "sites", siteName, "login_type", NULL );
+            mpw_marshal_data_set_num( siteLoginType, file->data, "sites", siteName, "login_type", NULL );
             mpw_marshal_data_set_str( siteLoginState, file->data, "sites", siteName, "login_name", NULL );
             mpw_marshal_data_set_num( strtol( str_uses, NULL, 10 ), file->data, "sites", siteName, "uses", NULL );
             if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &siteLastUsed ) ))
