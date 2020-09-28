@@ -59,9 +59,8 @@ bool mpw_master_key_v0(
     trc( "keyScope: %s", keyScope );
 
     // Calculate the master key salt.
-    char fullNameHex[9];
     trc( "masterKeySalt: keyScope=%s | #fullName=%s | fullName=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( fullName ), fullNameHex ), fullName );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( fullName ), (char[9]){ 0 } ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
     if (!(mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
@@ -81,9 +80,11 @@ bool mpw_master_key_v0(
 
     if (!success)
         err( "Could not derive master key: %s", strerror( errno ) );
-    else
-        trc( "  => masterKey.id: %s (algorithm: %d=0)", mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) ).hex,
-                masterKey->algorithm );
+    else {
+        MPKeyID keyID = mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) );
+        memcpy( (MPKeyID *)&masterKey->keyID, &keyID, sizeof( masterKey->keyID ) );
+        trc( "  => masterKey.id: %s (algorithm: %d:0)", masterKey->keyID.hex, masterKey->algorithm );
+    }
     return success;
 }
 
@@ -99,10 +100,10 @@ bool mpw_service_key_v0(
         keyCounter = ((uint32_t)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the service seed.
-    char serviceNameHex[9], keyCounterHex[9], keyContextHex[9];
     trc( "serviceSalt: keyScope=%s | #serviceName=%s | serviceName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( serviceName ), serviceNameHex ), serviceName, mpw_hex_l( keyCounter, keyCounterHex ),
-            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_char_count( keyContext ), keyContextHex ): NULL, keyContext );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( serviceName ), (char[9]){ 0 } ), serviceName,
+            mpw_hex_l( keyCounter, (char[9]){ 0 } ),
+            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_char_count( keyContext ), (char[9]){ 0 } ): NULL, keyContext );
     size_t serviceSaltSize = 0;
     uint8_t *serviceSalt = NULL;
     if (!(mpw_push_string( &serviceSalt, &serviceSaltSize, keyScope ) &&
@@ -117,14 +118,18 @@ bool mpw_service_key_v0(
     }
     trc( "  => serviceSalt.id: %s", mpw_id_buf( serviceSalt, serviceSaltSize ).hex );
 
-    trc( "serviceKey: hmac-sha256( masterKey.id=%s, serviceSalt )", mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) ).hex );
-    bool success = mpw_hash_hmac_sha256( (uint8_t *)serviceKey->bytes, masterKey->bytes, sizeof( masterKey->bytes ), serviceSalt, serviceSaltSize );
+    trc( "serviceKey: hmac-sha256( masterKey.id=%s, serviceSalt )", masterKey->keyID.hex );
+    bool success = mpw_hash_hmac_sha256( (uint8_t *)serviceKey->bytes,
+            masterKey->bytes, sizeof( masterKey->bytes ), serviceSalt, serviceSaltSize );
     mpw_free( &serviceSalt, serviceSaltSize );
 
     if (!success)
         err( "Could not derive service key: %s", strerror( errno ) );
-    else
-        trc( "  => serviceKey.id: %s (algorithm: %d=0)", mpw_id_buf( serviceKey->bytes, sizeof( serviceKey->bytes ) ).hex, masterKey->algorithm );
+    else {
+        MPKeyID keyID = mpw_id_buf( serviceKey->bytes, sizeof( serviceKey->bytes ) );
+        memcpy( (MPKeyID *)&serviceKey->keyID, &keyID, sizeof( serviceKey->keyID ) );
+        trc( "  => serviceKey.id: %s (algorithm: %d:0)", serviceKey->keyID.hex, serviceKey->algorithm );
+    }
     return success;
 }
 

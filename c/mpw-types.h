@@ -61,20 +61,29 @@ typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
 };
 
 typedef struct {
-    const uint8_t bytes[64];
-    const MPAlgorithmVersion algorithm;
-} MPMasterKey;
-typedef struct {
-    const uint8_t bytes[256 / 8]; // Size of HMAC-SHA-256
-    const MPAlgorithmVersion algorithm;
-} MPServiceKey;
-typedef struct {
     /** SHA-256-sized hash */
-    uint8_t bytes[256 / 8];
+    uint8_t bytes[256 / 8]; // SHA-256
     /** Hex c-string of the hash */
     char hex[2 * (256 / 8) + 1];
 } MPKeyID;
 extern const MPKeyID MPNoKeyID;
+
+typedef struct {
+    /** The cryptographic key */
+    const uint8_t bytes[64];
+    /** The key's identity */
+    const MPKeyID keyID;
+    /** The algorithm the key was made by & for */
+    const MPAlgorithmVersion algorithm;
+} MPMasterKey;
+typedef struct {
+    /** The cryptographic key */
+    const uint8_t bytes[256 / 8]; // HMAC-SHA-256
+    /** The key's identity */
+    const MPKeyID keyID;
+    /** The algorithm the key was made by & for */
+    const MPAlgorithmVersion algorithm;
+} MPServiceKey;
 
 typedef mpw_enum( uint8_t, MPKeyPurpose ) {
     /** Generate a key for authentication. */

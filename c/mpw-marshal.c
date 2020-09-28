@@ -796,10 +796,10 @@ const char *mpw_marshal_write(
                 return NULL;
             }
 
-            resultState = mpw_service_result( masterKey, service->serviceName, service->resultType, service->resultState, service->counter,
-                    MPKeyPurposeAuthentication, NULL );
-            loginState = mpw_service_result( masterKey, service->serviceName, service->loginType, service->loginState, MPCounterValueInitial,
-                    MPKeyPurposeIdentification, NULL );
+            resultState = mpw_service_result( masterKey, service->serviceName,
+                    service->resultType, service->resultState, service->counter, MPKeyPurposeAuthentication, NULL );
+            loginState = mpw_service_result( masterKey, service->serviceName,
+                    service->loginType, service->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
         }
         else {
             // Redacted
@@ -1042,7 +1042,7 @@ static void mpw_marshal_read_flat(
                 mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service last used: %s: %s", serviceName, str_lastUsed );
                 continue;
             }
-            MPResultType serviceLoginType = serviceLoginState && strlen( serviceLoginState )? MPResultTypeStatefulPersonal: MPResultTypeNone;
+            MPResultType serviceLoginType = serviceLoginState && *serviceLoginState? MPResultTypeStatefulPersonal: MPResultTypeNone;
 
             char dateString[21];
             mpw_marshal_data_set_num( serviceAlgorithm, file->data, "services", serviceName, "algorithm", NULL );
@@ -1221,9 +1221,8 @@ MPMarshalledUser *mpw_marshal_auth(
         mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
         return NULL;
     }
-    MPKeyID masterKeyID = mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) );
-    if (masterKey && !mpw_id_equals( &keyID, &masterKeyID )) {
-        mpw_marshal_error( file, MPMarshalErrorMasterPassword, "Master key doesn't match key ID." );
+    if (masterKey && !mpw_id_equals( &keyID, &masterKey->keyID )) {
+        mpw_marshal_error( file, MPMarshalErrorMasterPassword, "Master key: %s, isn't user keyID: %s.", masterKey->keyID.hex, keyID.hex );
         mpw_free( &masterKey, sizeof( *masterKey ) );
         return NULL;
     }
@@ -1334,11 +1333,11 @@ MPMarshalledUser *mpw_marshal_auth(
             }
 
             if (serviceResultState && strlen( serviceResultState ) && masterKey)
-                service->resultState = mpw_service_state( masterKey, service->serviceName, service->resultType, serviceResultState, service->counter,
-                        MPKeyPurposeAuthentication, NULL );
+                service->resultState = mpw_service_state( masterKey, service->serviceName,
+                        service->resultType, serviceResultState, service->counter, MPKeyPurposeAuthentication, NULL );
             if (serviceLoginState && strlen( serviceLoginState ) && masterKey)
-                service->loginState = mpw_service_state( masterKey, service->serviceName, service->loginType, serviceLoginState, MPCounterValueInitial,
-                        MPKeyPurposeIdentification, NULL );
+                service->loginState = mpw_service_state( masterKey, service->serviceName,
+                        service->loginType, serviceLoginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
         }
         else {
             // Redacted
@@ -1358,8 +1357,8 @@ MPMarshalledUser *mpw_marshal_auth(
             if (!user->redacted) {
                 // Clear Text
                 if (answerState && strlen( answerState ) && masterKey)
-                    question->state = mpw_service_state( masterKey, service->serviceName, question->type, answerState, MPCounterValueInitial,
-                            MPKeyPurposeRecovery, question->keyword );
+                    question->state = mpw_service_state( masterKey, service->serviceName,
+                            question->type, answerState, MPCounterValueInitial, MPKeyPurposeRecovery, question->keyword );
             }
             else {
                 // Redacted

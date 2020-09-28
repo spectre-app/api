@@ -37,9 +37,8 @@ bool mpw_master_key_v3(
     trc( "keyScope: %s", keyScope );
 
     // Calculate the master key salt.
-    char fullNameHex[9];
     trc( "masterKeySalt: keyScope=%s | #fullName=%s | fullName=%s",
-            keyScope, mpw_hex_l( (uint32_t)strlen( fullName ), fullNameHex ), fullName );
+            keyScope, mpw_hex_l( (uint32_t)strlen( fullName ), (char[9]){ 0 } ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
     if (!(mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
@@ -59,8 +58,11 @@ bool mpw_master_key_v3(
 
     if (!success)
         err( "Could not derive master key: %s", strerror( errno ) );
-    else
-        trc( "  => masterKey.id: %s (algorithm: %d=3)", mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) ).hex, masterKey->algorithm );
+    else {
+        MPKeyID keyID = mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) );
+        memcpy( (MPKeyID *)&masterKey->keyID, &keyID, sizeof( masterKey->keyID ) );
+        trc( "  => masterKey.id: %s (algorithm: %d:3)", masterKey->keyID.hex, masterKey->algorithm );
+    }
     return success;
 }
 
