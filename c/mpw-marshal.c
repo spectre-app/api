@@ -562,10 +562,10 @@ static const char *mpw_marshal_write_flat(
     }
 
     char *out = NULL;
-    mpw_string_pushf( &out, "# Master Password site export\n" );
+    mpw_string_pushf( &out, "# Master Password service export\n" );
     mpw_string_pushf( &out, mpw_marshal_data_get_bool( data, "export", "redacted", NULL )?
-                            "#     Export of site names and stored passwords (unless device-private) encrypted with the master key.\n":
-                            "#     Export of site names and passwords in clear-text.\n" );
+                            "#     Export of service names and stored passwords (unless device-private) encrypted with the master key.\n":
+                            "#     Export of service names and passwords in clear-text.\n" );
     mpw_string_pushf( &out, "# \n" );
     mpw_string_pushf( &out, "##\n" );
     mpw_string_pushf( &out, "# Format: %d\n", 1 );
@@ -581,12 +581,12 @@ static const char *mpw_marshal_write_flat(
     mpw_string_pushf( &out, "# Passwords: %s\n", mpw_marshal_data_get_bool( data, "export", "redacted", NULL )? "PROTECTED": "VISIBLE" );
     mpw_string_pushf( &out, "##\n" );
     mpw_string_pushf( &out, "#\n" );
-    mpw_string_pushf( &out, "#               Last     Times  Password                      Login\t                     Site\tSite\n" );
+    mpw_string_pushf( &out, "#               Last     Times  Password                      Login\t                  Service\tService\n" );
     mpw_string_pushf( &out, "#               used      used      type                       name\t                     name\tpassword\n" );
 
-    // Sites.
+    // Services.
     const char *typeString;
-    const MPMarshalledData *services = mpw_marshal_data_find( data, "sites", NULL );
+    const MPMarshalledData *services = mpw_marshal_data_find( data, "services", NULL );
     for (size_t s = 0; s < (services? services->children_count: 0); ++s) {
         const MPMarshalledData *service = &services->children[s];
         mpw_string_pushf( &out, "%s  %8ld  %8s  %25s\t%25s\t%s\n",
@@ -654,7 +654,6 @@ static json_object *mpw_get_json_data(
 static const char *mpw_marshal_write_json(
         MPMarshalledFile *file) {
 
-    // Section: "export"
     json_object *json_file = mpw_get_json_data( file->data );
     if (!json_file) {
         mpw_marshal_error( file, MPMarshalErrorFormat, "Couldn't serialize export data." );
@@ -664,7 +663,6 @@ static const char *mpw_marshal_write_json(
     json_object *json_export = mpw_get_json_object( json_file, "export", true );
     json_object_object_add( json_export, "format", json_object_new_int( 2 ) );
 
-    // Section "sites"
     const char *out = mpw_strdup( json_object_to_json_string_ext( json_file,
             JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOSLASHESCAPE ) );
     json_object_put( json_file );
@@ -779,7 +777,7 @@ const char *mpw_marshal_write(
     mpw_free_strings( &identiconString, &loginState, NULL );
 
     // Section "services"
-    MPMarshalledData *data_services = mpw_marshal_data_get( file->data, "sites", NULL );
+    MPMarshalledData *data_services = mpw_marshal_data_get( file->data, "services", NULL );
     mpw_marshal_data_keep( data_services, mpw_marshal_data_keep_service_exists, user );
     for (size_t s = 0; s < user->services_count; ++s) {
         MPMarshalledService *service = &user->services[s];
@@ -821,7 +819,7 @@ const char *mpw_marshal_write(
         if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &service->lastUsed ) ))
             mpw_marshal_data_set_str( dateString, data_services, service->serviceName, "last_used", NULL );
 
-        MPMarshalledData *data_questions = mpw_marshal_data_get( file->data, "sites", service->serviceName, "questions", NULL );
+        MPMarshalledData *data_questions = mpw_marshal_data_get( file->data, "services", service->serviceName, "questions", NULL );
         mpw_marshal_data_keep( data_questions, mpw_marshal_data_keep_question_exists, service );
         for (size_t q = 0; q < service->questions_count; ++q) {
             MPMarshalledQuestion *question = &service->questions[q];
@@ -981,7 +979,7 @@ static void mpw_marshal_read_flat(
         if (positionInLine >= endOfLine)
             continue;
 
-        // Site
+        // Service
         const char *serviceName = NULL, *serviceResultState = NULL, *serviceLoginState = NULL;
         const char *str_lastUsed = NULL, *str_uses = NULL, *str_type = NULL, *str_algorithm = NULL, *str_counter = NULL;
         switch (format) {
@@ -1047,15 +1045,15 @@ static void mpw_marshal_read_flat(
             MPResultType serviceLoginType = serviceLoginState && strlen( serviceLoginState )? MPResultTypeStatefulPersonal: MPResultTypeNone;
 
             char dateString[21];
-            mpw_marshal_data_set_num( serviceAlgorithm, file->data, "sites", serviceName, "algorithm", NULL );
-            mpw_marshal_data_set_num( serviceKeyCounter, file->data, "sites", serviceName, "counter", NULL );
-            mpw_marshal_data_set_num( serviceResultType, file->data, "sites", serviceName, "type", NULL );
-            mpw_marshal_data_set_str( serviceResultState, file->data, "sites", serviceName, "password", NULL );
-            mpw_marshal_data_set_num( serviceLoginType, file->data, "sites", serviceName, "login_type", NULL );
-            mpw_marshal_data_set_str( serviceLoginState, file->data, "sites", serviceName, "login_name", NULL );
-            mpw_marshal_data_set_num( strtol( str_uses, NULL, 10 ), file->data, "sites", serviceName, "uses", NULL );
+            mpw_marshal_data_set_num( serviceAlgorithm, file->data, "services", serviceName, "algorithm", NULL );
+            mpw_marshal_data_set_num( serviceKeyCounter, file->data, "services", serviceName, "counter", NULL );
+            mpw_marshal_data_set_num( serviceResultType, file->data, "services", serviceName, "type", NULL );
+            mpw_marshal_data_set_str( serviceResultState, file->data, "services", serviceName, "password", NULL );
+            mpw_marshal_data_set_num( serviceLoginType, file->data, "services", serviceName, "login_type", NULL );
+            mpw_marshal_data_set_str( serviceLoginState, file->data, "services", serviceName, "login_name", NULL );
+            mpw_marshal_data_set_num( strtol( str_uses, NULL, 10 ), file->data, "services", serviceName, "uses", NULL );
             if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &serviceLastUsed ) ))
-                mpw_marshal_data_set_str( dateString, file->data, "sites", serviceName, "last_used", NULL );
+                mpw_marshal_data_set_str( dateString, file->data, "services", serviceName, "last_used", NULL );
         }
         else {
             mpw_marshal_error( file, MPMarshalErrorMissing,
@@ -1096,9 +1094,18 @@ static void mpw_marshal_read_json(
     json_object_put( json_file );
 
     // version 1 fixes:
-    // - default login_type "name" written to file, preventing adoption of user-level standard login_type.
     if (mpw_marshal_data_get_num( file->data, "export", "format", NULL ) == 1) {
-        const MPMarshalledData *services = mpw_marshal_data_find( file->data, "sites", NULL );
+        // - "sites" key renamed to "services".
+        MPMarshalledData *services = (MPMarshalledData *)mpw_marshal_data_find( file->data, "services", NULL );
+        if (!services) {
+            services = (MPMarshalledData *)mpw_marshal_data_find( file->data, "sites", NULL );
+            if (services) {
+                mpw_free_string( &services->obj_key );
+                services->obj_key = mpw_strdup( "services" );
+            }
+        }
+
+        // - default login_type "name" written to file, preventing adoption of user-level standard login_type.
         for (size_t s = 0; s < (services? services->children_count: 0); ++s) {
             MPMarshalledData *service = &services->children[s];
             if (mpw_marshal_data_get_num( service, "login_type", NULL ) == MPResultTypeTemplateName)
@@ -1257,7 +1264,7 @@ MPMarshalledUser *mpw_marshal_auth(
     }
 
     // Section "services"
-    const MPMarshalledData *services = mpw_marshal_data_find( file->data, "sites", NULL );
+    const MPMarshalledData *services = mpw_marshal_data_find( file->data, "services", NULL );
     for (size_t s = 0; s < (services? services->children_count: 0); ++s) {
         const MPMarshalledData *serviceData = &services->children[s];
         const char *serviceName = serviceData->obj_key;
