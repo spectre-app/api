@@ -45,12 +45,29 @@ MP_LIBS_END
 
 //// Types.
 
+typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
+    /** V0 did math with chars whose signedness was platform-dependent. */
+    MPAlgorithmVersionV0,
+    /** V1 miscounted the byte-length of multi-byte service names. */
+    MPAlgorithmVersionV1,
+    /** V2 miscounted the byte-length of multi-byte user names. */
+    MPAlgorithmVersionV2,
+    /** V3 is the current version. */
+    MPAlgorithmVersionV3,
+
+    MPAlgorithmVersionCurrent = MPAlgorithmVersionV3,
+    MPAlgorithmVersionFirst = MPAlgorithmVersionV0,
+    MPAlgorithmVersionLast = MPAlgorithmVersionV3,
+};
+
 typedef struct {
     const uint8_t bytes[64];
+    const MPAlgorithmVersion algorithm;
 } MPMasterKey;
 typedef struct {
     const uint8_t bytes[256 / 8]; // Size of HMAC-SHA-256
-} MPSiteKey;
+    const MPAlgorithmVersion algorithm;
+} MPServiceKey;
 typedef struct {
     /** SHA-256-sized hash */
     uint8_t bytes[256 / 8];
@@ -70,25 +87,25 @@ typedef mpw_enum( uint8_t, MPKeyPurpose ) {
 
 // bit 4 - 9
 typedef mpw_opts( uint16_t, MPResultTypeClass ) {
-    /** Use the site key to generate a password from a template. */
+    /** Use the service key to generate a password from a template. */
             MPResultTypeClassTemplate = 1 << 4,
-    /** Use the site key to encrypt and decrypt a stateful entity. */
+    /** Use the service key to encrypt and decrypt a stateful entity. */
             MPResultTypeClassStateful = 1 << 5,
-    /** Use the site key to derive a site-specific object. */
+    /** Use the service key to derive a service-specific object. */
             MPResultTypeClassDerive = 1 << 6,
 };
 
 // bit 10 - 15
-typedef mpw_opts( uint16_t, MPSiteFeature ) {
+typedef mpw_opts( uint16_t, MPServiceFeature ) {
     /** Export the key-protected content data. */
-            MPSiteFeatureExportContent = 1 << 10,
+            MPServiceFeatureExportContent = 1 << 10,
     /** Never export content. */
-            MPSiteFeatureDevicePrivate = 1 << 11,
+            MPServiceFeatureDevicePrivate = 1 << 11,
     /** Don't use this as the primary authentication result type. */
-            MPSiteFeatureAlternative = 1 << 12,
+            MPServiceFeatureAlternative = 1 << 12,
 };
 
-// bit 0-3 | MPResultTypeClass | MPSiteFeature
+// bit 0-3 | MPResultTypeClass | MPServiceFeature
 typedef mpw_enum( uint32_t, MPResultType ) {
     /** 0: Don't produce a result */
             MPResultTypeNone = 0,
@@ -111,12 +128,12 @@ typedef mpw_enum( uint32_t, MPResultType ) {
             MPResultTypeTemplatePhrase = 0xF | MPResultTypeClassTemplate | 0x0,
 
     /** 1056: Custom saved password. */
-            MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPSiteFeatureExportContent,
+            MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPServiceFeatureExportContent,
     /** 2081: Custom saved password that should not be exported from the device. */
-            MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPSiteFeatureDevicePrivate,
+            MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPServiceFeatureDevicePrivate,
 
     /** 4160: Derive a unique binary key. */
-            MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPSiteFeatureAlternative,
+            MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPServiceFeatureAlternative,
 
     MPResultTypeDefaultResult = MPResultTypeTemplateLong,
     MPResultTypeDefaultLogin = MPResultTypeTemplateName,
@@ -125,7 +142,7 @@ typedef mpw_enum( uint32_t, MPResultType ) {
 typedef mpw_enum ( uint32_t, MPCounterValue ) {
     /** Use a time-based counter value, resulting in a TOTP generator. */
             MPCounterValueTOTP = 0,
-    /** The initial value for a site's counter. */
+    /** The initial value for a service's counter. */
             MPCounterValueInitial = 1,
 
     MPCounterValueDefault = MPCounterValueInitial,
@@ -195,13 +212,13 @@ const char *mpw_type_long_name(const MPResultType resultType);
  */
 const char **mpw_type_templates(const MPResultType type, size_t *count);
 /**
- * @return A string (static) that contains the password encoding template of the given type for a seed that starts with the given byte.
+ * @return A C-string (static) that contains the password encoding template of the given type for a seed that starts with the given byte.
  *         NULL if the type is not known or is not a MPResultTypeClassTemplate.
  */
 const char *mpw_type_template(const MPResultType type, const uint8_t templateIndex);
 
 /**
- * @return An string (static) with all the characters in the given character class or NULL if the character class is not known.
+ * @return A C-string (static) with all the characters in the given character class or NULL if the character class is not known.
  */
 const char *mpw_class_characters(const char characterClass);
 /**

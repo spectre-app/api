@@ -29,60 +29,60 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
-const MPMasterKey *mpw_master_key_v1(
-        const char *fullName, const char *masterPassword) {
+bool mpw_master_key_v1(
+        const MPMasterKey *masterKey, const char *fullName, const char *masterPassword) {
 
-    return mpw_master_key_v0( fullName, masterPassword );
+    return mpw_master_key_v0( masterKey, fullName, masterPassword );
 }
 
-const MPSiteKey *mpw_site_key_v1(
-        const MPMasterKey *masterKey, const char *siteName, MPCounterValue siteCounter,
-        MPKeyPurpose keyPurpose, const char *keyContext) {
+bool mpw_service_key_v1(
+        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName,
+        MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
 
-    return mpw_site_key_v0( masterKey, siteName, siteCounter, keyPurpose, keyContext );
+    return mpw_service_key_v0( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
 }
 
-const char *mpw_site_template_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_service_template_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
     // Determine the template.
-    uint8_t seedByte = siteKey->bytes[0];
+    uint8_t seedByte = serviceKey->bytes[0];
     const char *template = mpw_type_template( resultType, seedByte );
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
-    if (strlen( template ) > sizeof( *siteKey )) {
+    if (strlen( template ) > sizeof( *serviceKey )) {
         err( "Template too long for password seed: %zu", strlen( template ) );
         return NULL;
     }
 
     // Encode the password from the seed using the template.
-    char *const sitePassword = calloc( strlen( template ) + 1, sizeof( char ) );
+    char *const servicePassword = calloc( strlen( template ) + 1, sizeof( char ) );
     for (size_t c = 0; c < strlen( template ); ++c) {
-        seedByte = siteKey->bytes[c + 1];
-        sitePassword[c] = mpw_class_character( template[c], seedByte );
+        seedByte = serviceKey->bytes[c + 1];
+        servicePassword[c] = mpw_class_character( template[c], seedByte );
         trc( "  - class: %c, index: %3u (0x%.2hhX) => character: %c",
-                template[c], seedByte, seedByte, sitePassword[c] );
+                template[c], seedByte, seedByte, servicePassword[c] );
     }
-    trc( "  => password: %s", sitePassword );
+    trc( "  => password: %s", servicePassword );
 
-    return sitePassword;
+    return servicePassword;
 }
 
-const char *mpw_site_crypted_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
+const char *mpw_service_crypted_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText) {
 
-    return mpw_site_crypted_password_v0( masterKey, siteKey, resultType, cipherText );
+    return mpw_service_crypted_password_v0( masterKey, serviceKey, resultType, cipherText );
 }
 
-const char *mpw_site_derived_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_service_derived_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_site_derived_password_v0( masterKey, siteKey, resultType, resultParam );
+    return mpw_service_derived_password_v0( masterKey, serviceKey, resultType, resultParam );
 }
 
-const char *mpw_site_state_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *state) {
+const char *mpw_service_state_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *state) {
 
-    return mpw_site_state_v0( masterKey, siteKey, resultType, state );
+    return mpw_service_state_v0( masterKey, serviceKey, resultType, state );
 }

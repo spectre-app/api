@@ -33,7 +33,7 @@ MP_LIBS_END
 
 /** Get a token from a string by searching until the first character in delim, no farther than eol.
  * The input string reference is advanced beyond the token delimitor if one is found.
- * @return A string (allocated) containing the token or NULL if the delim wasn't found before eol. */
+ * @return A C-string (allocated) containing the token or NULL if the delim wasn't found before eol. */
 const char *mpw_get_token(
         const char **in, const char *eol, const char *delim);
 /** Get a boolean value as expressed by the given string.
@@ -67,7 +67,7 @@ json_object *mpw_get_json_object(
         json_object *obj, const char *key, const bool create);
 /** Search for a string in a JSON object tree.
  * @param key A dot-delimited list of JSON object keys to walk toward the child object.
- * @return A string (shared) or defaultValue if one of the path's object keys was not found in the source object's tree. */
+ * @return A C-string (shared) or defaultValue if one of the path's object keys was not found in the source object's tree. */
 const char *mpw_get_json_string(
         json_object *obj, const char *key, const char *defaultValue);
 /** Search for an integer in a JSON object tree.

@@ -103,7 +103,7 @@ typedef struct MPMarshalledData {
     bool is_null;
     /** Whether this data value represents a boolean value (true). */
     bool is_bool;
-    /** The textual value of this data if it holds a string. */
+    /** The textual value of this data if it holds a C-string. */
     const char *str_value;
     /** The numerical value of this data if it holds a number or a boolean. */
     double num_value;
@@ -145,36 +145,36 @@ typedef struct MPMarshalledQuestion {
     const char *state;
 } MPMarshalledQuestion;
 
-typedef struct MPMarshalledSite {
-    /** Unique name for this site. */
-    const char *siteName;
-    /** Algorithm version to use for all site operations (eg. result, login, question operations). */
+typedef struct MPMarshalledService {
+    /** Unique name for this service. */
+    const char *serviceName;
+    /** Algorithm version to use for all service operations (eg. result, login, question operations). */
     MPAlgorithmVersion algorithm;
 
-    /** The counter value of the site result to generate. */
+    /** The counter value of the service result to generate. */
     MPCounterValue counter;
-    /** The result type to use for generating a site result. */
+    /** The result type to use for generating a service result. */
     MPResultType resultType;
-    /** State data (base64), if any, necessary for generating the site result. */
+    /** State data (base64), if any, necessary for generating the service result. */
     const char *resultState;
 
-    /** The result type to use for generating a site login. */
+    /** The result type to use for generating a service login. */
     MPResultType loginType;
-    /** State data (base64), if any, necessary for generating the site login. */
+    /** State data (base64), if any, necessary for generating the service login. */
     const char *loginState;
 
-    /** Site metadata: URL location where the site can be accessed. */
+    /** Service metadata: URL location where the service can be accessed. */
     const char *url;
-    /** Site metadata: Amount of times an action has been taken for this site. */
+    /** Service metadata: Amount of times an action has been taken for this service. */
     unsigned int uses;
-    /** Site metadata: Date of the most recent action taken on this site. */
+    /** Service metadata: Date of the most recent action taken on this service. */
     time_t lastUsed;
 
-    /** Amount of security questions associated with this site. */
+    /** Amount of security questions associated with this service. */
     size_t questions_count;
-    /** Array of security questions associated with this site. */
+    /** Array of security questions associated with this service. */
     MPMarshalledQuestion *questions;
-} MPMarshalledSite;
+} MPMarshalledService;
 
 typedef struct MPMarshalledUser {
     MPMasterKeyProvider masterKeyProvider;
@@ -190,7 +190,7 @@ typedef struct MPMarshalledUser {
     MPAlgorithmVersion algorithm;
     /** A unique identifier (hex) for the user's master key, primarily for authentication/verification. */
     MPKeyID keyID;
-    /** The initial result type to use for new sites created by the user. */
+    /** The initial result type to use for new services created by the user. */
     MPResultType defaultType;
     /** The result type to use for generating the user's standard login. */
     MPResultType loginType;
@@ -199,10 +199,10 @@ typedef struct MPMarshalledUser {
     /** User metadata: Date of the most recent action taken by this user. */
     time_t lastUsed;
 
-    /** Amount of sites associated to this user. */
-    size_t sites_count;
-    /** Array of sites associated to this user. */
-    MPMarshalledSite *sites;
+    /** Amount of services associated to this user. */
+    size_t services_count;
+    /** Array of services associated to this user. */
+    MPMarshalledService *services;
 } MPMarshalledUser;
 
 typedef struct MPMarshalledFile {
@@ -219,7 +219,7 @@ typedef struct MPMarshalledFile {
 /** Write the user and all associated data out using the given marshalling format.
  * @param file A pointer to the original file object to update with the user's data or to NULL to make a new.
  *             File object will be updated with state or new (allocated).  May be NULL if not interested in a file object.
- * @return A string (allocated), or NULL if the file is missing, format is unrecognized, does not support marshalling or a format error occurred. */
+ * @return A C-string (allocated), or NULL if the file is missing, format is unrecognized, does not support marshalling or a format error occurred. */
 const char *mpw_marshal_write(
         const MPMarshalFormat outFormat, MPMarshalledFile **file, MPMarshalledUser *user);
 /** Parse the user configuration in the input buffer.  Fields that could not be parsed remain at their type's initial value.
@@ -239,17 +239,17 @@ MPMarshalledUser *mpw_marshal_auth(
  * @return A user object (allocated), or NULL if the fullName is missing or the marshalled user couldn't be allocated. */
 MPMarshalledUser *mpw_marshal_user(
         const char *fullName, const MPMasterKeyProvider masterKeyProvider, const MPAlgorithmVersion algorithmVersion);
-/** Create a new site attached to the given user object, ready for marshalling.
+/** Create a new service attached to the given user object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
- * @return A site object (allocated), or NULL if the siteName is missing or the marshalled site couldn't be allocated. */
-MPMarshalledSite *mpw_marshal_site(
+ * @return A service object (allocated), or NULL if the serviceName is missing or the marshalled service couldn't be allocated. */
+MPMarshalledService *mpw_marshal_service(
         MPMarshalledUser *user,
-        const char *siteName, const MPResultType resultType, const MPCounterValue siteCounter, const MPAlgorithmVersion algorithmVersion);
-/** Create a new question attached to the given site object, ready for marshalling.
+        const char *serviceName, const MPResultType resultType, const MPCounterValue keyCounter, const MPAlgorithmVersion algorithmVersion);
+/** Create a new question attached to the given service object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
  * @return A question object (allocated), or NULL if the marshalled question couldn't be allocated. */
 MPMarshalledQuestion *mpw_marshal_question(
-        MPMarshalledSite *site, const char *keyword);
+        MPMarshalledService *service, const char *keyword);
 /** Create or update a marshal file descriptor.
  * @param file If NULL, a new file will be allocated.  Otherwise, the given file will be updated and the updated file returned.
  * @param info If NULL, the file's info will be left as-is, otherwise it will be replaced by the given one.  The file will manage the info's deallocation.
@@ -331,7 +331,7 @@ const char *mpw_marshal_data_get_str(
         const MPMarshalledData *data, ...);
 const char *mpw_marshal_data_vget_str(
         const MPMarshalledData *data, va_list nodes);
-/** Save a string value at the given path into the data store.
+/** Save a C-string value at the given path into the data store.
  * @param value The string value to save into the data store.  The data store will hold a copy of this object.
  * @return true if the value has been saved into the data store.  false if a node at the path didn't exist and couldn't be created or initialized. */
 bool mpw_marshal_data_set_str(

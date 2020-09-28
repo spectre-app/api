@@ -250,7 +250,7 @@ bool mpw_push_int(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) 
 
     uint8_t pushBuf[4 /* 32 / 8 */];
     mpw_uint32( pushInt, pushBuf );
-    return mpw_push_buf( buffer, bufferSize, &pushBuf, sizeof( pushBuf ) );
+    return mpw_push_buf( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
 }
 
 bool __mpw_realloc(const void **buffer, size_t *bufferSize, const size_t targetSize) {
@@ -309,106 +309,79 @@ bool __mpw_free_strings(char **strings, ...) {
     return success;
 }
 
-const void *mpw_kdf_scrypt(const size_t keySize, const void *secret, const size_t secretSize, const void *salt, const size_t saltSize,
+bool mpw_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p) {
 
-    if (!secret || !salt || !secretSize || !saltSize)
-        return NULL;
-
-    void *key = malloc( keySize );
-    if (!key)
-        return NULL;
+    if (!key || !keySize || !secret || !secretSize || !salt || !saltSize)
+        return false;
 
 #if MPW_CPERCIVA
     if (crypto_scrypt( (const void *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
-        mpw_free( &key, keySize );
-        return NULL;
+        return false;
     }
 #elif MPW_SODIUM
-    if (crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != 0) {
-        mpw_free( &key, keySize );
-        return NULL;
+    if (crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != OK) {
+        return false;
     }
 #else
 #error No crypto support for mpw_scrypt.
 #endif
 
-    return key;
+    return true;
 }
 
-const void *mpw_kdf_blake2b(const size_t subkeySize, const void *key, const size_t keySize,
-        const void *context, const size_t contextSize, const uint64_t id, const char *personal) {
+bool mpw_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *key, const size_t keySize,
+        const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal) {
 
-    if (!key || !keySize || !subkeySize) {
+    if (!subkey || !subkeySize || !key || !keySize) {
         errno = EINVAL;
-        return NULL;
+        return false;
     }
-
-    uint8_t *subkey = malloc( subkeySize );
-    if (!subkey)
-        return NULL;
 
 #if MPW_SODIUM
     if (keySize < crypto_generichash_blake2b_KEYBYTES_MIN || keySize > crypto_generichash_blake2b_KEYBYTES_MAX ||
         subkeySize < crypto_generichash_blake2b_KEYBYTES_MIN || subkeySize > crypto_generichash_blake2b_KEYBYTES_MAX ||
         (personal && strlen( personal ) > crypto_generichash_blake2b_PERSONALBYTES)) {
         errno = EINVAL;
-        free( subkey );
-        return NULL;
+        return false;
     }
 
-    uint8_t saltBuf[crypto_generichash_blake2b_SALTBYTES];
-    mpw_zero( saltBuf, sizeof saltBuf );
+    uint8_t saltBuf[crypto_generichash_blake2b_SALTBYTES] = { 0 };
     if (id)
         mpw_uint64( id, saltBuf );
 
-    uint8_t personalBuf[crypto_generichash_blake2b_PERSONALBYTES];
-    mpw_zero( personalBuf, sizeof personalBuf );
+    uint8_t personalBuf[crypto_generichash_blake2b_PERSONALBYTES] = { 0 };
     if (personal && strlen( personal ))
-        memcpy( personalBuf, personal, strlen( personal ) );
+        memcpy( personalBuf, personal, min( sizeof( personalBuf ), strlen( personal ) ) );
 
-    if (crypto_generichash_blake2b_salt_personal( subkey, subkeySize, context, contextSize, key, keySize, saltBuf, personalBuf ) != 0) {
-        mpw_free( &subkey, subkeySize );
-        return NULL;
-    }
+    if (crypto_generichash_blake2b_salt_personal( subkey, subkeySize, context, contextSize, key, keySize, saltBuf, personalBuf ) != OK)
+        return false;
 #else
 #error No crypto support for mpw_kdf_blake2b.
 #endif
 
-    return subkey;
+    return true;
 }
 
-const void *mpw_hash_hmac_sha256(const void *key, const size_t keySize, const void *message, const size_t messageSize) {
+bool mpw_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize) {
 
-    if (!key || !keySize || !message || !messageSize)
-        return NULL;
+    if (!mac || !key || !keySize || !message || !messageSize)
+        return false;
 
 #if MPW_CPERCIVA
-    uint8_t *const mac = malloc( 32 );
-    if (!mac)
-        return NULL;
-
     HMAC_SHA256_Buf( key, keySize, message, messageSize, mac );
+    return true;
 #elif MPW_SODIUM
-    uint8_t *const mac = malloc( crypto_auth_hmacsha256_BYTES );
-    if (!mac)
-        return NULL;
-
     crypto_auth_hmacsha256_state state;
-    if (crypto_auth_hmacsha256_init( &state, key, keySize ) != 0 ||
-        crypto_auth_hmacsha256_update( &state, message, messageSize ) != 0 ||
-        crypto_auth_hmacsha256_final( &state, mac ) != 0) {
-        mpw_free( &mac, crypto_auth_hmacsha256_BYTES );
-        return NULL;
-    }
+    return crypto_auth_hmacsha256_init( &state, key, keySize ) == OK &&
+           crypto_auth_hmacsha256_update( &state, message, messageSize ) == OK &&
+           crypto_auth_hmacsha256_final( &state, mac ) == OK;
 #else
 #error No crypto support for mpw_hmac_sha256.
 #endif
-
-    return mac;
 }
 
-const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySize, const void *buf, size_t *bufSize) {
+const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
     if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize)
         return NULL;
@@ -448,12 +421,12 @@ const static uint8_t *mpw_aes(bool encrypt, const void *key, const size_t keySiz
     return resultBuf;
 }
 
-const void *mpw_aes_encrypt(const void *key, const size_t keySize, const void *plainBuffer, size_t *bufferSize) {
+const uint8_t *mpw_aes_encrypt(const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize) {
 
     return mpw_aes( true, key, keySize, plainBuffer, bufferSize );
 }
 
-const void *mpw_aes_decrypt(const void *key, const size_t keySize, const void *cipherBuffer, size_t *bufferSize) {
+const uint8_t *mpw_aes_decrypt(const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize) {
 
     return mpw_aes( false, key, keySize, cipherBuffer, bufferSize );
 }
@@ -500,7 +473,7 @@ bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
     return memcmp( id1->bytes, id2->bytes, sizeof( id1->bytes ) ) == OK;
 }
 
-const MPKeyID mpw_id_buf(const void *buf, const size_t length) {
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t length) {
 
     MPKeyID keyID = MPNoKeyID;
 

@@ -21,54 +21,37 @@
 
 #include "mpw-types.h"
 
-typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
-    /** V0 did math with chars whose signedness was platform-dependent. */
-            MPAlgorithmVersionV0,
-    /** V1 miscounted the byte-length of multi-byte site names. */
-            MPAlgorithmVersionV1,
-    /** V2 miscounted the byte-length of multi-byte user names. */
-            MPAlgorithmVersionV2,
-    /** V3 is the current version. */
-            MPAlgorithmVersionV3,
-
-    MPAlgorithmVersionCurrent = MPAlgorithmVersionV3,
-    MPAlgorithmVersionFirst = MPAlgorithmVersionV0,
-    MPAlgorithmVersionLast = MPAlgorithmVersionV3,
-};
-
 /** Derive the master key for a user based on their name and master password.
- * @return A buffer (allocated, MPMasterKeySize) or NULL if the fullName or masterPassword is missing, the algorithm is unknown, or an algorithm error occurred. */
+ * @return A MPMasterKey value (allocated) or NULL if the fullName or masterPassword is missing, the algorithm is unknown, or an algorithm error occurred. */
 const MPMasterKey *mpw_master_key(
         const char *fullName, const char *masterPassword, const MPAlgorithmVersion algorithmVersion);
 
-/** Derive the site key for a user's site from the given master key and site parameters.
- * @return A buffer (allocated, MPSiteKeySize) or NULL if the masterKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
-const MPSiteKey *mpw_site_key(
-        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
-        const MPKeyPurpose keyPurpose, const char *keyContext, const MPAlgorithmVersion algorithmVersion);
-
-/** Generate a site result token from the given parameters.
- * @param resultParam A parameter for the resultType.  For stateful result types, the output of mpw_site_state.
- * @return A string (allocated) or NULL if the masterKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
-const char *mpw_site_result(
-        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
-        const MPKeyPurpose keyPurpose, const char *keyContext,
+/** Generate a result token for a user from the user's master key and result parameters.
+ * @param resultParam A parameter for the resultType.  For stateful result types, the output of mpw_service_state.
+ * @return A C-string (allocated) or NULL if the masterKey or serviceName is missing, the algorithm is unknown, or an algorithm error occurred. */
+const char *mpw_service_result(
+        const MPMasterKey *masterKey, const char *serviceName,
         const MPResultType resultType, const char *resultParam,
-        const MPAlgorithmVersion algorithmVersion);
+        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
 
-/** Encrypt a stateful site token for persistence.
- * @param resultParam A parameter for the resultType.  For stateful result types, the desired mpw_site_result.
- * @return A string (allocated) or NULL if the masterKey, siteName or resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
-const char *mpw_site_state(
-        const MPMasterKey *masterKey, const char *siteName, const MPCounterValue siteCounter,
-        const MPKeyPurpose keyPurpose, const char *keyContext,
+/** Encrypt a result token for stateful persistence.
+ * @param resultParam A parameter for the resultType.  For stateful result types, the desired mpw_service_result.
+ * @return A C-string (allocated) or NULL if the masterKey, serviceName or resultType's resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
+const char *mpw_service_state(
+        const MPMasterKey *masterKey, const char *serviceName,
         const MPResultType resultType, const char *resultParam,
-        const MPAlgorithmVersion algorithmVersion);
+        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
+
+/** Derive the result key for a user from the user's master key and result parameters.
+ * @return An MPServiceKey value (allocated) or NULL if the masterKey or serviceName is missing, the algorithm is unknown, or an algorithm error occurred. */
+const MPServiceKey *mpw_service_key(
+        const MPMasterKey *masterKey, const char *serviceName,
+        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
 
 /** @return An identicon (static) that represents the user's identity. */
 const MPIdenticon mpw_identicon(
         const char *fullName, const char *masterPassword);
-/** @return An encoded representation (allocated) of the given identicon or NULL if the identicon is unset. */
+/** @return A C-string encoded representation (allocated) of the given identicon or NULL if the identicon is unset. */
 const char *mpw_identicon_encode(
         const MPIdenticon identicon);
 /** @return An identicon (static) decoded from the given encoded identicon representation or an identicon with empty fields if the identicon could not be parsed. */

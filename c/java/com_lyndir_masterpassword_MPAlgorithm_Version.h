@@ -17,10 +17,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
 
 /*
  * Class:     com_lyndir_masterpassword_MPAlgorithm_Version
- * Method:    _siteKey
+ * Method:    _serviceKey
  * Signature: ([BLjava/lang/String;JILjava/lang/String;I)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteKey
+JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1serviceKey
   (JNIEnv *, jobject, jbyteArray, jstring, jlong, jint, jstring, jint);
 
 /*

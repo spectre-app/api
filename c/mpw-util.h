@@ -134,11 +134,11 @@ bool mpw_push_buf(
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
 bool mpw_push_int(
         uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt);
-/** Push a string onto a buffer.  reallocs the given buffer and appends the given string.
+/** Push a C-string onto a buffer.  reallocs the given buffer and appends the given string.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
 bool mpw_push_string(
         uint8_t **buffer, size_t *bufferSize, const char *pushString);
-/** Push a string onto another string.  reallocs the target string and appends the source string.
+/** Push a C-string onto another string.  reallocs the target string and appends the source string.
  * @param string A pointer to the string (allocated) to append to, may be NULL. */
 bool mpw_string_push(
         char **string, const char *pushString);
@@ -163,7 +163,7 @@ bool mpw_string_pushf(
 #define mpw_free(\
         /* void** */buffer, /* size_t */ bufferSize) \
         ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __mpw_free( (void **)_b, bufferSize ); })
-/** Free a string after zero'ing its contents, then set the reference to NULL. */
+/** Free a C-string after zero'ing its contents, then set the reference to NULL. */
 #define mpw_free_string(\
         /* char** */string) \
         ({ __typeof__(string) _s = string; const char *__s = *_s; (void)__s; __mpw_free_string( (char **)_s ); })
@@ -171,7 +171,7 @@ bool mpw_string_pushf(
 #define mpw_free_strings(\
         /* char** */strings, ...) \
         ({ __typeof__(strings) _s = strings; const char *__s = *_s; (void)__s; __mpw_free_strings( (char **)_s, __VA_ARGS__ ); })
-/** Free a string after zero'ing its contents, then set the reference to the replacement string.
+/** Free a C-string after zero'ing its contents, then set the reference to the replacement string.
  * The replacement string is generated before the original is freed; so it can be a derivative of the original. */
 #define mpw_replace_string(\
         /* char* */string, /* char* */replacement) \
@@ -205,31 +205,31 @@ void mpw_zero(
 
 /** Derive a key from the given secret and salt using the scrypt KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if secret or salt is missing, key could not be allocated or the KDF failed. */
-const void *mpw_kdf_scrypt(
-        const size_t keySize, const void *secret, const size_t secretSize, const void *salt, const size_t saltSize,
+bool mpw_kdf_scrypt(
+        uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p);
 /** Derive a subkey from the given key using the blake2b KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if the key or subkeySize is missing, the key sizes are out of bounds, the subkey could not be allocated or derived. */
-const void *mpw_kdf_blake2b(
-        const size_t subkeySize, const void *key, const size_t keySize,
-        const void *context, const size_t contextSize, const uint64_t id, const char *personal);
+bool mpw_kdf_blake2b(
+        uint8_t *subkey, const size_t subkeySize, const uint8_t *key, const size_t keySize,
+        const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal);
 /** Calculate the MAC for the given message with the given key using SHA256-HMAC.
  * @return A buffer (allocated, 32-byte) containing the MAC or NULL if the key or message is missing, the MAC could not be allocated or generated. */
-const void *mpw_hash_hmac_sha256(
-        const void *key, const size_t keySize, const void *message, const size_t messageSize);
+bool mpw_hash_hmac_sha256(
+        uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize);
 /** Encrypt a plainBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the plain buffer on input, and the size of the returned cipher buffer on output.
  * @return A buffer (allocated, bufferSize) containing the cipherBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-const void *mpw_aes_encrypt(
-        const void *key, const size_t keySize, const void *plainBuffer, size_t *bufferSize);
+const uint8_t *mpw_aes_encrypt(
+        const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize);
 /** Decrypt a cipherBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the cipher buffer on input, and the size of the returned plain buffer on output.
  * @return A buffer (allocated, bufferSize) containing the plainBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-const void *mpw_aes_decrypt(
-        const void *key, const size_t keySize, const void *cipherBuffer, size_t *bufferSize);
+const uint8_t *mpw_aes_decrypt(
+        const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize);
 #if UNUSED
 /** Calculate an OTP using RFC-4226.
- * @return A string (allocated) containing exactly `digits` decimal OTP digits. */
+ * @return A C-string (allocated) containing exactly `digits` decimal OTP digits. */
 const char *mpw_hotp(
         const void *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset);
 #endif
@@ -237,15 +237,15 @@ const char *mpw_hotp(
 //// Visualizers.
 
 /** Compose a formatted string.
- * @return A string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
+ * @return A C-string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
 const char *mpw_str(const char *format, ...);
 const char *mpw_vstr(const char *format, va_list args);
-/** Encode length-bytes from a buffer as a string of hexadecimal characters.
+/** Encode length-bytes from a buffer as a C-string of hexadecimal characters.
  * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.
- * @return A string (allocated); or NULL if the buffer is missing or the result could not be allocated. */
+ * @return A C-string (allocated); or NULL if the buffer is missing or the result could not be allocated. */
 char *mpw_hex(const void *buf, const size_t length, char *hex, size_t *hexLength);
 const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
-/** Decode a string of hexadecimal characters into a buffer of length-bytes.
+/** Decode a C-string of hexadecimal characters into a buffer of length-bytes.
  * @return A buffer (allocated, *length); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
 const uint8_t *mpw_unhex(const char *hex, size_t *length);
 /** Check whether the fingerprint is valid.
@@ -255,7 +255,7 @@ bool mpw_id_valid(const MPKeyID *id1);
  * @return true if the buffers represent identical fingerprints or are both NULL. */
 bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2);
 /** Encode a fingerprint for a buffer. */
-const MPKeyID mpw_id_buf(const void *buf, const size_t length);
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t length);
 /** Reconstruct a fingerprint from its hexadecimal string representation. */
 const MPKeyID mpw_id_str(const char hex[static 65]);
 
@@ -269,10 +269,10 @@ size_t mpw_utf8_strchars(const char *utf8String);
  * @return A buffer (allocated, len) with len bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
 void *mpw_memdup(const void *src, const size_t len);
 /** Drop-in for POSIX strdup(3).
- * @return A string (allocated) copied from src or NULL if src is missing or the buffer could not be allocated. */
+ * @return A C-string (allocated) copied from src or NULL if src is missing or the buffer could not be allocated. */
 const char *mpw_strdup(const char *src);
 /** Drop-in for POSIX strndup(3).
- * @return A string (allocated) with no more than max bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
+ * @return A C-string (allocated) with no more than max bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
 const char *mpw_strndup(const char *src, const size_t max);
 /** Drop-in for POSIX strcasecmp(3). */
 int mpw_strcasecmp(const char *s1, const char *s2);

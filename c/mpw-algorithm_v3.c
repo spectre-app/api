@@ -30,8 +30,8 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
-const MPMasterKey *mpw_master_key_v3(
-        const char *fullName, const char *masterPassword) {
+bool mpw_master_key_v3(
+        const MPMasterKey *masterKey, const char *fullName, const char *masterPassword) {
 
     const char *keyScope = mpw_purpose_scope( MPKeyPurposeAuthentication );
     trc( "keyScope: %s", keyScope );
@@ -42,56 +42,55 @@ const MPMasterKey *mpw_master_key_v3(
             keyScope, mpw_hex_l( (uint32_t)strlen( fullName ), fullNameHex ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
-    mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope );
-    mpw_push_int( &masterKeySalt, &masterKeySaltSize, (uint32_t)strlen( fullName ) );
-    mpw_push_string( &masterKeySalt, &masterKeySaltSize, fullName );
-    if (!masterKeySalt) {
+    if (!(mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
+          mpw_push_int( &masterKeySalt, &masterKeySaltSize, (uint32_t)strlen( fullName ) ) &&
+          mpw_push_string( &masterKeySalt, &masterKeySaltSize, fullName )) || !masterKeySalt) {
+        mpw_free( &masterKeySalt, masterKeySaltSize );
         err( "Could not allocate master key salt: %s", strerror( errno ) );
-        return NULL;
+        return false;
     }
     trc( "  => masterKeySalt.id: %s", mpw_id_buf( masterKeySalt, masterKeySaltSize ).hex );
 
     // Calculate the master key.
     trc( "masterKey: scrypt( masterPassword, masterKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
-    const MPMasterKey *masterKey = mpw_kdf_scrypt( sizeof( MPMasterKey ),
+    bool success = mpw_kdf_scrypt( (uint8_t *)masterKey->bytes, sizeof( masterKey->bytes ),
             (uint8_t *)masterPassword, strlen( masterPassword ), masterKeySalt, masterKeySaltSize, MP_N, MP_r, MP_p );
     mpw_free( &masterKeySalt, masterKeySaltSize );
-    if (!masterKey) {
-        err( "Could not derive master key: %s", strerror( errno ) );
-        return NULL;
-    }
-    trc( "  => masterKey.id: %s", mpw_id_buf( masterKey, sizeof( *masterKey ) ).hex );
 
-    return masterKey;
+    if (!success)
+        err( "Could not derive master key: %s", strerror( errno ) );
+    else
+        trc( "  => masterKey.id: %s (algorithm: %d=3)", mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) ).hex, masterKey->algorithm );
+    return success;
 }
 
-const MPSiteKey *mpw_site_key_v3(
-        const MPMasterKey *masterKey, const char *siteName, MPCounterValue siteCounter,
+bool mpw_service_key_v3(
+        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName, MPCounterValue keyCounter,
         MPKeyPurpose keyPurpose, const char *keyContext) {
 
-    return mpw_site_key_v2( masterKey, siteName, siteCounter, keyPurpose, keyContext );
+    return mpw_service_key_v2( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
 }
 
-const char *mpw_site_template_password_v3(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_service_template_password_v3(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_site_template_password_v2( masterKey, siteKey, resultType, resultParam );
+    return mpw_service_template_password_v2( masterKey, serviceKey, resultType, resultParam );
 }
 
-const char *mpw_site_crypted_password_v3(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
+const char *mpw_service_crypted_password_v3(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText) {
 
-    return mpw_site_crypted_password_v2( masterKey, siteKey, resultType, cipherText );
+    return mpw_service_crypted_password_v2( masterKey, serviceKey, resultType, cipherText );
 }
 
-const char *mpw_site_derived_password_v3(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_service_derived_password_v3(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_site_derived_password_v2( masterKey, siteKey, resultType, resultParam );
+    return mpw_service_derived_password_v2( masterKey, serviceKey, resultType, resultParam );
 }
 
-const char *mpw_site_state_v3(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *state) {
+const char *mpw_service_state_v3(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *state) {
 
-    return mpw_site_state_v2( masterKey, siteKey, resultType, state );
+    return mpw_service_state_v2( masterKey, serviceKey, resultType, state );
 }

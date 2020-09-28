@@ -25,18 +25,18 @@ const char *mpw_type_template_v1(
         MPResultType type, uint16_t templateIndex);
 const char mpw_class_character_v1(
         char characterClass, uint16_t classIndex);
-const MPMasterKey *mpw_master_key_v1(
-        const char *fullName, const char *masterPassword);
-const MPSiteKey *mpw_site_key_v1(
-        const MPMasterKey *masterKey, const char *siteName, MPCounterValue siteCounter,
+bool mpw_master_key_v1(
+        const MPMasterKey *masterKey, const char *fullName, const char *masterPassword);
+bool mpw_service_key_v1(
+        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName, MPCounterValue keyCounter,
         MPKeyPurpose keyPurpose, const char *keyContext);
-const char *mpw_site_template_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam);
-const char *mpw_site_crypted_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText);
-const char *mpw_site_derived_password_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam);
-const char *mpw_site_state_v1(
-        const MPMasterKey *masterKey, const MPSiteKey *siteKey, MPResultType resultType, const char *plainText);
+const char *mpw_service_template_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam);
+const char *mpw_service_crypted_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText);
+const char *mpw_service_derived_password_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam);
+const char *mpw_service_state_v1(
+        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *plainText);
 
 #endif // _MPW_ALGORITHM_V1_H
