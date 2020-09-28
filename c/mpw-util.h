@@ -129,7 +129,7 @@ const char **mpw_strings(
 /** Push a buffer onto a buffer.  reallocs the given buffer and appends the given buffer.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
 bool mpw_push_buf(
-        uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, const size_t pushSize);
+        uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize);
 /** Push an integer onto a buffer.  reallocs the given buffer and appends the given integer.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
 bool mpw_push_int(
@@ -146,9 +146,8 @@ bool mpw_string_pushf(
         char **string, const char *pushFormat, ...);
 
 // These defines merely exist to do type-checking, force the void** cast & drop any const qualifier.
-/** Reallocate the given buffer from the given size by adding the delta size.
- * On success, the buffer size pointer will be updated to the buffer's new size
- * and the buffer pointer may be updated to a new memory address.
+/** Reallocate the given buffer from the given size by making space for the given amount of objects of the given type.
+ * On success, the bufferSize pointer will be updated to the buffer's new byte size and the buffer pointer may be updated to a new memory address.
  * On failure, the pointers will remain unaffected.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to reallocate.
  * @param bufferSize A pointer to the buffer's current size, or NULL.
@@ -156,8 +155,8 @@ bool mpw_string_pushf(
  * @return true if successful, false if reallocation failed.
  */
 #define mpw_realloc(\
-        /* const void** */buffer, /* size_t* */bufferSize, /* const size_t */targetSize) \
-        ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __mpw_realloc( (const void **)_b, bufferSize, targetSize ); })
+        /* const void** */buffer, /* size_t* */bufferSize, type, /* const size_t */typeCount) \
+        ({ type **_buffer = buffer; __mpw_realloc( (void **)_buffer, bufferSize, sizeof( type ) * (typeCount) ); })
 /** Free a buffer after zero'ing its contents, then set the reference to NULL.
  * @param bufferSize The byte-size of the buffer, these bytes will be zeroed prior to deallocation. */
 #define mpw_free(\
@@ -179,7 +178,7 @@ bool mpw_string_pushf(
 #ifdef _MSC_VER
 #undef mpw_realloc
 #define mpw_realloc(buffer, bufferSize, targetSize) \
-        __mpw_realloc( (const void **)buffer, bufferSize, targetSize )
+        __mpw_realloc( (void **)buffer, bufferSize, targetSize )
 #undef mpw_free
 #define mpw_free(buffer, bufferSize) \
         __mpw_free( (void **)buffer, bufferSize )
@@ -191,7 +190,7 @@ bool mpw_string_pushf(
         __mpw_free_strings( (char **)strings, __VA_ARGS__ )
 #endif
 bool __mpw_realloc(
-        const void **buffer, size_t *bufferSize, const size_t targetSize);
+        void **buffer, size_t *bufferSize, const size_t targetSize);
 bool __mpw_free(
         void **buffer, size_t bufferSize);
 bool __mpw_free_string(
@@ -231,7 +230,7 @@ const uint8_t *mpw_aes_decrypt(
 /** Calculate an OTP using RFC-4226.
  * @return A C-string (allocated) containing exactly `digits` decimal OTP digits. */
 const char *mpw_hotp(
-        const void *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset);
+        const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset);
 #endif
 
 //// Visualizers.
@@ -240,14 +239,14 @@ const char *mpw_hotp(
  * @return A C-string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
 const char *mpw_str(const char *format, ...);
 const char *mpw_vstr(const char *format, va_list args);
-/** Encode length-bytes from a buffer as a C-string of hexadecimal characters.
+/** Encode size-bytes from a buffer as a C-string of hexadecimal characters.
  * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.
- * @return A C-string (allocated); or NULL if the buffer is missing or the result could not be allocated. */
-char *mpw_hex(const void *buf, const size_t length, char *hex, size_t *hexLength);
+ * @return A C-string (allocated) or (possibly realloc'ed) hex; NULL if the buffer is missing or the result could not be allocated. */
+char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize);
 const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
-/** Decode a C-string of hexadecimal characters into a buffer of length-bytes.
- * @return A buffer (allocated, *length); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
-const uint8_t *mpw_unhex(const char *hex, size_t *length);
+/** Decode a C-string of hexadecimal characters into a buffer of size-bytes.
+ * @return A buffer (allocated, *size); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
+const uint8_t *mpw_unhex(const char *hex, size_t *size);
 /** Check whether the fingerprint is valid.
  * @return true if the fingerprints represents a fully complete print for a buffer. */
 bool mpw_id_valid(const MPKeyID *id1);
@@ -255,16 +254,16 @@ bool mpw_id_valid(const MPKeyID *id1);
  * @return true if the buffers represent identical fingerprints or are both NULL. */
 bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2);
 /** Encode a fingerprint for a buffer. */
-const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t length);
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size);
 /** Reconstruct a fingerprint from its hexadecimal string representation. */
 const MPKeyID mpw_id_str(const char hex[static 65]);
 
 //// String utilities.
 
-/** @return The byte length of the UTF-8 character at the start of the given string or 0 if it is NULL, empty or not a legal UTF-8 character. */
-size_t mpw_utf8_charlen(const char *utf8String);
+/** @return The byte size of the UTF-8 character at the start of the given string or 0 if it is NULL, empty or not a legal UTF-8 character. */
+size_t mpw_utf8_char_size(const char *utf8String);
 /** @return The amount of UTF-8 characters in the given string or 0 if it is NULL, empty, or contains bytes that are not legal in UTF-8. */
-size_t mpw_utf8_strchars(const char *utf8String);
+size_t mpw_utf8_char_count(const char *utf8String);
 /** Drop-in for memdup(3).
  * @return A buffer (allocated, len) with len bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
 void *mpw_memdup(const void *src, const size_t len);

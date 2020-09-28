@@ -48,9 +48,9 @@ MP_LIBS_END
 typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
     /** V0 did math with chars whose signedness was platform-dependent. */
     MPAlgorithmVersionV0,
-    /** V1 miscounted the byte-length of multi-byte service names. */
+    /** V1 miscounted the byte-size of multi-byte service names. */
     MPAlgorithmVersionV1,
-    /** V2 miscounted the byte-length of multi-byte user names. */
+    /** V2 miscounted the byte-size of multi-byte user names. */
     MPAlgorithmVersionV2,
     /** V3 is the current version. */
     MPAlgorithmVersionV3,

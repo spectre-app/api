@@ -110,7 +110,7 @@ MPMarshalledService *mpw_marshal_service(
 
     if (!serviceName)
         return NULL;
-    if (!mpw_realloc( &user->services, NULL, sizeof( MPMarshalledService ) * ++user->services_count )) {
+    if (!mpw_realloc( &user->services, NULL, MPMarshalledService, ++user->services_count )) {
         user->services_count--;
         return NULL;
     }
@@ -140,7 +140,7 @@ MPMarshalledService *mpw_marshal_service(
 MPMarshalledQuestion *mpw_marshal_question(
         MPMarshalledService *service, const char *keyword) {
 
-    if (!mpw_realloc( &service->questions, NULL, sizeof( MPMarshalledQuestion ) * ++service->questions_count )) {
+    if (!mpw_realloc( &service->questions, NULL, MPMarshalledQuestion, ++service->questions_count )) {
         service->questions_count--;
         return NULL;
     }
@@ -274,7 +274,7 @@ MPMarshalledData *mpw_marshal_data_vget(
         }
 
         if (!child) {
-            if (!mpw_realloc( &parent->children, NULL, sizeof( MPMarshalledData ) * ++parent->children_count )) {
+            if (!mpw_realloc( &parent->children, NULL, MPMarshalledData, ++parent->children_count )) {
                 --parent->children_count;
                 break;
             }
@@ -521,7 +521,7 @@ void mpw_marshal_data_keep(
             ++children_count;
 
             if (children) {
-                if (!mpw_realloc( &children, NULL, sizeof( MPMarshalledData ) * children_count )) {
+                if (!mpw_realloc( &children, NULL, MPMarshalledData, children_count )) {
                     --children_count;
                     continue;
                 }

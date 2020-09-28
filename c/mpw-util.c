@@ -43,7 +43,7 @@ static size_t sinks_count;
 
 bool mpw_log_sink_register(MPLogSink *sink) {
 
-    if (!mpw_realloc( &sinks, NULL, sizeof( MPLogSink * ) * ++sinks_count )) {
+    if (!mpw_realloc( &sinks, NULL, MPLogSink *, ++sinks_count )) {
         --sinks_count;
         return false;
     }
@@ -179,26 +179,29 @@ void mpw_uint64(const uint64_t number, uint8_t buf[static 8]) {
 
 const char **mpw_strings(size_t *count, const char *strings, ...) {
 
+    *count = 0;
+    size_t size = 0;
+    const char **array = NULL;
+
     va_list args;
     va_start( args, strings );
-    const char **array = NULL;
-    size_t size = 0;
     for (const char *string = strings; string; (string = va_arg( args, const char * ))) {
-        size_t cursor = size / sizeof( *array );
-        if (!mpw_realloc( &array, &size, size + sizeof( string ) )) {
+        size_t cursor = *count;
+
+        if (!mpw_realloc( &array, &size, const char *, cursor + 1 )) {
             mpw_free( &array, size );
-            *count = 0;
-            return NULL;
+            break;
         }
+
+        *count = size / sizeof( *array );
         array[cursor] = string;
     }
     va_end( args );
 
-    *count = size / sizeof( *array );
     return array;
 }
 
-bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, const size_t pushSize) {
+bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
 
     if (!buffer || !bufferSize || !pushBuffer || !pushSize)
         return false;
@@ -206,7 +209,7 @@ bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, 
         // The buffer was marked as broken, it is missing a previous push.  Abort to avoid corrupt content.
         return false;
 
-    if (!mpw_realloc( buffer, bufferSize, *bufferSize + pushSize )) {
+    if (!mpw_realloc( buffer, bufferSize, uint8_t, (*bufferSize + pushSize) / sizeof( uint8_t ) )) {
         // realloc failed, we can't push.  Mark the buffer as broken.
         mpw_free( buffer, *bufferSize );
         *bufferSize = (size_t)ERR;
@@ -220,18 +223,16 @@ bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const void *pushBuffer, 
 
 bool mpw_push_string(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
 
-    return pushString && mpw_push_buf( buffer, bufferSize, pushString, strlen( pushString ) );
+    return pushString && mpw_push_buf( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
 }
 
 bool mpw_string_push(char **string, const char *pushString) {
 
     if (!string || !pushString)
         return false;
-    if (!*string)
-        *string = calloc( 1, sizeof( char ) );
 
-    size_t stringLength = strlen( *string );
-    return pushString && mpw_push_buf( (uint8_t **const)string, &stringLength, pushString, strlen( pushString ) + 1 );
+    return pushString && mpw_push_buf( (uint8_t **const)string, &((size_t){ *string? strlen( *string ) + 1: 0 }),
+            (const uint8_t *)pushString, strlen( pushString ) + 1 );
 }
 
 bool mpw_string_pushf(char **string, const char *pushFormat, ...) {
@@ -253,14 +254,14 @@ bool mpw_push_int(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) 
     return mpw_push_buf( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
 }
 
-bool __mpw_realloc(const void **buffer, size_t *bufferSize, const size_t targetSize) {
+bool __mpw_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
 
     if (!buffer)
         return false;
     if (bufferSize && *bufferSize == targetSize)
         return true;
 
-    void *newBuffer = realloc( (void *)*buffer, targetSize );
+    void *newBuffer = realloc( *buffer, targetSize );
     if (!newBuffer)
         return false;
 
@@ -383,16 +384,16 @@ bool mpw_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const size
 
 const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
-    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize)
+    if (!key || keySize < AES_BLOCK_SIZE || !bufSize || !*bufSize)
         return NULL;
 
     // IV = zero
-    static const uint8_t iv[AES_BLOCKLEN] = { 0 };
+    static const uint8_t iv[AES_BLOCK_SIZE] = { 0 };
 
     // Add PKCS#7 padding
-    uint32_t aesSize = ((uint32_t)*bufSize + AES_BLOCKLEN - 1) & -AES_BLOCKLEN; // round up to block size.
-    if (encrypt && !(*bufSize % AES_BLOCKLEN)) // add pad block if plain text fits block size.
-        aesSize += AES_BLOCKLEN;
+    uint32_t aesSize = ((uint32_t)*bufSize + AES_BLOCK_SIZE - 1) & -AES_BLOCK_SIZE; // round up to block size.
+    if (encrypt && !(*bufSize % AES_BLOCK_SIZE)) // add pad block if plain text fits block size.
+        aesSize += AES_BLOCK_SIZE;
     uint8_t *resultBuf = calloc( aesSize, sizeof( uint8_t ) );
     if (!resultBuf)
         return NULL;
@@ -414,7 +415,7 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
     // Truncate PKCS#7 padding
     if (encrypt)
         *bufSize = aesSize;
-    else if (resultBuf[aesSize - 1] <= AES_BLOCKLEN)
+    else if (resultBuf[aesSize - 1] <= AES_BLOCK_SIZE)
         *bufSize -= resultBuf[aesSize - 1];
     memset( resultBuf + *bufSize, 0, aesSize - *bufSize );
 
@@ -432,7 +433,7 @@ const uint8_t *mpw_aes_decrypt(const uint8_t *key, const size_t keySize, const u
 }
 
 #if UNUSED
-const char *mpw_hotp(const void *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
+const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
 
     // Hash the moving factor with the key.
     uint8_t counter[8];
@@ -473,7 +474,7 @@ bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
     return memcmp( id1->bytes, id2->bytes, sizeof( id1->bytes ) ) == OK;
 }
 
-const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t length) {
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size) {
 
     MPKeyID keyID = MPNoKeyID;
 
@@ -481,15 +482,15 @@ const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t length) {
         return keyID;
 
 #if MPW_CPERCIVA
-    SHA256_Buf( buf, length, keyID.bytes );
+    SHA256_Buf( buf, size, keyID.bytes );
 #elif MPW_SODIUM
-    crypto_hash_sha256( keyID.bytes, buf, length );
+    crypto_hash_sha256( keyID.bytes, buf, size );
 #else
 #error No crypto support for mpw_id_buf.
 #endif
 
-    size_t hexLength = sizeof( keyID.hex );
-    if (mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexLength ) != keyID.hex)
+    size_t hexSize = sizeof( keyID.hex );
+    if (mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexSize ) != keyID.hex)
         err( "KeyID string pointer mismatch." );
 
     return keyID;
@@ -506,8 +507,7 @@ const MPKeyID mpw_id_str(const char hex[static 65]) {
 
     else {
         memcpy( keyID.bytes, hexBytes, sizeof( keyID.bytes ) );
-        size_t hexLength = sizeof( keyID.hex );
-        mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexLength );
+        mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &((size_t){ sizeof( keyID.hex ) }) );
     }
 
     mpw_free( &hexBytes, hexSize );
@@ -542,24 +542,23 @@ const char *mpw_vstr(const char *format, va_list args) {
             break;
         if (chars < size)
             return str;
-        if (!mpw_realloc( &str, NULL, chars + 1 ))
+        if (!mpw_realloc( &str, &size, char, chars + 1 ))
             break;
-        size = chars + 1;
     }
 
     mpw_free( &str, size );
     return NULL;
 }
 
-char *mpw_hex(const void *buf, const size_t length, char *hex, size_t *hexLength) {
+char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize) {
 
-    if (!buf || !length)
+    if (!buf || !size)
         return NULL;
-    if (!mpw_realloc( &hex, hexLength, length * 2 + 1 ))
+    if (!mpw_realloc( &hex, hexSize, char, size * 2 + 1 ))
         return NULL;
 
-    for (size_t kH = 0; kH < length; kH++)
-        sprintf( &(hex[kH * 2]), "%.2hhX", ((const uint8_t *)buf)[kH] );
+    for (size_t kH = 0; kH < size; kH++)
+        sprintf( &(hex[kH * 2]), "%.2hhX", buf[kH] );
 
     return hex;
 }
@@ -569,11 +568,11 @@ const char *mpw_hex_l(const uint32_t number, char hex[static 9]) {
     uint8_t buf[4 /* 32 / 8 */];
     mpw_uint32( number, buf );
 
-    size_t hexLength = 9;
-    return mpw_hex( &buf, sizeof( buf ), hex, &hexLength );
+    size_t hexSize = 9;
+    return mpw_hex( buf, sizeof( buf ), hex, &hexSize );
 }
 
-const uint8_t *mpw_unhex(const char *hex, size_t *length) {
+const uint8_t *mpw_unhex(const char *hex, size_t *size) {
 
     if (!hex)
         return NULL;
@@ -582,21 +581,21 @@ const uint8_t *mpw_unhex(const char *hex, size_t *length) {
     if (hexLength == 0 || hexLength % 2 != 0)
         return NULL;
 
-    size_t bufLength = hexLength / 2;
-    if (length)
-        *length = bufLength;
+    size_t bufSize = hexLength / 2;
+    if (size)
+        *size = bufSize;
 
-    uint8_t *buf = malloc( bufLength );
-    for (size_t b = 0; b < bufLength; ++b)
+    uint8_t *buf = malloc( bufSize );
+    for (size_t b = 0; b < bufSize; ++b)
         if (sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
-            mpw_free( &buf, bufLength );
+            mpw_free( &buf, bufSize );
             return NULL;
         }
 
     return buf;
 }
 
-size_t mpw_utf8_charlen(const char *utf8String) {
+size_t mpw_utf8_char_size(const char *utf8String) {
 
     if (!utf8String)
         return 0;
@@ -615,11 +614,11 @@ size_t mpw_utf8_charlen(const char *utf8String) {
     return 0;
 }
 
-size_t mpw_utf8_strchars(const char *utf8String) {
+size_t mpw_utf8_char_count(const char *utf8String) {
 
     size_t strchars = 0, charlen;
     for (char *remaining = (char *)utf8String; remaining && *remaining; remaining += charlen, ++strchars)
-        if (!(charlen = mpw_utf8_charlen( remaining )))
+        if (!(charlen = mpw_utf8_char_size( remaining )))
             return 0;
 
     return strchars;

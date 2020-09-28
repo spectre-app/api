@@ -32,12 +32,13 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version helpers.
-const char *mpw_type_template_v0(MPResultType type, uint16_t templateIndex) {
+const char *mpw_type_template_v0(const MPResultType type, uint16_t templateIndex) {
 
     size_t count = 0;
     const char **templates = mpw_type_templates( type, &count );
     char const *template = templates && count? templates[templateIndex % count]: NULL;
     free( templates );
+
     return template;
 }
 
@@ -60,11 +61,11 @@ bool mpw_master_key_v0(
     // Calculate the master key salt.
     char fullNameHex[9];
     trc( "masterKeySalt: keyScope=%s | #fullName=%s | fullName=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( fullName ), fullNameHex ), fullName );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( fullName ), fullNameHex ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
     if (!(mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
-          mpw_push_int( &masterKeySalt, &masterKeySaltSize, (uint32_t)mpw_utf8_strchars( fullName ) ) &&
+          mpw_push_int( &masterKeySalt, &masterKeySaltSize, (uint32_t)mpw_utf8_char_count( fullName ) ) &&
           mpw_push_string( &masterKeySalt, &masterKeySaltSize, fullName )) || !masterKeySalt) {
         mpw_free( &masterKeySalt, masterKeySaltSize );
         err( "Could not allocate master key salt: %s", strerror( errno ) );
@@ -100,16 +101,16 @@ bool mpw_service_key_v0(
     // Calculate the service seed.
     char serviceNameHex[9], keyCounterHex[9], keyContextHex[9];
     trc( "serviceSalt: keyScope=%s | #serviceName=%s | serviceName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_strchars( serviceName ), serviceNameHex ), serviceName, mpw_hex_l( keyCounter, keyCounterHex ),
-            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_strchars( keyContext ), keyContextHex ): NULL, keyContext );
+            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( serviceName ), serviceNameHex ), serviceName, mpw_hex_l( keyCounter, keyCounterHex ),
+            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_char_count( keyContext ), keyContextHex ): NULL, keyContext );
     size_t serviceSaltSize = 0;
     uint8_t *serviceSalt = NULL;
     if (!(mpw_push_string( &serviceSalt, &serviceSaltSize, keyScope ) &&
-          mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)mpw_utf8_strchars( serviceName ) ) &&
+          mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)mpw_utf8_char_count( serviceName ) ) &&
           mpw_push_string( &serviceSalt, &serviceSaltSize, serviceName ) &&
           mpw_push_int( &serviceSalt, &serviceSaltSize, keyCounter ) &&
           (!keyContext? true:
-           mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)mpw_utf8_strchars( keyContext ) ) &&
+           mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)mpw_utf8_char_count( keyContext ) ) &&
            mpw_push_string( &serviceSalt, &serviceSaltSize, keyContext ))) || !serviceSalt) {
         err( "Could not allocate service salt: %s", strerror( errno ) );
         return false;
@@ -173,13 +174,13 @@ const char *mpw_service_crypted_password_v0(
     // Base64-decode
     char *hex = NULL;
     uint8_t *cipherBuf = calloc( 1, mpw_base64_decode_max( cipherText ) );
-    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexLength;
+    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
         mpw_free( &cipherBuf, mpw_base64_decode_max( cipherText ) );
         return NULL;
     }
-    trc( "b64 decoded: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexLength ) );
+    trc( "b64 decoded: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexSize ) );
 
     // Decrypt
     const uint8_t *plainBytes = mpw_aes_decrypt( masterKey->bytes, sizeof( masterKey->bytes ), cipherBuf, &bufSize );
@@ -188,12 +189,12 @@ const char *mpw_service_crypted_password_v0(
     mpw_free( &plainBytes, bufSize );
     if (!plainText)
         err( "AES decryption error: %s", strerror( errno ) );
-    else if (!mpw_utf8_strchars( plainText ))
+    else if (!mpw_utf8_char_count( plainText ))
         wrn( "decrypted -> plainText: %zu bytes = illegal UTF-8 = %s",
-                strlen( plainText ), hex = mpw_hex( plainText, bufSize, hex, &hexLength ) );
+                bufSize, hex = mpw_hex( plainBytes, bufSize, hex, &hexSize ) );
     else
-        trc( "decrypted -> plainText: %zu bytes = %s = %s",
-                strlen( plainText ), plainText, hex = mpw_hex( plainText, bufSize, hex, &hexLength ) );
+        trc( "decrypted -> plainText: %zu chars = %s :: %zu bytes = %s",
+                strlen( plainText ), plainText, bufSize, hex = mpw_hex( plainBytes, bufSize, hex, &hexSize ) );
     mpw_free_string( &hex );
 
     return plainText;
@@ -248,13 +249,13 @@ const char *mpw_service_state_v0(
 
     // Encrypt
     char *hex = NULL;
-    size_t bufSize = strlen( plainText ), hexLength;
+    size_t bufSize = strlen( plainText ), hexSize;
     const uint8_t *cipherBuf = mpw_aes_encrypt( masterKey->bytes, sizeof( masterKey->bytes ), (const uint8_t *)plainText, &bufSize );
     if (!cipherBuf) {
         err( "AES encryption error: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "cipherBuf: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexLength ) );
+    trc( "cipherBuf: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexSize ) );
 
     // Base64-encode
     size_t b64Max = mpw_base64_encode_max( bufSize );

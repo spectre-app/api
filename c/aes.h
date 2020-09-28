@@ -33,20 +33,20 @@ MP_LIBS_END
 #define AES_128 1
 //#define AES_192 1
 //#define AES_256 1
-#define AES_BLOCKLEN 16 //Block length in bytes AES is 128b block only
+#define AES_BLOCK_SIZE 16 //Block size in bytes AES is 128b block only
 
 #if defined(AES_ECB) && (AES_ECB == 1)
 
-void AES_ECB_encrypt(uint8_t *output, const uint8_t *input, const uint32_t length, const uint8_t *key);
-void AES_ECB_decrypt(uint8_t *output, const uint8_t *input, const uint32_t length, const uint8_t *key);
+void AES_ECB_encrypt(uint8_t *output, const uint8_t *input, const uint32_t size, const uint8_t *key);
+void AES_ECB_decrypt(uint8_t *output, const uint8_t *input, const uint32_t size, const uint8_t *key);
 
 #endif // #if defined(AES_ECB) && (AES_ECB == !)
 
 
 #if defined(AES_CBC) && (AES_CBC == 1)
 
-void AES_CBC_encrypt_buffer(uint8_t* output, uint8_t* input, const uint32_t length, const uint8_t* key, const uint8_t* iv);
-void AES_CBC_decrypt_buffer(uint8_t* output, uint8_t* input, const uint32_t length, const uint8_t* key, const uint8_t* iv);
+void AES_CBC_encrypt_buffer(uint8_t* output, uint8_t* input, const uint32_t size, const uint8_t* key, const uint8_t* iv);
+void AES_CBC_decrypt_buffer(uint8_t* output, uint8_t* input, const uint32_t size, const uint8_t* key, const uint8_t* iv);
 
 #endif // #if defined(AES_CBC) && (AES_CBC == 1)
 

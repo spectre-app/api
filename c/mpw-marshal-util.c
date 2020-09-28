@@ -183,7 +183,7 @@ void mpw_set_json_data(
 
             // Create new child.
             if (!child) {
-                if (!mpw_realloc( &data->children, NULL, sizeof( MPMarshalledData ) * ++data->children_count )) {
+                if (!mpw_realloc( &data->children, NULL, MPMarshalledData, ++data->children_count )) {
                     --data->children_count;
                     continue;
                 }
@@ -204,7 +204,7 @@ void mpw_set_json_data(
                 child = &data->children[index];
 
             else {
-                if (!mpw_realloc( &data->children, NULL, sizeof( MPMarshalledData ) * ++data->children_count )) {
+                if (!mpw_realloc( &data->children, NULL, MPMarshalledData, ++data->children_count )) {
                     --data->children_count;
                     continue;
                 }
