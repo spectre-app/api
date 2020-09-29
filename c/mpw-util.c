@@ -464,7 +464,7 @@ const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, 
 
 bool mpw_id_valid(const MPKeyID *id) {
 
-    return id && strlen( id->hex ) == sizeof( id->hex );
+    return id && strlen( id->hex ) + 1 == sizeof( id->hex );
 }
 
 bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
