@@ -753,8 +753,8 @@ const char *mpw_marshal_write(
             return NULL;
         }
 
-        loginState = mpw_service_result( masterKey, user->fullName, user->loginType, user->loginState, MPCounterValueInitial,
-                MPKeyPurposeIdentification, NULL );
+        loginState = mpw_service_result( masterKey, user->fullName,
+                user->loginType, user->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
     }
     else {
         // Redacted
@@ -827,15 +827,15 @@ const char *mpw_marshal_write(
                 continue;
 
             const char *answer = NULL;
-            if (user->redacted) {
+            if (!user->redacted) {
+                // Clear Text
+                answer = mpw_service_result( masterKey, service->serviceName,
+                        question->type, question->state, MPCounterValueInitial, MPKeyPurposeRecovery, question->keyword );
+            }
+            else {
                 // Redacted
                 if (question->state && strlen( question->state ) && service->resultType & MPServiceFeatureExportContent)
                     answer = mpw_strdup( question->state );
-            }
-            else {
-                // Clear Text
-                answer = mpw_service_result( masterKey, service->serviceName, question->type, question->state, MPCounterValueInitial,
-                        MPKeyPurposeRecovery, question->keyword );
             }
 
             mpw_marshal_data_set_num( question->type, data_questions, question->keyword, "type", NULL );

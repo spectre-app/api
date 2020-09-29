@@ -240,8 +240,8 @@ const char *mpw_hotp(
 const char *mpw_str(const char *format, ...);
 const char *mpw_vstr(const char *format, va_list args);
 /** Encode size-bytes from a buffer as a C-string of hexadecimal characters.
- * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.
- * @return A C-string (allocated) or (possibly realloc'ed) hex; NULL if the buffer is missing or the result could not be allocated. */
+ * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.  Result is returned.
+ * @return A C-string (allocated, size * 2 + 1 bytes); NULL if the buffer is missing or the result could not be allocated. */
 char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize);
 const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
 /** Decode a C-string of hexadecimal characters into a buffer of size-bytes.

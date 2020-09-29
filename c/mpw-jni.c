@@ -162,9 +162,8 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
     const char *serviceNameString = (*env)->GetStringUTFChars( env, serviceName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
     const char *resultParamString = resultParam? (*env)->GetStringUTFChars( env, resultParam, NULL ): NULL;
-    const char *serviceResultString = mpw_service_result(
-            (MPMasterKey)masterKeyBytes, serviceNameString, (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter,
-            (MPKeyPurpose)keyPurpose, keyContextString );
+    const char *serviceResultString = mpw_service_result( (MPMasterKey)masterKeyBytes, serviceNameString,
+            (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter, (MPKeyPurpose)keyPurpose, keyContextString );
     (*env)->ReleaseByteArrayElements( env, masterKey, masterKeyBytes, JNI_ABORT );
     (*env)->ReleaseByteArrayElements( env, serviceKey, serviceKeyBytes, JNI_ABORT );
     (*env)->ReleaseStringUTFChars( env, serviceName, serviceNameString );

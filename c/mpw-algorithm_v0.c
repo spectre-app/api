@@ -179,7 +179,7 @@ const char *mpw_service_crypted_password_v0(
     // Base64-decode
     char *hex = NULL;
     uint8_t *cipherBuf = calloc( 1, mpw_base64_decode_max( cipherText ) );
-    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize;
+    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
         mpw_free( &cipherBuf, mpw_base64_decode_max( cipherText ) );
@@ -254,7 +254,7 @@ const char *mpw_service_state_v0(
 
     // Encrypt
     char *hex = NULL;
-    size_t bufSize = strlen( plainText ), hexSize;
+    size_t bufSize = strlen( plainText ), hexSize = 0;
     const uint8_t *cipherBuf = mpw_aes_encrypt( masterKey->bytes, sizeof( masterKey->bytes ), (const uint8_t *)plainText, &bufSize );
     if (!cipherBuf) {
         err( "AES encryption error: %s", strerror( errno ) );

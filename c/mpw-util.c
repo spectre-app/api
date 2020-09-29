@@ -109,7 +109,7 @@ void mpw_log_ssink(LogLevel level, const char *file, int line, const char *funct
     if (!sunk)
         mpw_log_sink_file( &record );
 
-    if (record.level <= LogLevelError) {
+    if (record.level <= LogLevelWarning) {
         /* error breakpoint */;
     }
     if (record.level <= LogLevelFatal)
@@ -231,7 +231,8 @@ bool mpw_string_push(char **string, const char *pushString) {
     if (!string || !pushString)
         return false;
 
-    return pushString && mpw_push_buf( (uint8_t **const)string, &((size_t){ *string? strlen( *string ) + 1: 0 }),
+    // We overwrite an existing trailing NUL byte.
+    return pushString && mpw_push_buf( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
             (const uint8_t *)pushString, strlen( pushString ) + 1 );
 }
 
@@ -258,7 +259,7 @@ bool __mpw_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
 
     if (!buffer)
         return false;
-    if (bufferSize && *bufferSize == targetSize)
+    if (*buffer && bufferSize && *bufferSize == targetSize)
         return true;
 
     void *newBuffer = realloc( *buffer, targetSize );
@@ -500,7 +501,7 @@ const MPKeyID mpw_id_str(const char hex[static 65]) {
 
     MPKeyID keyID = MPNoKeyID;
 
-    size_t hexSize;
+    size_t hexSize = 0;
     const uint8_t *hexBytes = mpw_unhex( hex, &hexSize );
     if (hexSize != sizeof( keyID.bytes ))
         wrn( "Not a valid key ID: %s", hex );
