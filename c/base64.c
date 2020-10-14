@@ -82,7 +82,7 @@ size_t mpw_base64_decode_max(const char *b64Text) {
 
     register const char *b64Cursor = b64Text;
     for (; b64ToBits[(uint8_t)*b64Cursor] <= 63; ++b64Cursor);
-    size_t b64Size = b64Cursor - b64Text;
+    size_t b64Size = (size_t)(b64Cursor - b64Text);
 
     // Every 4 b64 chars yield 3 plain bytes => len = 3 * ceil(b64Size / 4)
     return 3 /*bytes*/ * ((b64Size + 4 /*chars*/ - 1) / 4 /*chars*/);
@@ -92,7 +92,7 @@ size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf) {
 
     register const uint8_t *b64Cursor = (const uint8_t *)b64Text;
     for (; b64ToBits[*b64Cursor] <= 63; ++b64Cursor);
-    size_t b64Remaining = b64Cursor - (const uint8_t *)b64Text;
+    size_t b64Remaining = (size_t)(b64Cursor - (const uint8_t *)b64Text);
 
     b64Cursor = (const uint8_t *)b64Text;
     register uint8_t *plainCursor = plainBuf;
@@ -112,7 +112,7 @@ size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf) {
     if (b64Remaining > 3)
         *(plainCursor++) = (uint8_t)(b64ToBits[b64Cursor[2]] << 6 | b64ToBits[b64Cursor[3]]);
 
-    return plainCursor - (uint8_t *)plainBuf;
+    return (size_t)(plainCursor - (uint8_t *)plainBuf);
 }
 
 static const char basis_64[] =
@@ -152,5 +152,5 @@ size_t mpw_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Tex
     }
 
     *b64Cursor = '\0';
-    return b64Cursor - b64Text;
+    return (size_t)(b64Cursor - b64Text);
 }

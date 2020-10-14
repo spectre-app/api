@@ -306,7 +306,7 @@ const MPIdenticon mpw_identicon_encoded(
 
     if (string && sscanf( encoding, "%u:%s", &color, string ) == 2) {
         if (*parser && color)
-            for (int s = 0; s < sizeof( mpw_identicon_leftArms ) / sizeof( *mpw_identicon_leftArms ); ++s) {
+            for (unsigned int s = 0; s < sizeof( mpw_identicon_leftArms ) / sizeof( *mpw_identicon_leftArms ); ++s) {
                 const char *limb = mpw_identicon_leftArms[s];
                 if (strncmp( parser, limb, strlen( limb ) ) == 0) {
                     leftArm = limb;
@@ -315,7 +315,7 @@ const MPIdenticon mpw_identicon_encoded(
                 }
             }
         if (*parser && leftArm)
-            for (int s = 0; s < sizeof( mpw_identicon_bodies ) / sizeof( *mpw_identicon_bodies ); ++s) {
+            for (unsigned int s = 0; s < sizeof( mpw_identicon_bodies ) / sizeof( *mpw_identicon_bodies ); ++s) {
                 const char *limb = mpw_identicon_bodies[s];
                 if (strncmp( parser, limb, strlen( limb ) ) == 0) {
                     body = limb;
@@ -324,7 +324,7 @@ const MPIdenticon mpw_identicon_encoded(
                 }
             }
         if (*parser && body)
-            for (int s = 0; s < sizeof( mpw_identicon_rightArms ) / sizeof( *mpw_identicon_rightArms ); ++s) {
+            for (unsigned int s = 0; s < sizeof( mpw_identicon_rightArms ) / sizeof( *mpw_identicon_rightArms ); ++s) {
                 const char *limb = mpw_identicon_rightArms[s];
                 if (strncmp( parser, limb, strlen( limb ) ) == 0) {
                     rightArm = limb;
@@ -333,7 +333,7 @@ const MPIdenticon mpw_identicon_encoded(
                 }
             }
         if (*parser && rightArm)
-            for (int s = 0; s < sizeof( mpw_identicon_accessories ) / sizeof( *mpw_identicon_accessories ); ++s) {
+            for (unsigned int s = 0; s < sizeof( mpw_identicon_accessories ) / sizeof( *mpw_identicon_accessories ); ++s) {
                 const char *limb = mpw_identicon_accessories[s];
                 if (strncmp( parser, limb, strlen( limb ) ) == 0) {
                     accessory = limb;

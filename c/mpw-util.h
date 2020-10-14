@@ -111,8 +111,8 @@ void mpw_log_ssink(LogLevel level, const char *file, int line, const char *funct
 #define stringify_def(s) stringify(s)
 #endif
 
-#define mpw_default(__default, __value) ({ __typeof__ (__value) _v = __value; _v? _v: __default; })
-#define mpw_default_n(__default, __num) ({ __typeof__ (__num) _n = (__num); !isnan( _n )? (__typeof__ (__default))_n: __default; })
+#define mpw_default(__default, __value) ({ __typeof__ (__value) _v = (__value); _v? _v: (__default); })
+#define mpw_default_num(__default, __num) ({ __typeof__ (__num) _n = (__num); !isnan( _n )? (__typeof__ (__default))_n: (__default); })
 
 
 //// Buffers and memory.

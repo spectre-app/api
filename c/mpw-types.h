@@ -33,14 +33,16 @@ MP_LIBS_END
 
 #ifdef NS_ENUM
 #define mpw_enum(_type, _name) NS_ENUM(_type, _name)
+#elif __clang__ || __has_feature(c_fixed_enum) || __has_feature(objc_fixed_enum) || __has_feature(cxx_fixed_enum)
+#define mpw_enum(_type, _name) enum _name : _type _name; enum _name : _type
 #else
-#define mpw_enum(_type, _name) _type _name; enum
+#define mpw_enum(_type, _name) enum _name _name; enum _name
 #endif
 
 #ifdef NS_OPTIONS
 #define mpw_opts(_type, _name) NS_OPTIONS(_type, _name)
 #else
-#define mpw_opts(_type, _name) _type _name; enum
+#define mpw_opts(_type, _name) _type _name; enum _name
 #endif
 
 //// Types.

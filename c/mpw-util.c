@@ -392,8 +392,10 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
     static const uint8_t iv[AES_BLOCK_SIZE] = { 0 };
 
     // Add PKCS#7 padding
-    uint32_t aesSize = ((uint32_t)*bufSize + AES_BLOCK_SIZE - 1) & -AES_BLOCK_SIZE; // round up to block size.
-    if (encrypt && !(*bufSize % AES_BLOCK_SIZE)) // add pad block if plain text fits block size.
+    uint32_t aesSize = (uint32_t)*bufSize, blockRemainder = aesSize % AES_BLOCK_SIZE;
+    if (blockRemainder) // round up to block size.
+        aesSize += AES_BLOCK_SIZE - blockRemainder;
+    else if (encrypt) // add pad block if plain text fits block size.
         aesSize += AES_BLOCK_SIZE;
     uint8_t *resultBuf = calloc( aesSize, sizeof( uint8_t ) );
     if (!resultBuf)
@@ -599,20 +601,20 @@ const uint8_t *mpw_unhex(const char *hex, size_t *size) {
 size_t mpw_utf8_char_size(const char *utf8String) {
 
     if (!utf8String)
-        return 0;
+        return 0U;
 
     // Legal UTF-8 byte sequences: <http://www.unicode.org/unicode/uni2errata/UTF-8_Corrigendum.html>
     unsigned char utf8Char = (unsigned char)*utf8String;
     if (utf8Char >= 0x00 && utf8Char <= 0x7F)
-        return min( 1, strlen( utf8String ) );
+        return min( 1U, strlen( utf8String ) );
     if (utf8Char >= 0xC2 && utf8Char <= 0xDF)
-        return min( 2, strlen( utf8String ) );
+        return min( 2U, strlen( utf8String ) );
     if (utf8Char >= 0xE0 && utf8Char <= 0xEF)
-        return min( 3, strlen( utf8String ) );
+        return min( 3U, strlen( utf8String ) );
     if (utf8Char >= 0xF0 && utf8Char <= 0xF4)
-        return min( 4, strlen( utf8String ) );
+        return min( 4U, strlen( utf8String ) );
 
-    return 0;
+    return 0U;
 }
 
 size_t mpw_utf8_char_count(const char *utf8String) {

@@ -1154,8 +1154,8 @@ MPMarshalledFile *mpw_marshal_read(
                      || mpw_marshal_data_is_null( file->data, "export", "redacted", NULL );
 
     // Section: "user"
-    info->algorithm = mpw_default_n( MPAlgorithmVersionCurrent, mpw_marshal_data_get_num( file->data, "user", "algorithm", NULL ) );
-    info->avatar = mpw_default_n( 0U, mpw_marshal_data_get_num( file->data, "user", "avatar", NULL ) );
+    info->algorithm = mpw_default_num( MPAlgorithmVersionCurrent, mpw_marshal_data_get_num( file->data, "user", "algorithm", NULL ) );
+    info->avatar = mpw_default_num( 0U, mpw_marshal_data_get_num( file->data, "user", "avatar", NULL ) );
     info->fullName = mpw_strdup( mpw_marshal_data_get_str( file->data, "user", "full_name", NULL ) );
     info->identicon = mpw_identicon_encoded( mpw_marshal_data_get_str( file->data, "user", "identicon", NULL ) );
     info->keyID = mpw_id_str( mpw_marshal_data_get_str( file->data, "user", "key_id", NULL ) );
@@ -1179,37 +1179,40 @@ MPMarshalledUser *mpw_marshal_auth(
         mpw_marshal_error( file, MPMarshalErrorMissing, "No input data." );
         return NULL;
     }
+    const MPMarshalledData *userData = mpw_marshal_data_find( file->data, "user", NULL );
+    if (!userData) {
+        mpw_marshal_error( file, MPMarshalErrorMissing, "Missing user data." );
+        return NULL;
+    }
 
     // Section: "user"
     bool fileRedacted = mpw_marshal_data_get_bool( file->data, "export", "redacted", NULL )
                         || mpw_marshal_data_is_null( file->data, "export", "redacted", NULL );
-    MPAlgorithmVersion algorithm =
-            mpw_default_n( MPAlgorithmVersionCurrent, mpw_marshal_data_get_num( file->data, "user", "algorithm", NULL ) );
+    MPAlgorithmVersion algorithm = mpw_default_num( MPAlgorithmVersionCurrent, mpw_marshal_data_get_num( userData, "algorithm", NULL ) );
     if (algorithm < MPAlgorithmVersionFirst || algorithm > MPAlgorithmVersionLast) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user algorithm: %u", algorithm );
         return NULL;
     }
-    unsigned int avatar = mpw_default_n( 0U, mpw_marshal_data_get_num( file->data, "user", "avatar", NULL ) );
-    const char *fullName = mpw_marshal_data_get_str( file->data, "user", "full_name", NULL );
+    unsigned int avatar = mpw_default_num( 0U, mpw_marshal_data_get_num( userData, "avatar", NULL ) );
+    const char *fullName = mpw_marshal_data_get_str( userData, "full_name", NULL );
     if (!fullName || !strlen( fullName )) {
         mpw_marshal_error( file, MPMarshalErrorMissing, "Missing value for full name." );
         return NULL;
     }
-    MPIdenticon identicon = mpw_identicon_encoded( mpw_marshal_data_get_str( file->data, "user", "identicon", NULL ) );
-    MPKeyID keyID = mpw_id_str( mpw_marshal_data_get_str( file->data, "user", "key_id", NULL ) );
-    MPResultType
-            defaultType = mpw_default_n( MPResultTypeDefaultResult, mpw_marshal_data_get_num( file->data, "user", "default_type", NULL ) );
+    MPIdenticon identicon = mpw_identicon_encoded( mpw_marshal_data_get_str( userData, "identicon", NULL ) );
+    MPKeyID keyID = mpw_id_str( mpw_marshal_data_get_str( userData, "key_id", NULL ) );
+    MPResultType defaultType = mpw_default_num( MPResultTypeDefaultResult, mpw_marshal_data_get_num( userData, "default_type", NULL ) );
     if (!mpw_type_short_name( defaultType )) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user default type: %u", defaultType );
         return NULL;
     }
-    MPResultType loginType = mpw_default_n( MPResultTypeDefaultLogin, mpw_marshal_data_get_num( file->data, "user", "login_type", NULL ) );
+    MPResultType loginType = mpw_default_num( MPResultTypeDefaultLogin, mpw_marshal_data_get_num( userData, "login_type", NULL ) );
     if (!mpw_type_short_name( loginType )) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user login type: %u", loginType );
         return NULL;
     }
-    const char *loginState = mpw_marshal_data_get_str( file->data, "user", "login_name", NULL );
-    const char *str_lastUsed = mpw_marshal_data_get_str( file->data, "user", "last_used", NULL );
+    const char *loginState = mpw_marshal_data_get_str( userData, "login_name", NULL );
+    const char *str_lastUsed = mpw_marshal_data_get_str( userData, "last_used", NULL );
     time_t lastUsed = mpw_timegm( str_lastUsed );
     if (!lastUsed) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user last used: %s", str_lastUsed );
@@ -1263,26 +1266,26 @@ MPMarshalledUser *mpw_marshal_auth(
     }
 
     // Section "services"
-    const MPMarshalledData *services = mpw_marshal_data_find( file->data, "services", NULL );
-    for (size_t s = 0; s < (services? services->children_count: 0); ++s) {
-        const MPMarshalledData *serviceData = &services->children[s];
+    const MPMarshalledData *servicesData = mpw_marshal_data_find( file->data, "services", NULL );
+    for (size_t s = 0; s < (servicesData? servicesData->children_count: 0); ++s) {
+        const MPMarshalledData *serviceData = &servicesData->children[s];
         const char *serviceName = serviceData->obj_key;
 
-        algorithm = mpw_default_n( user->algorithm, mpw_marshal_data_get_num( serviceData, "algorithm", NULL ) );
+        algorithm = mpw_default_num( user->algorithm, mpw_marshal_data_get_num( serviceData, "algorithm", NULL ) );
         if (algorithm < MPAlgorithmVersionFirst || algorithm > MPAlgorithmVersionLast) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service algorithm: %s: %u", serviceName, algorithm );
             mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
-        MPCounterValue serviceKeyCounter = mpw_default_n( MPCounterValueDefault, mpw_marshal_data_get_num( serviceData, "counter", NULL ) );
-        if (serviceKeyCounter < MPCounterValueFirst || serviceKeyCounter > MPCounterValueLast) {
-            mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service result counter: %s: %d", serviceName, serviceKeyCounter );
+        MPCounterValue serviceCounter = mpw_default_num( MPCounterValueDefault, mpw_marshal_data_get_num( serviceData, "counter", NULL ) );
+        if (serviceCounter < MPCounterValueFirst || serviceCounter > MPCounterValueLast) {
+            mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service result counter: %s: %d", serviceName, serviceCounter );
             mpw_free( &masterKey, sizeof( *masterKey ) );
             mpw_marshal_user_free( &user );
             return NULL;
         }
-        MPResultType serviceResultType = mpw_default_n( user->defaultType, mpw_marshal_data_get_num( serviceData, "type", NULL ) );
+        MPResultType serviceResultType = mpw_default_num( user->defaultType, mpw_marshal_data_get_num( serviceData, "type", NULL ) );
         if (!mpw_type_short_name( serviceResultType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service result type: %s: %u", serviceName, serviceResultType );
             mpw_free( &masterKey, sizeof( *masterKey ) );
@@ -1290,7 +1293,7 @@ MPMarshalledUser *mpw_marshal_auth(
             return NULL;
         }
         const char *serviceResultState = mpw_marshal_data_get_str( serviceData, "password", NULL );
-        MPResultType serviceLoginType = mpw_default_n( MPResultTypeNone, mpw_marshal_data_get_num( serviceData, "login_type", NULL ) );
+        MPResultType serviceLoginType = mpw_default_num( MPResultTypeNone, mpw_marshal_data_get_num( serviceData, "login_type", NULL ) );
         if (!mpw_type_short_name( serviceLoginType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service login type: %s: %u", serviceName, serviceLoginType );
             mpw_free( &masterKey, sizeof( *masterKey ) );
@@ -1298,7 +1301,7 @@ MPMarshalledUser *mpw_marshal_auth(
             return NULL;
         }
         const char *serviceLoginState = mpw_marshal_data_get_str( serviceData, "login_name", NULL );
-        unsigned int serviceUses = mpw_default_n( 0U, mpw_marshal_data_get_num( serviceData, "uses", NULL ) );
+        unsigned int serviceUses = mpw_default_num( 0U, mpw_marshal_data_get_num( serviceData, "uses", NULL ) );
         str_lastUsed = mpw_marshal_data_get_str( serviceData, "last_used", NULL );
         time_t serviceLastUsed = mpw_timegm( str_lastUsed );
         if (!serviceLastUsed) {
@@ -1310,7 +1313,7 @@ MPMarshalledUser *mpw_marshal_auth(
 
         const char *serviceURL = mpw_marshal_data_get_str( serviceData, "_ext_mpw", "url", NULL );
 
-        MPMarshalledService *service = mpw_marshal_service( user, serviceName, serviceResultType, serviceKeyCounter, algorithm );
+        MPMarshalledService *service = mpw_marshal_service( user, serviceName, serviceResultType, serviceCounter, algorithm );
         if (!service) {
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate a new service." );
             mpw_free( &masterKey, sizeof( *masterKey ) );
@@ -1352,7 +1355,7 @@ MPMarshalledUser *mpw_marshal_auth(
             const MPMarshalledData *questionData = &questions->children[q];
             MPMarshalledQuestion *question = mpw_marshal_question( service, questionData->obj_key );
             const char *answerState = mpw_marshal_data_get_str( questionData, "answer", NULL );
-            question->type = mpw_default_n( MPResultTypeTemplatePhrase, mpw_marshal_data_get_num( questionData, "type", NULL ) );
+            question->type = mpw_default_num( MPResultTypeTemplatePhrase, mpw_marshal_data_get_num( questionData, "type", NULL ) );
 
             if (!user->redacted) {
                 // Clear Text
