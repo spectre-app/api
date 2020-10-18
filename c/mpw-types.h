@@ -78,6 +78,7 @@ typedef struct {
     /** The algorithm the key was made by & for */
     const MPAlgorithmVersion algorithm;
 } MPMasterKey;
+
 typedef struct {
     /** The cryptographic key */
     const uint8_t bytes[256 / 8]; // HMAC-SHA-256
