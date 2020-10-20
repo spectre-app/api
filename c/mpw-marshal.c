@@ -719,76 +719,35 @@ const char *mpw_marshal_write(
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate data." );
         return NULL;
     }
-    if (!user->fullName || !strlen( user->fullName )) {
-        if (!file_)
-            mpw_marshal_file_free( &file );
-        else
-            mpw_marshal_error( file, MPMarshalErrorMissing, "Missing full name." );
-        return NULL;
-    }
     mpw_marshal_error( file, MPMarshalSuccess, NULL );
 
-    const MPMasterKey *masterKey = NULL;
-    if (user->masterKeyProvider)
-        masterKey = user->masterKeyProvider( user->algorithm, user->fullName );
-
-    // Section: "export"
-    MPMarshalledData *data_export = mpw_marshal_data_get( file->data, "export", NULL );
-    char dateString[21];
-    time_t now = time( NULL );
-    if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &now ) ))
-        mpw_marshal_data_set_str( dateString, data_export, "date", NULL );
-    mpw_marshal_data_set_bool( user->redacted, data_export, "redacted", NULL );
-
-    // Section: "user"
-    const char *loginState = NULL;
-    if (!user->redacted) {
-        // Clear Text
-        mpw_free( &masterKey, sizeof( *masterKey ) );
-        if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( user->algorithm, user->fullName ))) {
+    if (user) {
+        if (!user->fullName || !strlen( user->fullName )) {
             if (!file_)
                 mpw_marshal_file_free( &file );
             else
-                mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
+                mpw_marshal_error( file, MPMarshalErrorMissing, "Missing full name." );
             return NULL;
         }
 
-        loginState = mpw_service_result( masterKey, user->fullName,
-                user->loginType, user->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
-    }
-    else {
-        // Redacted
-        if (user->loginType & MPServiceFeatureExportContent && user->loginState && strlen( user->loginState ))
-            loginState = mpw_strdup( user->loginState );
-    }
+        const MPMasterKey *masterKey = NULL;
+        if (user->masterKeyProvider)
+            masterKey = user->masterKeyProvider( user->algorithm, user->fullName );
 
-    const char *identiconString;
-    MPMarshalledData *data_user = mpw_marshal_data_get( file->data, "user", NULL );
-    mpw_marshal_data_set_num( user->avatar, data_user, "avatar", NULL );
-    mpw_marshal_data_set_str( user->fullName, data_user, "full_name", NULL );
-    mpw_marshal_data_set_str( identiconString = mpw_identicon_encode( user->identicon ), data_user, "identicon", NULL );
-    mpw_marshal_data_set_num( user->algorithm, data_user, "algorithm", NULL );
-    mpw_marshal_data_set_str( user->keyID.hex, data_user, "key_id", NULL );
-    mpw_marshal_data_set_num( user->defaultType, data_user, "default_type", NULL );
-    mpw_marshal_data_set_num( user->loginType, data_user, "login_type", NULL );
-    mpw_marshal_data_set_str( loginState, data_user, "login_name", NULL );
-    if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &user->lastUsed ) ))
-        mpw_marshal_data_set_str( dateString, data_user, "last_used", NULL );
-    mpw_free_strings( &identiconString, &loginState, NULL );
+        // Section: "export"
+        MPMarshalledData *data_export = mpw_marshal_data_get( file->data, "export", NULL );
+        char dateString[21];
+        time_t now = time( NULL );
+        if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &now ) ))
+            mpw_marshal_data_set_str( dateString, data_export, "date", NULL );
+        mpw_marshal_data_set_bool( user->redacted, data_export, "redacted", NULL );
 
-    // Section "services"
-    MPMarshalledData *data_services = mpw_marshal_data_get( file->data, "services", NULL );
-    mpw_marshal_data_keep( data_services, mpw_marshal_data_keep_service_exists, user );
-    for (size_t s = 0; s < user->services_count; ++s) {
-        MPMarshalledService *service = &user->services[s];
-        if (!service->serviceName || !strlen( service->serviceName ))
-            continue;
-
-        const char *resultState = NULL;
+        // Section: "user"
+        const char *loginState = NULL;
         if (!user->redacted) {
             // Clear Text
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( service->algorithm, user->fullName ))) {
+            if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( user->algorithm, user->fullName ))) {
                 if (!file_)
                     mpw_marshal_file_free( &file );
                 else
@@ -796,55 +755,99 @@ const char *mpw_marshal_write(
                 return NULL;
             }
 
-            resultState = mpw_service_result( masterKey, service->serviceName,
-                    service->resultType, service->resultState, service->counter, MPKeyPurposeAuthentication, NULL );
-            loginState = mpw_service_result( masterKey, service->serviceName,
-                    service->loginType, service->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
+            loginState = mpw_service_result( masterKey, user->fullName,
+                    user->loginType, user->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
         }
         else {
             // Redacted
-            if (service->resultType & MPServiceFeatureExportContent && service->resultState && strlen( service->resultState ))
-                resultState = mpw_strdup( service->resultState );
-            if (service->loginType & MPServiceFeatureExportContent && service->loginState && strlen( service->loginState ))
-                loginState = mpw_strdup( service->loginState );
+            if (user->loginType & MPServiceFeatureExportContent && user->loginState && strlen( user->loginState ))
+                loginState = mpw_strdup( user->loginState );
         }
 
-        mpw_marshal_data_set_num( service->counter, data_services, service->serviceName, "counter", NULL );
-        mpw_marshal_data_set_num( service->algorithm, data_services, service->serviceName, "algorithm", NULL );
-        mpw_marshal_data_set_num( service->resultType, data_services, service->serviceName, "type", NULL );
-        mpw_marshal_data_set_str( resultState, data_services, service->serviceName, "password", NULL );
-        mpw_marshal_data_set_num( service->loginType, data_services, service->serviceName, "login_type", NULL );
-        mpw_marshal_data_set_str( loginState, data_services, service->serviceName, "login_name", NULL );
-        mpw_marshal_data_set_num( service->uses, data_services, service->serviceName, "uses", NULL );
-        if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &service->lastUsed ) ))
-            mpw_marshal_data_set_str( dateString, data_services, service->serviceName, "last_used", NULL );
+        const char *identiconString;
+        MPMarshalledData *data_user = mpw_marshal_data_get( file->data, "user", NULL );
+        mpw_marshal_data_set_num( user->avatar, data_user, "avatar", NULL );
+        mpw_marshal_data_set_str( user->fullName, data_user, "full_name", NULL );
+        mpw_marshal_data_set_str( identiconString = mpw_identicon_encode( user->identicon ), data_user, "identicon", NULL );
+        mpw_marshal_data_set_num( user->algorithm, data_user, "algorithm", NULL );
+        mpw_marshal_data_set_str( user->keyID.hex, data_user, "key_id", NULL );
+        mpw_marshal_data_set_num( user->defaultType, data_user, "default_type", NULL );
+        mpw_marshal_data_set_num( user->loginType, data_user, "login_type", NULL );
+        mpw_marshal_data_set_str( loginState, data_user, "login_name", NULL );
+        if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &user->lastUsed ) ))
+            mpw_marshal_data_set_str( dateString, data_user, "last_used", NULL );
+        mpw_free_strings( &identiconString, &loginState, NULL );
 
-        MPMarshalledData *data_questions = mpw_marshal_data_get( file->data, "services", service->serviceName, "questions", NULL );
-        mpw_marshal_data_keep( data_questions, mpw_marshal_data_keep_question_exists, service );
-        for (size_t q = 0; q < service->questions_count; ++q) {
-            MPMarshalledQuestion *question = &service->questions[q];
-            if (!question->keyword)
+        // Section "services"
+        MPMarshalledData *data_services = mpw_marshal_data_get( file->data, "services", NULL );
+        mpw_marshal_data_keep( data_services, mpw_marshal_data_keep_service_exists, user );
+        for (size_t s = 0; s < user->services_count; ++s) {
+            MPMarshalledService *service = &user->services[s];
+            if (!service->serviceName || !strlen( service->serviceName ))
                 continue;
 
-            const char *answer = NULL;
+            const char *resultState = NULL;
             if (!user->redacted) {
                 // Clear Text
-                answer = mpw_service_result( masterKey, service->serviceName,
-                        question->type, question->state, MPCounterValueInitial, MPKeyPurposeRecovery, question->keyword );
+                mpw_free( &masterKey, sizeof( *masterKey ) );
+                if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( service->algorithm, user->fullName ))) {
+                    if (!file_)
+                        mpw_marshal_file_free( &file );
+                    else
+                        mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
+                    return NULL;
+                }
+
+                resultState = mpw_service_result( masterKey, service->serviceName,
+                        service->resultType, service->resultState, service->counter, MPKeyPurposeAuthentication, NULL );
+                loginState = mpw_service_result( masterKey, service->serviceName,
+                        service->loginType, service->loginState, MPCounterValueInitial, MPKeyPurposeIdentification, NULL );
             }
             else {
                 // Redacted
-                if (question->state && strlen( question->state ) && service->resultType & MPServiceFeatureExportContent)
-                    answer = mpw_strdup( question->state );
+                if (service->resultType & MPServiceFeatureExportContent && service->resultState && strlen( service->resultState ))
+                    resultState = mpw_strdup( service->resultState );
+                if (service->loginType & MPServiceFeatureExportContent && service->loginState && strlen( service->loginState ))
+                    loginState = mpw_strdup( service->loginState );
             }
 
-            mpw_marshal_data_set_num( question->type, data_questions, question->keyword, "type", NULL );
-            mpw_marshal_data_set_str( answer, data_questions, question->keyword, "answer", NULL );
-            mpw_free_strings( &answer, NULL );
-        }
+            mpw_marshal_data_set_num( service->counter, data_services, service->serviceName, "counter", NULL );
+            mpw_marshal_data_set_num( service->algorithm, data_services, service->serviceName, "algorithm", NULL );
+            mpw_marshal_data_set_num( service->resultType, data_services, service->serviceName, "type", NULL );
+            mpw_marshal_data_set_str( resultState, data_services, service->serviceName, "password", NULL );
+            mpw_marshal_data_set_num( service->loginType, data_services, service->serviceName, "login_type", NULL );
+            mpw_marshal_data_set_str( loginState, data_services, service->serviceName, "login_name", NULL );
+            mpw_marshal_data_set_num( service->uses, data_services, service->serviceName, "uses", NULL );
+            if (strftime( dateString, sizeof( dateString ), "%FT%TZ", gmtime( &service->lastUsed ) ))
+                mpw_marshal_data_set_str( dateString, data_services, service->serviceName, "last_used", NULL );
 
-        mpw_marshal_data_set_str( service->url, data_services, service->serviceName, "_ext_mpw", "url", NULL );
-        mpw_free_strings( &resultState, &loginState, NULL );
+            MPMarshalledData *data_questions = mpw_marshal_data_get( file->data, "services", service->serviceName, "questions", NULL );
+            mpw_marshal_data_keep( data_questions, mpw_marshal_data_keep_question_exists, service );
+            for (size_t q = 0; q < service->questions_count; ++q) {
+                MPMarshalledQuestion *question = &service->questions[q];
+                if (!question->keyword)
+                    continue;
+
+                const char *answer = NULL;
+                if (!user->redacted) {
+                    // Clear Text
+                    answer = mpw_service_result( masterKey, service->serviceName,
+                            question->type, question->state, MPCounterValueInitial, MPKeyPurposeRecovery, question->keyword );
+                }
+                else {
+                    // Redacted
+                    if (question->state && strlen( question->state ) && service->resultType & MPServiceFeatureExportContent)
+                        answer = mpw_strdup( question->state );
+                }
+
+                mpw_marshal_data_set_num( question->type, data_questions, question->keyword, "type", NULL );
+                mpw_marshal_data_set_str( answer, data_questions, question->keyword, "answer", NULL );
+                mpw_free_strings( &answer, NULL );
+            }
+
+            mpw_marshal_data_set_str( service->url, data_services, service->serviceName, "_ext_mpw", "url", NULL );
+            mpw_free_strings( &resultState, &loginState, NULL );
+        }
     }
 
     const char *out = NULL;
