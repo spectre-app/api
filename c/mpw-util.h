@@ -44,17 +44,21 @@ typedef mpw_enum( int, LogLevel ) {
 };
 extern LogLevel mpw_verbosity;
 
-typedef struct {
+typedef struct MPLogEvent {
     time_t occurrence;
     LogLevel level;
     const char *file;
     int line;
     const char *function;
-    const char *message;
+    /** @return A C-string (allocated), cached in .formatted, of the .args interpolated into the .format message. */
+    const char *(*formatter)(struct MPLogEvent *);
+    const char *formatted;
+    const char *format;
+    va_list args;
 } MPLogEvent;
 
 /** A log sink describes a function that can receive log events. */
-typedef bool (MPLogSink)(const MPLogEvent *event);
+typedef bool (MPLogSink)(MPLogEvent *event);
 
 /** To receive events, sinks need to be registered.  If no sinks are registered, log events are sent to the mpw_log_sink_file sink. */
 bool mpw_log_sink_register(MPLogSink *sink);
@@ -64,10 +68,11 @@ bool mpw_log_sink_unregister(MPLogSink *sink);
 extern MPLogSink mpw_log_sink_file;
 extern FILE *mpw_log_sink_file_target;
 
-/** These functions dispatch log events to the registered sinks. */
-void mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...);
-void mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args);
-void mpw_log_ssink(LogLevel level, const char *file, int line, const char *function, const char *message);
+/** These functions dispatch log events to the registered sinks.
+ * @return false if no sink processed the log event (sinks may reject messages or fail). */
+bool mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...);
+bool mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args);
+bool mpw_log_esink(MPLogEvent *event);
 
 /** The log dispatcher you want to channel log messages into; defaults to mpw_log_sink, enabling the log sink mechanism. */
 #ifndef MPW_LOG
