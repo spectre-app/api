@@ -64,65 +64,79 @@ bool mpw_log_sink_unregister(MPLogSink *sink) {
     return false;
 }
 
-void mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...) {
+bool mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...) {
 
     if (mpw_verbosity < level)
-        return;
+        return false;
 
     va_list args;
     va_start( args, format );
-    mpw_log_vsink( level, file, line, function, format, args );
+    bool sunk = mpw_log_vsink( level, file, line, function, format, args );
     va_end( args );
+
+    return sunk;
 }
 
-void mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args) {
+static const char *mpw_log_formatter(MPLogEvent *event) {
 
-    if (mpw_verbosity < level)
-        return;
+    if (!event->formatted)
+        event->formatted = mpw_vstr( event->format, event->args );
 
-    const char *message = mpw_vstr( format, args );
-    mpw_log_ssink( level, file, line, function, message );
-    mpw_free_string( &message );
+    return event->formatted;
 }
 
-void mpw_log_ssink(LogLevel level, const char *file, int line, const char *function, const char *message) {
+bool mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args) {
 
     if (mpw_verbosity < level)
-        return;
+        return false;
 
-    MPLogEvent record = (MPLogEvent){
+    MPLogEvent event = {
             .occurrence = time( NULL ),
             .level = level,
             .file = file,
             .line = line,
             .function = function,
-            .message = message,
+            .format = format,
+            .args = args,
+            .formatter = &mpw_log_formatter,
     };
+    bool sunk = mpw_log_esink( &event );
+
+    return sunk;
+}
+
+bool mpw_log_esink(MPLogEvent *event) {
+
+    if (mpw_verbosity < event->level)
+        return false;
 
     bool sunk = false;
     for (unsigned int s = 0; s < sinks_count; ++s) {
         MPLogSink *sink = sinks[s];
 
         if (sink)
-            sunk |= sink( &record );
+            sunk |= sink( event );
     }
     if (!sunk)
-        mpw_log_sink_file( &record );
+        sunk = mpw_log_sink_file( event );
 
-    if (record.level <= LogLevelWarning) {
-        /* error breakpoint */;
+    if (event->level <= LogLevelWarning) {
+        (void)event->level/* error breakpoint opportunity */;
     }
-    if (record.level <= LogLevelFatal)
+    mpw_free_string( &event->formatted );
+    if (event->level <= LogLevelFatal)
         abort();
+
+    return sunk;
 }
 
-bool mpw_log_sink_file(const MPLogEvent *record) {
+bool mpw_log_sink_file(MPLogEvent *event) {
 
     if (!mpw_log_sink_file_target)
         mpw_log_sink_file_target = stderr;
 
     if (mpw_verbosity >= LogLevelDebug) {
-        switch (record->level) {
+        switch (event->level) {
             case LogLevelTrace:
                 fprintf( mpw_log_sink_file_target, "[TRC] " );
                 break;
@@ -147,7 +161,7 @@ bool mpw_log_sink_file(const MPLogEvent *record) {
         }
     }
 
-    fprintf( mpw_log_sink_file_target, "%s\n", record->message );
+    fprintf( mpw_log_sink_file_target, "%s\n", event->formatter( event ) );
     return true;
 }
 
