@@ -683,6 +683,9 @@ int mpw_strcasecmp(const char *s1, const char *s2) {
 
 int mpw_strncasecmp(const char *s1, const char *s2, size_t max) {
 
+    if (s1 == s2)
+        return 0;
+
     int cmp = s1 && s2 && max > 0? 0: s1? 1: -1;
     for (; !cmp && max && max-- > 0 && s1 && s2; ++s1, ++s2)
         cmp = tolower( (unsigned char)*s1 ) - tolower( (unsigned char)*s2 );
