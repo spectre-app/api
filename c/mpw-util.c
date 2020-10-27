@@ -97,6 +97,7 @@ bool mpw_log_vsink(LogLevel level, const char *file, int line, const char *funct
             .line = line,
             .function = function,
             .format = format,
+            .args = args,
             .formatter = &mpw_log_formatter,
     };
     bool sunk = mpw_log_esink( &event );
