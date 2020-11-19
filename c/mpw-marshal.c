@@ -1152,7 +1152,7 @@ MPMarshalledFile *mpw_marshal_read(
     }
 
     // Section: "export"
-    info->exportDate = mpw_timegm( mpw_strdup( mpw_marshal_data_get_str( file->data, "export", "date", NULL ) ) );
+    info->exportDate = mpw_timegm( mpw_marshal_data_get_str( file->data, "export", "date", NULL ) );
     info->redacted = mpw_marshal_data_get_bool( file->data, "export", "redacted", NULL )
                      || mpw_marshal_data_is_null( file->data, "export", "redacted", NULL );
 
