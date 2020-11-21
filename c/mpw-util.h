@@ -28,25 +28,25 @@ MP_LIBS_BEGIN
 MP_LIBS_END
 
 //// Logging.
-typedef mpw_enum( int, LogLevel ) {
+typedef mpw_enum( int, MPLogLevel ) {
     /** Logging internal state. */
-            LogLevelTrace = 3,
+            MPLogLevelTrace = 3,
     /** Logging state and events interesting when investigating issues. */
-            LogLevelDebug = 2,
+            MPLogLevelDebug = 2,
     /** User messages. */
-            LogLevelInfo = 1,
+            MPLogLevelInfo = 1,
     /** Recoverable issues and user suggestions. */
-            LogLevelWarning = 0,
+            MPLogLevelWarning = 0,
     /** Unrecoverable issues. */
-            LogLevelError = -1,
+            MPLogLevelError = -1,
     /** Issues that lead to abortion. */
-            LogLevelFatal = -2,
+            MPLogLevelFatal = -2,
 };
-extern LogLevel mpw_verbosity;
+extern MPLogLevel mpw_verbosity;
 
 typedef struct MPLogEvent {
     time_t occurrence;
-    LogLevel level;
+    MPLogLevel level;
     const char *file;
     int line;
     const char *function;
@@ -70,8 +70,8 @@ extern FILE *mpw_log_sink_file_target;
 
 /** These functions dispatch log events to the registered sinks.
  * @return false if no sink processed the log event (sinks may reject messages or fail). */
-bool mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...);
-bool mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args);
+bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *function, const char *format, ...);
+bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list args);
 bool mpw_log_esink(MPLogEvent *event);
 
 /** The log dispatcher you want to channel log messages into; defaults to mpw_log_sink, enabling the log sink mechanism. */
@@ -80,12 +80,12 @@ bool mpw_log_esink(MPLogEvent *event);
 #endif
 
 #ifndef trc
-#define trc(format, ...) MPW_LOG( LogLevelTrace, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define dbg(format, ...) MPW_LOG( LogLevelDebug, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define inf(format, ...) MPW_LOG( LogLevelInfo, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define wrn(format, ...) MPW_LOG( LogLevelWarning, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define err(format, ...) MPW_LOG( LogLevelError, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define ftl(format, ...) MPW_LOG( LogLevelFatal, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define trc(format, ...) MPW_LOG( MPLogLevelTrace, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define dbg(format, ...) MPW_LOG( MPLogLevelDebug, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define inf(format, ...) MPW_LOG( MPLogLevelInfo, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define wrn(format, ...) MPW_LOG( MPLogLevelWarning, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define err(format, ...) MPW_LOG( MPLogLevelError, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define ftl(format, ...) MPW_LOG( MPLogLevelFatal, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
 #endif
 
 
