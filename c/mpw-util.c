@@ -35,7 +35,7 @@ MP_LIBS_BEGIN
 #include "aes.h"
 MP_LIBS_END
 
-LogLevel mpw_verbosity = LogLevelInfo;
+MPLogLevel mpw_verbosity = MPLogLevelInfo;
 FILE *mpw_log_sink_file_target = NULL;
 
 static MPLogSink **sinks;
@@ -64,7 +64,7 @@ bool mpw_log_sink_unregister(MPLogSink *sink) {
     return false;
 }
 
-bool mpw_log_sink(LogLevel level, const char *file, int line, const char *function, const char *format, ...) {
+bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *function, const char *format, ...) {
 
     if (mpw_verbosity < level)
         return false;
@@ -85,7 +85,7 @@ static const char *mpw_log_formatter(MPLogEvent *event) {
     return event->formatted;
 }
 
-bool mpw_log_vsink(LogLevel level, const char *file, int line, const char *function, const char *format, va_list args) {
+bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list args) {
 
     if (mpw_verbosity < level)
         return false;
@@ -120,11 +120,11 @@ bool mpw_log_esink(MPLogEvent *event) {
     if (!sunk)
         sunk = mpw_log_sink_file( event );
 
-    if (event->level <= LogLevelWarning) {
+    if (event->level <= MPLogLevelWarning) {
         (void)event->level/* error breakpoint opportunity */;
     }
     mpw_free_string( &event->formatted );
-    if (event->level <= LogLevelFatal)
+    if (event->level <= MPLogLevelFatal)
         abort();
 
     return sunk;
@@ -135,24 +135,24 @@ bool mpw_log_sink_file(MPLogEvent *event) {
     if (!mpw_log_sink_file_target)
         mpw_log_sink_file_target = stderr;
 
-    if (mpw_verbosity >= LogLevelDebug) {
+    if (mpw_verbosity >= MPLogLevelDebug) {
         switch (event->level) {
-            case LogLevelTrace:
+            case MPLogLevelTrace:
                 fprintf( mpw_log_sink_file_target, "[TRC] " );
                 break;
-            case LogLevelDebug:
+            case MPLogLevelDebug:
                 fprintf( mpw_log_sink_file_target, "[DBG] " );
                 break;
-            case LogLevelInfo:
+            case MPLogLevelInfo:
                 fprintf( mpw_log_sink_file_target, "[INF] " );
                 break;
-            case LogLevelWarning:
+            case MPLogLevelWarning:
                 fprintf( mpw_log_sink_file_target, "[WRN] " );
                 break;
-            case LogLevelError:
+            case MPLogLevelError:
                 fprintf( mpw_log_sink_file_target, "[ERR] " );
                 break;
-            case LogLevelFatal:
+            case MPLogLevelFatal:
                 fprintf( mpw_log_sink_file_target, "[FTL] " );
                 break;
             default:

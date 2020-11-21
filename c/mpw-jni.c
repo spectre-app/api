@@ -22,20 +22,20 @@ bool mpw_log_sink_jni(const MPLogEvent *record) {
         jmethodID method = NULL;
         jclass cLogger = (*env)->GetObjectClass( env, logger );
         switch (record->level) {
-            case LogLevelTrace:
+            case MPLogLevelTrace:
                 method = (*env)->GetMethodID( env, cLogger, "trace", "(Ljava/lang/String;)V" );
                 break;
-            case LogLevelDebug:
+            case MPLogLevelDebug:
                 method = (*env)->GetMethodID( env, cLogger, "debug", "(Ljava/lang/String;)V" );
                 break;
-            case LogLevelInfo:
+            case MPLogLevelInfo:
                 method = (*env)->GetMethodID( env, cLogger, "info", "(Ljava/lang/String;)V" );
                 break;
-            case LogLevelWarning:
+            case MPLogLevelWarning:
                 method = (*env)->GetMethodID( env, cLogger, "warn", "(Ljava/lang/String;)V" );
                 break;
-            case LogLevelError:
-            case LogLevelFatal:
+            case MPLogLevelError:
+            case MPLogLevelFatal:
                 method = (*env)->GetMethodID( env, cLogger, "error", "(Ljava/lang/String;)V" );
                 break;
         }
@@ -73,17 +73,17 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 
         jclass cLogger = (*env)->GetObjectClass( env, logger );
         if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isTraceEnabled", "()Z" ) ))
-            mpw_verbosity = LogLevelTrace;
+            mpw_verbosity = MPLogLevelTrace;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isDebugEnabled", "()Z" ) ))
-            mpw_verbosity = LogLevelDebug;
+            mpw_verbosity = MPLogLevelDebug;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isInfoEnabled", "()Z" ) ))
-            mpw_verbosity = LogLevelInfo;
+            mpw_verbosity = MPLogLevelInfo;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isWarnEnabled", "()Z" ) ))
-            mpw_verbosity = LogLevelWarning;
+            mpw_verbosity = MPLogLevelWarning;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isErrorEnabled", "()Z" ) ))
-            mpw_verbosity = LogLevelError;
+            mpw_verbosity = MPLogLevelError;
         else
-            mpw_verbosity = LogLevelFatal;
+            mpw_verbosity = MPLogLevelFatal;
 
         mpw_log_sink_register( &mpw_log_sink_jni );
     } while (false);
