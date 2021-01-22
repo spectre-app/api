@@ -48,11 +48,11 @@ MP_LIBS_END
 //// Types.
 
 typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
-    /** V0 did math with chars whose signedness was platform-dependent. */
+    /** V0 incorrectly performed host-endian math with bytes translated into 16-bit network-endian. */
     MPAlgorithmVersionV0,
-    /** V1 miscounted the byte-size of multi-byte service names. */
+    /** V1 incorrectly sized service name fields by character count rather than byte count. */
     MPAlgorithmVersionV1,
-    /** V2 miscounted the byte-size of multi-byte user names. */
+    /** V2 incorrectly sized user name fields by character count rather than byte count. */
     MPAlgorithmVersionV2,
     /** V3 is the current version. */
     MPAlgorithmVersionV3,
