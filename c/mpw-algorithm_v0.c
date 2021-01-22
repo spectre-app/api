@@ -136,7 +136,7 @@ bool mpw_service_key_v0(
 const char *mpw_service_template_password_v0(
         const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
-    const char *_serviceKey = (const char *)serviceKey;
+    const char *_serviceKey = (const char *)serviceKey->bytes;
 
     // Determine the template.
     uint16_t seedByte;
@@ -145,7 +145,7 @@ const char *mpw_service_template_password_v0(
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
-    if (strlen( template ) > sizeof( *serviceKey )) {
+    if (strlen( template ) > sizeof( serviceKey->bytes )) {
         err( "Template too long for password seed: %zu", strlen( template ) );
         return NULL;
     }

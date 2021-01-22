@@ -51,7 +51,7 @@ const char *mpw_service_template_password_v1(
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
-    if (strlen( template ) > sizeof( *serviceKey )) {
+    if (strlen( template ) > sizeof( serviceKey->bytes )) {
         err( "Template too long for password seed: %zu", strlen( template ) );
         return NULL;
     }
