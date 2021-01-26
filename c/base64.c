@@ -112,7 +112,7 @@ size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf) {
     if (b64Remaining > 3)
         *(plainCursor++) = (uint8_t)(b64ToBits[b64Cursor[2]] << 6 | b64ToBits[b64Cursor[3]]);
 
-    return (size_t)(plainCursor - (uint8_t *)plainBuf);
+    return (size_t)(plainCursor - plainBuf);
 }
 
 static const char basis_64[] =

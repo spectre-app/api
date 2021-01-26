@@ -46,7 +46,7 @@ bool mpw_service_key_v2(
 
     // OTP counter value.
     if (keyCounter == MPCounterValueTOTP)
-        keyCounter = ((uint32_t)time( NULL ) / MP_otp_window) * MP_otp_window;
+        keyCounter = ((MPCounterValue)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the service seed.
     trc( "serviceSalt: keyScope=%s | #serviceName=%s | serviceName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",

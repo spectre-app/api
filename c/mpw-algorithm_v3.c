@@ -67,8 +67,8 @@ bool mpw_master_key_v3(
 }
 
 bool mpw_service_key_v3(
-        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName, MPCounterValue keyCounter,
-        MPKeyPurpose keyPurpose, const char *keyContext) {
+        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName,
+        MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
 
     return mpw_service_key_v2( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
 }

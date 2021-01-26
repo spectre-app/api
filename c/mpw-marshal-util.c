@@ -123,11 +123,11 @@ bool mpw_get_json_boolean(
     return json_object_get_boolean( json_value ) == true;
 }
 
-static bool mpw_marshal_data_keep_keyed(MPMarshalledData *child, void *args) {
+static bool mpw_marshal_data_keep_keyed(MPMarshalledData *child, __unused void *args) {
     return child->obj_key != NULL;
 }
 
-static bool mpw_marshal_data_keep_unkeyed(MPMarshalledData *child, void *args) {
+static bool mpw_marshal_data_keep_unkeyed(MPMarshalledData *child, __unused void *args) {
     return child->obj_key == NULL;
 }
 

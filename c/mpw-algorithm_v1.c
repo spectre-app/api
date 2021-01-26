@@ -43,7 +43,7 @@ bool mpw_service_key_v1(
 }
 
 const char *mpw_service_template_password_v1(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+        __unused const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, __unused const char *resultParam) {
 
     // Determine the template.
     uint8_t seedByte = serviceKey->bytes[0];

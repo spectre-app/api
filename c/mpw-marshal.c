@@ -547,7 +547,7 @@ void mpw_marshal_data_keep(
 }
 
 bool mpw_marshal_data_keep_none(
-        MPMarshalledData *child, void *args) {
+        __unused MPMarshalledData *child, __unused void *args) {
 
     return false;
 }

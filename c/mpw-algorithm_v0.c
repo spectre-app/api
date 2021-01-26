@@ -89,15 +89,15 @@ bool mpw_master_key_v0(
 }
 
 bool mpw_service_key_v0(
-        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName, MPCounterValue keyCounter,
-        MPKeyPurpose keyPurpose, const char *keyContext) {
+        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName,
+        MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
 
     const char *keyScope = mpw_purpose_scope( keyPurpose );
     trc( "keyScope: %s", keyScope );
 
     // OTP counter value.
     if (keyCounter == MPCounterValueTOTP)
-        keyCounter = ((uint32_t)time( NULL ) / MP_otp_window) * MP_otp_window;
+        keyCounter = ((MPCounterValue)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the service seed.
     trc( "serviceSalt: keyScope=%s | #serviceName=%s | serviceName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
@@ -134,7 +134,7 @@ bool mpw_service_key_v0(
 }
 
 const char *mpw_service_template_password_v0(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+        __unused const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, __unused const char *resultParam) {
 
     const char *_serviceKey = (const char *)serviceKey->bytes;
 
@@ -164,7 +164,7 @@ const char *mpw_service_template_password_v0(
 }
 
 const char *mpw_service_crypted_password_v0(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText) {
+        const MPMasterKey *masterKey, __unused const MPServiceKey *serviceKey, __unused MPResultType resultType, const char *cipherText) {
 
     if (!cipherText) {
         err( "Missing encrypted state." );
@@ -206,7 +206,7 @@ const char *mpw_service_crypted_password_v0(
 }
 
 const char *mpw_service_derived_password_v0(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+        __unused const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
 
     switch (resultType) {
         case MPResultTypeDeriveKey: {
@@ -250,7 +250,7 @@ const char *mpw_service_derived_password_v0(
 }
 
 const char *mpw_service_state_v0(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *plainText) {
+        const MPMasterKey *masterKey, __unused const MPServiceKey *serviceKey, __unused MPResultType resultType, const char *plainText) {
 
     // Encrypt
     char *hex = NULL;
