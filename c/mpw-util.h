@@ -54,7 +54,7 @@ typedef struct MPLogEvent {
     const char *(*formatter)(struct MPLogEvent *);
     const char *formatted;
     const char *format;
-    va_list args;
+    const va_list *args;
 } MPLogEvent;
 
 /** A log sink describes a function that can receive log events. */
@@ -71,7 +71,7 @@ extern FILE *mpw_log_sink_file_target;
 /** These functions dispatch log events to the registered sinks.
  * @return false if no sink processed the log event (sinks may reject messages or fail). */
 bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *function, const char *format, ...);
-bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list args);
+bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args);
 bool mpw_log_esink(MPLogEvent *event);
 
 /** The log dispatcher you want to channel log messages into; defaults to mpw_log_sink, enabling the log sink mechanism. */

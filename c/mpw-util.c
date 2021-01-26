@@ -71,7 +71,7 @@ bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *func
 
     va_list args;
     va_start( args, format );
-    bool sunk = mpw_log_vsink( level, file, line, function, format, args );
+    bool sunk = mpw_log_vsink( level, file, line, function, format, &args );
     va_end( args );
 
     return sunk;
@@ -79,13 +79,17 @@ bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *func
 
 static const char *mpw_log_formatter(MPLogEvent *event) {
 
-    if (!event->formatted)
-        event->formatted = mpw_vstr( event->format, event->args );
+    if (!event->formatted) {
+        va_list args;
+        va_copy( args, *(va_list *)event->args );
+        event->formatted = mpw_vstr( event->format, args );
+        va_end( args );
+    }
 
     return event->formatted;
 }
 
-bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list args) {
+bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args) {
 
     if (mpw_verbosity < level)
         return false;
@@ -550,10 +554,10 @@ const char *mpw_vstr(const char *format, va_list args) {
     size_t size = 0;
 
     while (true) {
-        va_list args_copy;
-        va_copy( args_copy, args );
-        size_t chars = (size_t)vsnprintf( str, size, format, args_copy );
-        va_end( args_copy );
+        va_list _args;
+        va_copy( _args, args );
+        size_t chars = (size_t)vsnprintf( str, size, format, _args );
+        va_end( _args );
 
         if (chars < 0)
             break;
