@@ -115,14 +115,16 @@ bool mpw_log_esink(MPLogEvent *event) {
         return false;
 
     bool sunk = false;
-    for (unsigned int s = 0; s < sinks_count; ++s) {
-        MPLogSink *sink = sinks[s];
-
-        if (sink)
-            sunk |= sink( event );
-    }
-    if (!sunk)
+    if (!sinks_count)
         sunk = mpw_log_sink_file( event );
+
+    else
+        for (unsigned int s = 0; s < sinks_count; ++s) {
+            MPLogSink *sink = sinks[s];
+
+            if (sink)
+                sunk |= sink( event );
+        }
 
     if (event->level <= MPLogLevelWarning) {
         (void)event->level/* error breakpoint opportunity */;
@@ -219,7 +221,7 @@ const char **mpw_strings(size_t *count, const char *strings, ...) {
     return array;
 }
 
-bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
+bool mpw_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
 
     if (!buffer || !bufferSize || !pushBuffer || !pushSize)
         return false;
@@ -239,9 +241,16 @@ bool mpw_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffe
     return true;
 }
 
-bool mpw_push_string(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
+bool mpw_buf_push_uint32(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) {
 
-    return pushString && mpw_push_buf( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
+    uint8_t pushBuf[4 /* 32 / 8 */];
+    mpw_uint32( pushInt, pushBuf );
+    return mpw_buf_push( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
+}
+
+bool mpw_buf_push_str(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
+
+    return pushString && mpw_buf_push( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
 }
 
 bool mpw_string_push(char **string, const char *pushString) {
@@ -250,7 +259,7 @@ bool mpw_string_push(char **string, const char *pushString) {
         return false;
 
     // We overwrite an existing trailing NUL byte.
-    return pushString && mpw_push_buf( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
+    return pushString && mpw_buf_push( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
             (const uint8_t *)pushString, strlen( pushString ) + 1 );
 }
 
@@ -264,13 +273,6 @@ bool mpw_string_pushf(char **string, const char *pushFormat, ...) {
     va_end( args );
 
     return success;
-}
-
-bool mpw_push_int(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) {
-
-    uint8_t pushBuf[4 /* 32 / 8 */];
-    mpw_uint32( pushInt, pushBuf );
-    return mpw_push_buf( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
 }
 
 bool __mpw_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
@@ -481,59 +483,6 @@ const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, 
     return mpw_strdup( mpw_str( "%0*d", digits, otp ) );
 }
 #endif
-
-bool mpw_id_valid(const MPKeyID *id) {
-
-    return id && strlen( id->hex ) + 1 == sizeof( id->hex );
-}
-
-bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
-
-    if (!id1 || !id2)
-        return !id1 && !id2;
-
-    return memcmp( id1->bytes, id2->bytes, sizeof( id1->bytes ) ) == OK;
-}
-
-const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size) {
-
-    MPKeyID keyID = MPNoKeyID;
-
-    if (!buf)
-        return keyID;
-
-#if MPW_CPERCIVA
-    SHA256_Buf( buf, size, keyID.bytes );
-#elif MPW_SODIUM
-    crypto_hash_sha256( keyID.bytes, buf, size );
-#else
-#error No crypto support for mpw_id_buf.
-#endif
-
-    size_t hexSize = sizeof( keyID.hex );
-    if (mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexSize ) != keyID.hex)
-        err( "KeyID string pointer mismatch." );
-
-    return keyID;
-}
-
-const MPKeyID mpw_id_str(const char hex[static 65]) {
-
-    MPKeyID keyID = MPNoKeyID;
-
-    size_t hexSize = 0;
-    const uint8_t *hexBytes = mpw_unhex( hex, &hexSize );
-    if (hexSize != sizeof( keyID.bytes ))
-        wrn( "Not a valid key ID: %s", hex );
-
-    else {
-        memcpy( keyID.bytes, hexBytes, sizeof( keyID.bytes ) );
-        mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &((size_t){ sizeof( keyID.hex ) }) );
-    }
-
-    mpw_free( &hexBytes, hexSize );
-    return keyID;
-}
 
 const char *mpw_str(const char *format, ...) {
 

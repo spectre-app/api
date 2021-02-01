@@ -41,9 +41,9 @@ bool mpw_master_key_v3(
             keyScope, mpw_hex_l( (uint32_t)strlen( fullName ), (char[9]){ 0 } ), fullName );
     size_t masterKeySaltSize = 0;
     uint8_t *masterKeySalt = NULL;
-    if (!(mpw_push_string( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
-          mpw_push_int( &masterKeySalt, &masterKeySaltSize, (uint32_t)strlen( fullName ) ) &&
-          mpw_push_string( &masterKeySalt, &masterKeySaltSize, fullName )) || !masterKeySalt) {
+    if (!(mpw_buf_push( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
+          mpw_buf_push( &masterKeySalt, &masterKeySaltSize, (uint32_t)strlen( fullName ) ) &&
+          mpw_buf_push( &masterKeySalt, &masterKeySaltSize, fullName )) || !masterKeySalt) {
         mpw_free( &masterKeySalt, masterKeySaltSize );
         err( "Could not allocate master key salt: %s", strerror( errno ) );
         return false;

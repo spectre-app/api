@@ -42,8 +42,8 @@ bool mpw_get_bool(
         const char *in);
 /** Convert an RFC 3339 time string into epoch time.
  * @return ERR if the string could not be parsed. */
-time_t mpw_timegm(
-        const char *time);
+time_t mpw_get_timegm(
+        const char *in);
 
 
 /// mpw.

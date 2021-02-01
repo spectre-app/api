@@ -22,6 +22,13 @@
 MP_LIBS_BEGIN
 #include <string.h>
 #include <ctype.h>
+
+#if MPW_CPERCIVA
+#include <scrypt/crypto_scrypt.h>
+#include <scrypt/sha256.h>
+#elif MPW_SODIUM
+#include "sodium.h"
+#endif
 MP_LIBS_END
 
 const MPKeyID MPNoKeyID = { .hex = "" };
@@ -33,6 +40,59 @@ const MPIdenticon MPIdenticonUnset = {
         .accessory = "",
         .color = MPIdenticonColorUnset,
 };
+
+bool mpw_id_valid(const MPKeyID *id) {
+
+    return id && strlen( id->hex ) + 1 == sizeof( id->hex );
+}
+
+bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2) {
+
+    if (!id1 || !id2)
+        return !id1 && !id2;
+
+    return memcmp( id1->bytes, id2->bytes, sizeof( id1->bytes ) ) == OK;
+}
+
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size) {
+
+    MPKeyID keyID = MPNoKeyID;
+
+    if (!buf)
+        return keyID;
+
+#if MPW_CPERCIVA
+    SHA256_Buf( buf, size, keyID.bytes );
+#elif MPW_SODIUM
+    crypto_hash_sha256( keyID.bytes, buf, size );
+#else
+#error No crypto support for mpw_id_buf.
+#endif
+
+    size_t hexSize = sizeof( keyID.hex );
+    if (mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexSize ) != keyID.hex)
+        err( "KeyID string pointer mismatch." );
+
+    return keyID;
+}
+
+const MPKeyID mpw_id_str(const char hex[static 65]) {
+
+    MPKeyID keyID = MPNoKeyID;
+
+    size_t hexSize = 0;
+    const uint8_t *hexBytes = mpw_unhex( hex, &hexSize );
+    if (hexSize != sizeof( keyID.bytes ))
+        wrn( "Not a valid key ID: %s", hex );
+
+    else {
+        memcpy( keyID.bytes, hexBytes, sizeof( keyID.bytes ) );
+        mpw_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &((size_t){ sizeof( keyID.hex ) }) );
+    }
+
+    mpw_free( &hexBytes, hexSize );
+    return keyID;
+}
 
 const MPResultType mpw_type_named(const char *typeName) {
 

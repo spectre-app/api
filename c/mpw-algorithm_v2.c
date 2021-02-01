@@ -54,13 +54,13 @@ bool mpw_service_key_v2(
             keyContext? mpw_hex_l( (uint32_t)strlen( keyContext ), (char[9]){ 0 } ): NULL, keyContext );
     size_t serviceSaltSize = 0;
     uint8_t *serviceSalt = NULL;
-    if (!(mpw_push_string( &serviceSalt, &serviceSaltSize, keyScope ) &&
-          mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( serviceName ) ) &&
-          mpw_push_string( &serviceSalt, &serviceSaltSize, serviceName ) &&
-          mpw_push_int( &serviceSalt, &serviceSaltSize, keyCounter ) &&
+    if (!(mpw_buf_push( &serviceSalt, &serviceSaltSize, keyScope ) &&
+          mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( serviceName ) ) &&
+          mpw_buf_push( &serviceSalt, &serviceSaltSize, serviceName ) &&
+          mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)keyCounter ) &&
           (!keyContext? true:
-           mpw_push_int( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( keyContext ) ) &&
-           mpw_push_string( &serviceSalt, &serviceSaltSize, keyContext ))) || !serviceSalt) {
+           mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( keyContext ) ) &&
+           mpw_buf_push( &serviceSalt, &serviceSaltSize, keyContext ))) || !serviceSalt) {
         err( "Could not allocate service salt: %s", strerror( errno ) );
         return false;
     }

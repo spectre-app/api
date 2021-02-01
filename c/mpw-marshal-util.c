@@ -43,12 +43,12 @@ bool mpw_get_bool(const char *in) {
     return in && (in[0] == 'y' || in[0] == 't' || strtol( in, NULL, 10 ) > 0);
 }
 
-time_t mpw_timegm(const char *time) {
+time_t mpw_get_timegm(const char *in) {
 
     // TODO: Support for parsing non-UTC time strings
-    // Parse time as a UTC timestamp, into a tm.
+    // Parse as a UTC timestamp, into a tm.
     struct tm tm = { .tm_isdst = -1 };
-    if (time && sscanf( time, "%4d-%2d-%2dT%2d:%2d:%2dZ",
+    if (in && sscanf( in, "%4d-%2d-%2dT%2d:%2d:%2dZ",
             &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
             &tm.tm_hour, &tm.tm_min, &tm.tm_sec ) == 6) {
         tm.tm_year -= 1900; // tm_year 0 = rfc3339 year  1900
@@ -66,13 +66,16 @@ time_t mpw_timegm(const char *time) {
 bool mpw_update_master_key(const MPMasterKey **masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
         const char *fullName, const char *masterPassword) {
 
-    if (masterKey && (!*masterKey || *masterKeyAlgorithm != targetKeyAlgorithm)) {
+    if (!masterKey || !masterKeyAlgorithm)
+        return false;
+
+    if (!*masterKey || *masterKeyAlgorithm != targetKeyAlgorithm) {
         mpw_free( masterKey, sizeof( **masterKey ) );
         *masterKeyAlgorithm = targetKeyAlgorithm;
         *masterKey = mpw_master_key( fullName, masterPassword, *masterKeyAlgorithm );
     }
 
-    return masterKey && *masterKey != NULL;
+    return *masterKey != NULL;
 }
 
 #if MPW_JSON
@@ -123,11 +126,11 @@ bool mpw_get_json_boolean(
     return json_object_get_boolean( json_value ) == true;
 }
 
-static bool mpw_marshal_data_keep_keyed(MPMarshalledData *child, __unused void *args) {
+static bool mpw_marshal_data_filter_keyed(MPMarshalledData *child, __unused void *args) {
     return child->obj_key != NULL;
 }
 
-static bool mpw_marshal_data_keep_unkeyed(MPMarshalledData *child, __unused void *args) {
+static bool mpw_marshal_data_filter_unkeyed(MPMarshalledData *child, __unused void *args) {
     return child->obj_key == NULL;
 }
 
@@ -160,11 +163,11 @@ void mpw_set_json_data(
 
     // Clean up children
     if (type != json_type_object && type != json_type_array) {
-        mpw_marshal_data_keep( data, mpw_marshal_data_keep_none, NULL );
+        mpw_marshal_data_filter( data, mpw_marshal_data_filter_empty, NULL );
     } else if (type == json_type_array) {
-        mpw_marshal_data_keep( data, mpw_marshal_data_keep_unkeyed, NULL );
+        mpw_marshal_data_filter( data, mpw_marshal_data_filter_unkeyed, NULL );
     } else /* type == json_type_object */ {
-        mpw_marshal_data_keep( data, mpw_marshal_data_keep_keyed, NULL );
+        mpw_marshal_data_filter( data, mpw_marshal_data_filter_keyed, NULL );
     }
 
     // Object

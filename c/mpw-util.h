@@ -28,6 +28,37 @@ MP_LIBS_BEGIN
 MP_LIBS_END
 
 //// Logging.
+///
+/// mpw's log mechanism uses a layered approach:
+/// 1. trc/dbg/inf/wrn/err/ftl macros initiate a log event.
+///    They record metadata such as severity, source code and time. Events are recorded as a static message and a set of data arguments.
+///    The log message should be a static printf(3)-style format string with compatible arguments.
+/// 2. The macros are handled by the MPW_LOG define, which defaults to mpw_log_sink.
+///    It should reference a symbol with the signature:
+///    (bool) (MPLogLevel level, const char *file, int line, const char *function, const char *format, ... args)
+/// 3. mpw_verbosity determines the severity threshold for log processing; any messages above its threshold are discarded.
+///    This avoids triggering the log mechanism for events which are not considered interesting at the time.
+/// 4. The mpw_log_sink implementation consumes the log event through mpw's log sink mechanism.
+///    The sink mechanism aims to make log messages available to any interested party.
+///    Only if there are no interested parties registered, log events will be sunk into mpw_log_sink_file.
+///    The return value can be used to check if the event was consumed by any sink.
+/// 5. MPLogEvent values are created by mpw_log_sink to host the log event data for relaying into log sinks.
+///    All values come directly from the log event macros, with two exceptions:
+///    .formatter is a function capable of merging the message format and data arguments into a complete log message.
+///    .formatted is a heap allocated string representing the completely merged log message.
+///    mpw_log_esink can be used to introduce events into the system which do not originate from the macros.
+///    These events need to at a minimum provide a .formatter to ensure argument data can be merged into the format message.
+/// 6. mpw_log_sink_register records an MPLogSink as interested in receiving subsequent log events.
+///    Any events dispatched into the mpw_log_esink mechanism hence forth will be relayed into the newly registered log sink.
+///    mpw_log_sink_unregister should be used when a sink is no longer interested in consuming log events.
+/// 7. An MPLogSink consumes MPLogEvent values in whatever way it sees fit.
+///    If a sink is interested in a complete formatted message, it should use .formatted, if available, or .formatter
+///    to obtain the message (and then store it in .formatted for future sinks).
+///    If for whatever reason the sink did not act on the message, it should return false.
+/// 8. The default sink, mpw_log_sink_file, consumes log events by writing them to the mpw_log_sink_file_target FILE.
+///    A log event's complete message is resolved through its .formatter, prefixed with its severity and terminated by a newline.
+///    The default mpw_log_sink_file_target is stderr, yielding a default behaviour that writes log events to the system's standard error.
+
 typedef mpw_enum( int, MPLogLevel ) {
     /** Logging internal state. */
             MPLogLevelTrace = 3,
@@ -44,6 +75,7 @@ typedef mpw_enum( int, MPLogLevel ) {
 };
 extern MPLogLevel mpw_verbosity;
 
+/** A log event describes a message emitted through the log subsystem. */
 typedef struct MPLogEvent {
     time_t occurrence;
     MPLogLevel level;
@@ -60,13 +92,13 @@ typedef struct MPLogEvent {
 /** A log sink describes a function that can receive log events. */
 typedef bool (MPLogSink)(MPLogEvent *event);
 
+/** mpw_log_sink_file is a sink that writes log messages to the mpw_log_sink_file_target, which defaults to stderr. */
+extern MPLogSink mpw_log_sink_file;
+extern FILE *mpw_log_sink_file_target;
+
 /** To receive events, sinks need to be registered.  If no sinks are registered, log events are sent to the mpw_log_sink_file sink. */
 bool mpw_log_sink_register(MPLogSink *sink);
 bool mpw_log_sink_unregister(MPLogSink *sink);
-
-/** mpw_log_sink_file is a sink that writes log messages to the mpw_log_sink_file, which defaults to stderr. */
-extern MPLogSink mpw_log_sink_file;
-extern FILE *mpw_log_sink_file_target;
 
 /** These functions dispatch log events to the registered sinks.
  * @return false if no sink processed the log event (sinks may reject messages or fail). */
@@ -79,6 +111,7 @@ bool mpw_log_esink(MPLogEvent *event);
 #define MPW_LOG mpw_log_sink
 #endif
 
+/** Application interface for logging events into the subsystem. */
 #ifndef trc
 #define trc(format, ...) MPW_LOG( MPLogLevelTrace, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
 #define dbg(format, ...) MPW_LOG( MPLogLevelDebug, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
@@ -122,7 +155,7 @@ bool mpw_log_esink(MPLogEvent *event);
 
 //// Buffers and memory.
 
-/** Write a number to a byte buffer using mpw's endianness (big/network endian). */
+/** Write a number to a byte buffer using mpw's endianness (big/network). */
 void mpw_uint16(const uint16_t number, uint8_t buf[2]);
 void mpw_uint32(const uint32_t number, uint8_t buf[4]);
 void mpw_uint64(const uint64_t number, uint8_t buf[8]);
@@ -131,18 +164,27 @@ void mpw_uint64(const uint64_t number, uint8_t buf[8]);
 const char **mpw_strings(
         size_t *count, const char *strings, ...);
 
-/** Push a buffer onto a buffer.  reallocs the given buffer and appends the given buffer.
- * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
-bool mpw_push_buf(
+/** Push a value onto a buffer.  The given buffer is realloc'ed and the value appended to the end of it.
+ * @param buffer A pointer to the buffer (allocated, bufferSize) to append to. No-op if NULL. New buffer with value if NULL pointer.
+ * @param value The object to append to the buffer.
+ *              If char*, copies a C-string from the value.
+ *              If uint8_t*, takes a size_t argument indicating the amount of uint8_t's to copy from the value. */
+#define mpw_buf_push(buffer, bufferSize, value, ...) _Generic( (value), \
+        uint32_t: mpw_buf_push_uint32,                                  \
+        uint8_t *: mpw_buf_push_buf, const uint8_t *: mpw_buf_push_buf, \
+        char *: mpw_buf_push_str, const char *: mpw_buf_push_str )      \
+        ( buffer, bufferSize, value, ##__VA_ARGS__)
+bool mpw_buf_push_buf(
         uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize);
-/** Push an integer onto a buffer.  reallocs the given buffer and appends the given integer.
+/** Push an integer onto a buffer.  reallocs the given buffer and appends the given integer using mpw's endianness (big/network).
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
-bool mpw_push_int(
+bool mpw_buf_push_uint32(
         uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt);
 /** Push a C-string onto a buffer.  reallocs the given buffer and appends the given string.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
-bool mpw_push_string(
+bool mpw_buf_push_str(
         uint8_t **buffer, size_t *bufferSize, const char *pushString);
+
 /** Push a C-string onto another string.  reallocs the target string and appends the source string.
  * @param string A pointer to the string (allocated) to append to, may be NULL. */
 bool mpw_string_push(
@@ -252,16 +294,6 @@ const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
 /** Decode a C-string of hexadecimal characters into a buffer of size-bytes.
  * @return A buffer (allocated, *size); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
 const uint8_t *mpw_unhex(const char *hex, size_t *size);
-/** Check whether the fingerprint is valid.
- * @return true if the fingerprints represents a fully complete print for a buffer. */
-bool mpw_id_valid(const MPKeyID *id1);
-/** Compare two fingerprints for equality.
- * @return true if the buffers represent identical fingerprints or are both NULL. */
-bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2);
-/** Encode a fingerprint for a buffer. */
-const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size);
-/** Reconstruct a fingerprint from its hexadecimal string representation. */
-const MPKeyID mpw_id_str(const char hex[static 65]);
 
 //// String utilities.
 
@@ -269,6 +301,9 @@ const MPKeyID mpw_id_str(const char hex[static 65]);
 size_t mpw_utf8_char_size(const char *utf8String);
 /** @return The amount of UTF-8 characters in the given string or 0 if it is NULL, empty, or contains bytes that are not legal in UTF-8. */
 size_t mpw_utf8_char_count(const char *utf8String);
+
+//// Compatibility.
+
 /** Drop-in for memdup(3).
  * @return A buffer (allocated, len) with len bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
 void *mpw_memdup(const void *src, const size_t len);

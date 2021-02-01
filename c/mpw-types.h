@@ -194,6 +194,17 @@ extern const MPIdenticon MPIdenticonUnset;
 
 //// Type utilities.
 
+/** Check whether the fingerprint is valid.
+ * @return true if the fingerprints represents a fully complete print for a buffer. */
+bool mpw_id_valid(const MPKeyID *id1);
+/** Compare two fingerprints for equality.
+ * @return true if the buffers represent identical fingerprints or are both NULL. */
+bool mpw_id_equals(const MPKeyID *id1, const MPKeyID *id2);
+/** Encode a fingerprint for a buffer. */
+const MPKeyID mpw_id_buf(const uint8_t *buf, const size_t size);
+/** Reconstruct a fingerprint from its hexadecimal string representation. */
+const MPKeyID mpw_id_str(const char hex[static 65]);
+
 /**
  * @return The purpose represented by the given name or ERR if the name does not represent a known purpose.
  */

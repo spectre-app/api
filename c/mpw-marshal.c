@@ -29,7 +29,7 @@ MP_LIBS_BEGIN
 MP_LIBS_END
 
 static const MPMasterKey *__mpw_masterKeyProvider_currentKey = NULL;
-static MPAlgorithmVersion __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)-1;
+static MPAlgorithmVersion __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)ERR;
 static MPMasterKeyProviderProxy __mpw_masterKeyProvider_currentProxy = NULL;
 static const char *__mpw_masterKeyProvider_currentPassword = NULL;
 
@@ -70,9 +70,9 @@ MPMasterKeyProvider mpw_masterKeyProvider_proxy(const MPMasterKeyProviderProxy p
 void mpw_masterKeyProvider_free() {
 
     mpw_free( &__mpw_masterKeyProvider_currentKey, sizeof( *__mpw_masterKeyProvider_currentKey ) );
-    __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)-1;
+    __mpw_masterKeyProvider_currentAlgorithm = (MPAlgorithmVersion)ERR;
     if (__mpw_masterKeyProvider_currentProxy) {
-        __mpw_masterKeyProvider_currentProxy( NULL, NULL, MPAlgorithmVersionCurrent, NULL );
+        __mpw_masterKeyProvider_currentProxy( NULL, NULL, (MPAlgorithmVersion)ERR, NULL );
         __mpw_masterKeyProvider_currentProxy = NULL;
     }
 }
@@ -167,11 +167,11 @@ MPMarshalledFile *mpw_marshal_file(
     }
 
     if (data && data != file->data) {
-        mpw_marshal_data_free( &file->data );
+        mpw_marshal_free( &file->data );
         file->data = data;
     }
     if (info && info != file->info) {
-        mpw_marshal_info_free( &file->info );
+        mpw_marshal_free( &file->info );
         file->info = info;
     }
 
@@ -243,8 +243,8 @@ void mpw_marshal_file_free(
     if (!file || !*file)
         return;
 
-    mpw_marshal_info_free( &(*file)->info );
-    mpw_marshal_data_free( &(*file)->data );
+    mpw_marshal_free( &(*file)->info );
+    mpw_marshal_free( &(*file)->data );
     mpw_free_string( &(*file)->error.message );
     mpw_free( file, sizeof( MPMarshalledFile ) );
 }
@@ -508,7 +508,7 @@ bool mpw_marshal_data_set_str(
     return success;
 }
 
-void mpw_marshal_data_keep(
+void mpw_marshal_data_filter(
         MPMarshalledData *data, bool (*filter)(MPMarshalledData *, void *), void *args) {
 
     size_t children_count = 0;
@@ -546,7 +546,7 @@ void mpw_marshal_data_keep(
     }
 }
 
-bool mpw_marshal_data_keep_none(
+bool mpw_marshal_data_filter_empty(
         __unused MPMarshalledData *child, __unused void *args) {
 
     return false;
@@ -677,7 +677,7 @@ static const char *mpw_marshal_write_json(
 
 #endif
 
-static bool mpw_marshal_data_keep_service_exists(
+static bool mpw_marshal_data_filter_service_exists(
         MPMarshalledData *child, void *args) {
 
     MPMarshalledUser *user = args;
@@ -690,7 +690,7 @@ static bool mpw_marshal_data_keep_service_exists(
     return false;
 }
 
-static bool mpw_marshal_data_keep_question_exists(
+static bool mpw_marshal_data_filter_question_exists(
         MPMarshalledData *child, void *args) {
 
     MPMarshalledService *service = args;
@@ -714,7 +714,7 @@ const char *mpw_marshal_write(
         return NULL;
     if (!file->data) {
         if (!file_)
-            mpw_marshal_file_free( &file );
+            mpw_marshal_free( &file );
         else
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate data." );
         return NULL;
@@ -724,7 +724,7 @@ const char *mpw_marshal_write(
     if (user) {
         if (!user->fullName || !strlen( user->fullName )) {
             if (!file_)
-                mpw_marshal_file_free( &file );
+                mpw_marshal_free( &file );
             else
                 mpw_marshal_error( file, MPMarshalErrorMissing, "Missing full name." );
             return NULL;
@@ -749,7 +749,7 @@ const char *mpw_marshal_write(
             mpw_free( &masterKey, sizeof( *masterKey ) );
             if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( user->algorithm, user->fullName ))) {
                 if (!file_)
-                    mpw_marshal_file_free( &file );
+                    mpw_marshal_free( &file );
                 else
                     mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
                 return NULL;
@@ -780,7 +780,7 @@ const char *mpw_marshal_write(
 
         // Section "services"
         MPMarshalledData *data_services = mpw_marshal_data_get( file->data, "services", NULL );
-        mpw_marshal_data_keep( data_services, mpw_marshal_data_keep_service_exists, user );
+        mpw_marshal_data_filter( data_services, mpw_marshal_data_filter_service_exists, user );
         for (size_t s = 0; s < user->services_count; ++s) {
             MPMarshalledService *service = &user->services[s];
             if (!service->serviceName || !strlen( service->serviceName ))
@@ -792,7 +792,7 @@ const char *mpw_marshal_write(
                 mpw_free( &masterKey, sizeof( *masterKey ) );
                 if (!user->masterKeyProvider || !(masterKey = user->masterKeyProvider( service->algorithm, user->fullName ))) {
                     if (!file_)
-                        mpw_marshal_file_free( &file );
+                        mpw_marshal_free( &file );
                     else
                         mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
                     return NULL;
@@ -822,7 +822,7 @@ const char *mpw_marshal_write(
                 mpw_marshal_data_set_str( dateString, data_services, service->serviceName, "last_used", NULL );
 
             MPMarshalledData *data_questions = mpw_marshal_data_get( file->data, "services", service->serviceName, "questions", NULL );
-            mpw_marshal_data_keep( data_questions, mpw_marshal_data_keep_question_exists, service );
+            mpw_marshal_data_filter( data_questions, mpw_marshal_data_filter_question_exists, service );
             for (size_t q = 0; q < service->questions_count; ++q) {
                 MPMarshalledQuestion *question = &service->questions[q];
                 if (!question->keyword)
@@ -872,7 +872,7 @@ const char *mpw_marshal_write(
     if (file_)
         *file_ = file;
     else
-        mpw_marshal_file_free( &file );
+        mpw_marshal_free( &file );
 
     return out;
 }
@@ -946,7 +946,7 @@ static void mpw_marshal_read_flat(
             if (mpw_strcasecmp( headerName, "Format" ) == OK)
                 format = (unsigned int)strtoul( headerValue, NULL, 10 );
             if (mpw_strcasecmp( headerName, "Date" ) == OK)
-                exportDate = mpw_timegm( headerValue );
+                exportDate = mpw_get_timegm( headerValue );
             if (mpw_strcasecmp( headerName, "Passwords" ) == OK)
                 importRedacted = mpw_strcasecmp( headerValue, "VISIBLE" ) != OK;
             if (mpw_strcasecmp( headerName, "Algorithm" ) == OK) {
@@ -1040,7 +1040,7 @@ static void mpw_marshal_read_flat(
                 continue;
             }
             MPAlgorithmVersion serviceAlgorithm = (MPAlgorithmVersion)value;
-            time_t serviceLastUsed = mpw_timegm( str_lastUsed );
+            time_t serviceLastUsed = mpw_get_timegm( str_lastUsed );
             if (!serviceLastUsed) {
                 mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service last used: %s: %s", serviceName, str_lastUsed );
                 continue;
@@ -1152,7 +1152,7 @@ MPMarshalledFile *mpw_marshal_read(
     }
 
     // Section: "export"
-    info->exportDate = mpw_timegm( mpw_marshal_data_get_str( file->data, "export", "date", NULL ) );
+    info->exportDate = mpw_get_timegm( mpw_marshal_data_get_str( file->data, "export", "date", NULL ) );
     info->redacted = mpw_marshal_data_get_bool( file->data, "export", "redacted", NULL )
                      || mpw_marshal_data_is_null( file->data, "export", "redacted", NULL );
 
@@ -1162,7 +1162,7 @@ MPMarshalledFile *mpw_marshal_read(
     info->fullName = mpw_strdup( mpw_marshal_data_get_str( file->data, "user", "full_name", NULL ) );
     info->identicon = mpw_identicon_encoded( mpw_marshal_data_get_str( file->data, "user", "identicon", NULL ) );
     info->keyID = mpw_id_str( mpw_marshal_data_get_str( file->data, "user", "key_id", NULL ) );
-    info->lastUsed = mpw_timegm( mpw_marshal_data_get_str( file->data, "user", "last_used", NULL ) );
+    info->lastUsed = mpw_get_timegm( mpw_marshal_data_get_str( file->data, "user", "last_used", NULL ) );
 
     return file;
 }
@@ -1216,7 +1216,7 @@ MPMarshalledUser *mpw_marshal_auth(
     }
     const char *loginState = mpw_marshal_data_get_str( userData, "login_name", NULL );
     const char *str_lastUsed = mpw_marshal_data_get_str( userData, "last_used", NULL );
-    time_t lastUsed = mpw_timegm( str_lastUsed );
+    time_t lastUsed = mpw_get_timegm( str_lastUsed );
     if (!lastUsed) {
         mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid user last used: %s", str_lastUsed );
         return NULL;
@@ -1237,7 +1237,7 @@ MPMarshalledUser *mpw_marshal_auth(
     if (!(user = mpw_marshal_user( fullName, masterKeyProvider, algorithm ))) {
         mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate a new user." );
         mpw_free( &masterKey, sizeof( *masterKey ) );
-        mpw_marshal_user_free( &user );
+        mpw_marshal_free( &user );
         return NULL;
     }
 
@@ -1254,7 +1254,7 @@ MPMarshalledUser *mpw_marshal_auth(
         if (!masterKeyProvider || !(masterKey = masterKeyProvider( user->algorithm, user->fullName ))) {
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
 
@@ -1278,21 +1278,21 @@ MPMarshalledUser *mpw_marshal_auth(
         if (algorithm < MPAlgorithmVersionFirst || algorithm > MPAlgorithmVersionLast) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service algorithm: %s: %u", serviceName, algorithm );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
         MPCounterValue serviceCounter = mpw_default_num( MPCounterValueDefault, mpw_marshal_data_get_num( serviceData, "counter", NULL ) );
         if (serviceCounter < MPCounterValueFirst || serviceCounter > MPCounterValueLast) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service result counter: %s: %d", serviceName, serviceCounter );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
         MPResultType serviceResultType = mpw_default_num( user->defaultType, mpw_marshal_data_get_num( serviceData, "type", NULL ) );
         if (!mpw_type_short_name( serviceResultType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service result type: %s: %u", serviceName, serviceResultType );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
         const char *serviceResultState = mpw_marshal_data_get_str( serviceData, "password", NULL );
@@ -1300,17 +1300,17 @@ MPMarshalledUser *mpw_marshal_auth(
         if (!mpw_type_short_name( serviceLoginType )) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service login type: %s: %u", serviceName, serviceLoginType );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
         const char *serviceLoginState = mpw_marshal_data_get_str( serviceData, "login_name", NULL );
         unsigned int serviceUses = mpw_default_num( 0U, mpw_marshal_data_get_num( serviceData, "uses", NULL ) );
         str_lastUsed = mpw_marshal_data_get_str( serviceData, "last_used", NULL );
-        time_t serviceLastUsed = mpw_timegm( str_lastUsed );
+        time_t serviceLastUsed = mpw_get_timegm( str_lastUsed );
         if (!serviceLastUsed) {
             mpw_marshal_error( file, MPMarshalErrorIllegal, "Invalid service last used: %s: %s", serviceName, str_lastUsed );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
 
@@ -1320,7 +1320,7 @@ MPMarshalledUser *mpw_marshal_auth(
         if (!service) {
             mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't allocate a new service." );
             mpw_free( &masterKey, sizeof( *masterKey ) );
-            mpw_marshal_user_free( &user );
+            mpw_marshal_free( &user );
             return NULL;
         }
 
@@ -1334,7 +1334,7 @@ MPMarshalledUser *mpw_marshal_auth(
             if (!masterKeyProvider || !(masterKey = masterKeyProvider( service->algorithm, user->fullName ))) {
                 mpw_marshal_error( file, MPMarshalErrorInternal, "Couldn't derive master key." );
                 mpw_free( &masterKey, sizeof( *masterKey ) );
-                mpw_marshal_user_free( &user );
+                mpw_marshal_free( &user );
                 return NULL;
             }
 

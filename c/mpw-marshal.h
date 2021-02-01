@@ -67,7 +67,8 @@ typedef mpw_enum( unsigned int, MPMarshalErrorType ) {
 typedef const MPMasterKey *(*MPMasterKeyProvider)(
         MPAlgorithmVersion algorithm, const char *fullName);
 /** A function that updates the currentKey with the masterKey of the given algorithm for the user with the given name.
- * @param currentKey A pointer to where the current masterKey (allocated) can be found and a new one can be placed.  Must be freed if updated.
+ * @param currentKey A pointer to where the current masterKey (allocated) can be found and a new one can be placed.
+ *                   Free the old value if you update it. If NULL, the proxy is invalidated and should free any state it holds.
  * @param currentAlgorithm A pointer to where the algorithm of the current masterKey is found and can be updated.
  * @param algorithm The algorithm of the masterKey that should be placed in currentKey.
  * @param fullName The name of the user whose masterKey should be placed in currentKey.
@@ -265,6 +266,12 @@ MPMarshalledFile *mpw_marshal_error(
 //// Disposing.
 
 /** Free the given user object and all associated data. */
+#define mpw_marshal_free(object) _Generic( (object), \
+        MPMarshalledInfo**: mpw_marshal_info_free,   \
+        MPMarshalledUser**: mpw_marshal_user_free,   \
+        MPMarshalledData**: mpw_marshal_data_free,   \
+        MPMarshalledFile**: mpw_marshal_file_free)   \
+        (object)
 void mpw_marshal_info_free(
         MPMarshalledInfo **info);
 void mpw_marshal_user_free(
@@ -339,9 +346,9 @@ bool mpw_marshal_data_set_str(
 bool mpw_marshal_data_vset_str(
         const char *value, MPMarshalledData *data, va_list nodes);
 /** Keep only the data children that pass the filter test. */
-void mpw_marshal_data_keep(
+void mpw_marshal_data_filter(
         MPMarshalledData *data, bool (*filter)(MPMarshalledData *child, void *args), void *args);
-bool mpw_marshal_data_keep_none(
+bool mpw_marshal_data_filter_empty(
         MPMarshalledData *child, void *args);
 
 //// Format.
