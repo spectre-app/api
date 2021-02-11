@@ -124,6 +124,21 @@ bool mpw_log_esink(MPLogEvent *event);
 
 //// Utilities
 
+#ifndef OK
+#define OK 0
+#endif
+#ifndef ERR
+#define ERR -1
+#endif
+
+#ifndef stringify
+#define stringify(s) #s
+#endif
+#ifndef stringify_def
+#define stringify_def(s) stringify(s)
+#endif
+
+#if __GNUC__ >= 3
 #ifndef min
 #define min(a, b) ({ \
     __typeof__ (a) _a = (a); \
@@ -136,21 +151,18 @@ bool mpw_log_esink(MPLogEvent *event);
     __typeof__ (b) _b = (b); \
     _a > _b ? _a : _b; })
 #endif
-#ifndef ERR
-#define ERR -1
-#endif
-#ifndef OK
-#define OK 0
-#endif
-#ifndef stringify
-#define stringify(s) #s
-#endif
-#ifndef stringify_def
-#define stringify_def(s) stringify(s)
-#endif
-
 #define mpw_default(__default, __value) ({ __typeof__ (__value) _v = (__value); _v? _v: (__default); })
 #define mpw_default_num(__default, __num) ({ __typeof__ (__num) _n = (__num); !isnan( _n )? (__typeof__ (__default))_n: (__default); })
+#else
+#ifndef min
+#define min(a, b) ( (a) < (b) ? (a) : (b) )
+#endif
+#ifndef max
+#define max(a, b) ( (a) > (b) ? (a) : (b) )
+#endif
+#define mpw_default(__default, __value) ( (__value)? (__value): (__default) )
+#define mpw_default_num(__default, __num) ( !isnan( (__num) )? (__num): (__default) )
+#endif
 
 
 //// Buffers and memory.
