@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -54,38 +54,38 @@ typedef mpw_enum( unsigned int, MPMarshalErrorType ) {
             MPMarshalErrorFormat,
     /** A required value is missing or not specified. */
             MPMarshalErrorMissing,
-    /** The given master password is not valid. */
-            MPMarshalErrorMasterPassword,
+    /** The given user secret is not valid. */
+            MPMarshalErrorUserSecret,
     /** An illegal value was specified. */
             MPMarshalErrorIllegal,
     /** An internal system error interrupted marshalling. */
             MPMarshalErrorInternal,
 };
 
-/** A function that can resolve a master key of the given algorithm for the user with the given name.
- * @return A master key (allocated), or NULL if the key could not be resolved. */
-typedef const MPMasterKey *(*MPMasterKeyProvider)(
-        MPAlgorithmVersion algorithm, const char *fullName);
-/** A function that updates the currentKey with the masterKey of the given algorithm for the user with the given name.
- * @param currentKey A pointer to where the current masterKey (allocated) can be found and a new one can be placed.
+/** A function that can resolve a user key of the given algorithm for the user with the given name.
+ * @return A user key (allocated), or NULL if the key could not be resolved. */
+typedef const MPUserKey *(*MPUserKeyProvider)(
+        MPAlgorithmVersion algorithm, const char *userName);
+/** A function that updates the currentKey with the userKey of the given algorithm for the user with the given name.
+ * @param currentKey A pointer to where the current userKey (allocated) can be found and a new one can be placed.
  *                   Free the old value if you update it. If NULL, the proxy is invalidated and should free any state it holds.
- * @param currentAlgorithm A pointer to where the algorithm of the current masterKey is found and can be updated.
- * @param algorithm The algorithm of the masterKey that should be placed in currentKey.
- * @param fullName The name of the user whose masterKey should be placed in currentKey.
- * @return false if not able to resolve the requested masterKey. */
-typedef bool (*MPMasterKeyProviderProxy)(
-        const MPMasterKey **currentKey, MPAlgorithmVersion *currentAlgorithm, MPAlgorithmVersion algorithm, const char *fullName);
+ * @param currentAlgorithm A pointer to where the algorithm of the current userKey is found and can be updated.
+ * @param algorithm The algorithm of the userKey that should be placed in currentKey.
+ * @param userName The name of the user whose userKey should be placed in currentKey.
+ * @return false if not able to resolve the requested userKey. */
+typedef bool (*MPUserKeyProviderProxy)(
+        const MPUserKey **currentKey, MPAlgorithmVersion *currentAlgorithm, MPAlgorithmVersion algorithm, const char *userName);
 
 /** Create a key provider which handles key generation by proxying the given function.
  * The proxy function receives the currently cached key and its algorithm.  If those are NULL, the proxy function should clean up its state. */
-MPMasterKeyProvider mpw_masterKeyProvider_proxy(
-        const MPMasterKeyProviderProxy proxy);
-/** Create a key provider that computes a master key for the given master password. */
-MPMasterKeyProvider mpw_masterKeyProvider_str(
-        const char *masterPassword);
+MPUserKeyProvider mpw_userKeyProvider_proxy(
+        const MPUserKeyProviderProxy proxy);
+/** Create a key provider that computes a user key for the given user secret. */
+MPUserKeyProvider mpw_userKeyProvider_str(
+        const char *userSecret);
 
 /** Free the cached keys and proxy state. */
-void mpw_masterKeyProvider_free(void);
+void mpw_userKeyProvider_free(void);
 
 typedef struct MPMarshalError {
     /** The status of the most recent processing operation. */
@@ -128,10 +128,10 @@ typedef struct MPMarshalledInfo {
     /** A number identifying the avatar to display for the user in this file. */
     unsigned int avatar;
     /** Unique name for this file's user, preferably the user's full legal name. */
-    const char *fullName;
+    const char *userName;
     /** User metadata: The identicon that was generated to represent this file's user identity. */
     MPIdenticon identicon;
-    /** A unique identifier (hex) for the user's master key, primarily for authentication/verification. */
+    /** A unique identifier (hex) for the user key, primarily for authentication/verification. */
     MPKeyID keyID;
     /** User metadata: Date of the most recent action taken by this user. */
     time_t lastUsed;
@@ -146,52 +146,52 @@ typedef struct MPMarshalledQuestion {
     const char *state;
 } MPMarshalledQuestion;
 
-typedef struct MPMarshalledService {
-    /** Unique name for this service. */
-    const char *serviceName;
-    /** Algorithm version to use for all service operations (eg. result, login, question operations). */
+typedef struct MPMarshalledSite {
+    /** Unique name for this site. */
+    const char *siteName;
+    /** Algorithm version to use for all site operations (eg. result, login, question operations). */
     MPAlgorithmVersion algorithm;
 
-    /** The counter value of the service result to generate. */
+    /** The counter value of the site result to generate. */
     MPCounterValue counter;
-    /** The result type to use for generating a service result. */
+    /** The result type to use for generating a site result. */
     MPResultType resultType;
-    /** State data (base64), if any, necessary for generating the service result. */
+    /** State data (base64), if any, necessary for generating the site result. */
     const char *resultState;
 
-    /** The result type to use for generating a service login. */
+    /** The result type to use for generating a site login. */
     MPResultType loginType;
-    /** State data (base64), if any, necessary for generating the service login. */
+    /** State data (base64), if any, necessary for generating the site login. */
     const char *loginState;
 
-    /** Service metadata: URL location where the service can be accessed. */
+    /** Site metadata: URL location where the site can be accessed. */
     const char *url;
-    /** Service metadata: Amount of times an action has been taken for this service. */
+    /** Site metadata: Amount of times an action has been taken for this site. */
     unsigned int uses;
-    /** Service metadata: Date of the most recent action taken on this service. */
+    /** Site metadata: Date of the most recent action taken on this site. */
     time_t lastUsed;
 
-    /** Amount of security questions associated with this service. */
+    /** Amount of security questions associated with this site. */
     size_t questions_count;
-    /** Array of security questions associated with this service. */
+    /** Array of security questions associated with this site. */
     MPMarshalledQuestion *questions;
-} MPMarshalledService;
+} MPMarshalledSite;
 
 typedef struct MPMarshalledUser {
-    MPMasterKeyProvider masterKeyProvider;
+    MPUserKeyProvider userKeyProvider;
     bool redacted;
 
     /** A number identifying the avatar to display for this user. */
     unsigned int avatar;
     /** Unique name for this user, preferably the user's full legal name. */
-    const char *fullName;
+    const char *userName;
     /** User metadata: The identicon that was generated to represent this user's identity. */
     MPIdenticon identicon;
     /** Algorithm version to use for user operations (eg. key ID operations). */
     MPAlgorithmVersion algorithm;
-    /** A unique identifier (hex) for the user's master key, primarily for authentication/verification. */
+    /** A unique identifier (hex) for the user key, primarily for authentication/verification. */
     MPKeyID keyID;
-    /** The initial result type to use for new services created by the user. */
+    /** The initial result type to use for new sites created by the user. */
     MPResultType defaultType;
     /** The result type to use for generating the user's standard login. */
     MPResultType loginType;
@@ -200,10 +200,10 @@ typedef struct MPMarshalledUser {
     /** User metadata: Date of the most recent action taken by this user. */
     time_t lastUsed;
 
-    /** Amount of services associated to this user. */
-    size_t services_count;
-    /** Array of services associated to this user. */
-    MPMarshalledService *services;
+    /** Amount of sites associated to this user. */
+    size_t sites_count;
+    /** Array of sites associated to this user. */
+    MPMarshalledSite *sites;
 } MPMarshalledUser;
 
 typedef struct MPMarshalledFile {
@@ -231,26 +231,26 @@ MPMarshalledFile *mpw_marshal_read(
  * @note This object stores a reference to the given key provider.
  * @return A user object (allocated), or NULL if the file format provides no marshalling or a format error occurred. */
 MPMarshalledUser *mpw_marshal_auth(
-        MPMarshalledFile *file, const MPMasterKeyProvider masterKeyProvider);
+        MPMarshalledFile *file, const MPUserKeyProvider userKeyProvider);
 
 //// Creating.
 
 /** Create a new user object ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
- * @return A user object (allocated), or NULL if the fullName is missing or the marshalled user couldn't be allocated. */
+ * @return A user object (allocated), or NULL if the userName is missing or the marshalled user couldn't be allocated. */
 MPMarshalledUser *mpw_marshal_user(
-        const char *fullName, const MPMasterKeyProvider masterKeyProvider, const MPAlgorithmVersion algorithmVersion);
-/** Create a new service attached to the given user object, ready for marshalling.
+        const char *userName, const MPUserKeyProvider userKeyProvider, const MPAlgorithmVersion algorithmVersion);
+/** Create a new site attached to the given user object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
- * @return A service object (allocated), or NULL if the serviceName is missing or the marshalled service couldn't be allocated. */
-MPMarshalledService *mpw_marshal_service(
+ * @return A site object (allocated), or NULL if the siteName is missing or the marshalled site couldn't be allocated. */
+MPMarshalledSite *mpw_marshal_site(
         MPMarshalledUser *user,
-        const char *serviceName, const MPResultType resultType, const MPCounterValue keyCounter, const MPAlgorithmVersion algorithmVersion);
-/** Create a new question attached to the given service object, ready for marshalling.
+        const char *siteName, const MPResultType resultType, const MPCounterValue keyCounter, const MPAlgorithmVersion algorithmVersion);
+/** Create a new question attached to the given site object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
  * @return A question object (allocated), or NULL if the marshalled question couldn't be allocated. */
 MPMarshalledQuestion *mpw_marshal_question(
-        MPMarshalledService *service, const char *keyword);
+        MPMarshalledSite *site, const char *keyword);
 /** Create or update a marshal file descriptor.
  * @param file If NULL, a new file will be allocated.  Otherwise, the given file will be updated and the updated file returned.
  * @param info If NULL, the file's info will be left as-is, otherwise it will be replaced by the given one.  The file will manage the info's deallocation.

@@ -33,7 +33,7 @@ public class MPIdenticon {
     @SuppressWarnings("UnusedDeclaration")
     private static final Logger logger = Logger.get( MPIdenticon.class );
 
-    private final String fullName;
+    private final String userName;
     private final String leftArm;
     private final String body;
     private final String rightArm;
@@ -42,9 +42,9 @@ public class MPIdenticon {
 
     @SuppressFBWarnings("CLI_CONSTANT_LIST_INDEX")
     @SuppressWarnings("MethodCanBeVariableArityMethod")
-    public MPIdenticon(final String fullName, final String leftArm, final String body, final String rightArm, final String accessory,
+    public MPIdenticon(final String userName, final String leftArm, final String body, final String rightArm, final String accessory,
                        final Color color) {
-        this.fullName = fullName;
+        this.userName = userName;
         this.leftArm = leftArm;
         this.body = body;
         this.rightArm = rightArm;
@@ -52,8 +52,8 @@ public class MPIdenticon {
         this.color = color;
     }
 
-    public String getFullName() {
-        return fullName;
+    public String getUserName() {
+        return userName;
     }
 
     public String getText() {

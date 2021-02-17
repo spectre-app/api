@@ -30,28 +30,28 @@ import javax.annotation.Nullable;
 /**
  * @author lhunath, 2014-08-30
  */
-public class MPMasterKey {
+public class MPUserKey {
 
     @SuppressWarnings("UnusedDeclaration")
-    private static final Logger logger = Logger.get( MPMasterKey.class );
+    private static final Logger logger = Logger.get( MPUserKey.class );
 
     private final EnumMap<MPAlgorithm.Version, byte[]> keyByVersion = new EnumMap<>( MPAlgorithm.Version.class );
-    private final String                               fullName;
-    private final char[]                               masterPassword;
+    private final String                               userName;
+    private final char[]                               userSecret;
 
     private boolean invalidated;
 
     /**
-     * @param masterPassword The characters of the user's master password.
+     * @param userSecret The characters of the user's master password.
      *
-     * @apiNote This method destroys the contents of the {@code masterPassword} array.
+     * @apiNote This method destroys the contents of the {@code userSecret} array.
      */
     @SuppressWarnings("AssignmentToCollectionOrArrayFieldFromParameter")
-    public MPMasterKey(final String fullName, final char[] masterPassword) {
+    public MPUserKey(final String userName, final char[] userSecret) {
 
-        this.fullName = fullName;
-        this.masterPassword = masterPassword.clone();
-        Arrays.fill( masterPassword, (char) 0 );
+        this.userName = userName;
+        this.userSecret = userSecret.clone();
+        Arrays.fill( userSecret, (char) 0 );
     }
 
     @Override
@@ -60,7 +60,7 @@ public class MPMasterKey {
             throws Throwable {
 
         if (isValid()) {
-            logger.wrn( "A master key for %s was abandoned without being invalidated.", getFullName() );
+            logger.wrn( "A master key for %s was abandoned without being invalidated.", getUserName() );
             invalidate();
         }
 
@@ -68,9 +68,9 @@ public class MPMasterKey {
     }
 
     @Nonnull
-    public String getFullName() {
+    public String getUserName() {
 
-        return fullName;
+        return userName;
     }
 
     /**
@@ -82,7 +82,7 @@ public class MPMasterKey {
     public String getKeyID(final MPAlgorithm algorithm)
             throws MPKeyUnavailableException, MPAlgorithmException {
 
-        return algorithm.toID( masterKey( algorithm ) );
+        return algorithm.toID( userKey( algorithm ) );
     }
 
     /**
@@ -93,7 +93,7 @@ public class MPMasterKey {
         invalidated = true;
         for (final byte[] key : keyByVersion.values())
             Arrays.fill( key, (byte) 0 );
-        Arrays.fill( masterPassword, (char) 0 );
+        Arrays.fill( userSecret, (char) 0 );
     }
 
     public boolean isValid() {
@@ -101,21 +101,21 @@ public class MPMasterKey {
     }
 
     @Nonnull
-    private byte[] masterKey(final MPAlgorithm algorithm)
+    private byte[] userKey(final MPAlgorithm algorithm)
             throws MPKeyUnavailableException, MPAlgorithmException {
-        Preconditions.checkArgument( masterPassword.length > 0 );
+        Preconditions.checkArgument( userSecret.length > 0 );
 
         if (!isValid())
             throw new MPKeyUnavailableException( "Master key was invalidated." );
 
-        byte[] masterKey = keyByVersion.get( algorithm.version() );
-        if (masterKey == null) {
-            keyByVersion.put( algorithm.version(), masterKey = algorithm.masterKey( fullName, masterPassword ) );
+        byte[] userKey = keyByVersion.get( algorithm.version() );
+        if (userKey == null) {
+            keyByVersion.put( algorithm.version(), userKey = algorithm.userKey( userName, userSecret ) );
         }
-        if (masterKey == null)
+        if (userKey == null)
             throw new MPAlgorithmException( "Could not derive master key." );
 
-        return masterKey;
+        return userKey;
     }
 
     @Nonnull
@@ -124,8 +124,8 @@ public class MPMasterKey {
             throws MPKeyUnavailableException, MPAlgorithmException {
         Preconditions.checkArgument( !siteName.isEmpty() );
 
-        byte[] masterKey = masterKey( algorithm );
-        byte[] siteKey = algorithm.siteKey( masterKey, siteName, siteCounter, keyPurpose, keyContext );
+        byte[] userKey = userKey( algorithm );
+        byte[] siteKey = algorithm.siteKey( userKey, siteName, siteCounter, keyPurpose, keyContext );
         if (siteKey == null)
             throw new MPAlgorithmException( "Could not derive site key." );
 
@@ -158,11 +158,11 @@ public class MPMasterKey {
         if ((resultType.getTypeClass() == MPResultTypeClass.Stateful) && (resultParam == null))
             return null;
 
-        byte[] masterKey = masterKey( algorithm );
+        byte[] userKey = userKey( algorithm );
         byte[] siteKey   = siteKey( siteName, algorithm, siteCounter, keyPurpose, keyContext );
 
         String siteResult = algorithm.siteResult(
-                masterKey, siteKey, siteName, siteCounter, keyPurpose, keyContext, resultType, resultParam );
+                userKey, siteKey, siteName, siteCounter, keyPurpose, keyContext, resultType, resultParam );
         if (siteResult == null)
             throw new MPAlgorithmException( "Could not derive site result." );
 
@@ -192,11 +192,11 @@ public class MPMasterKey {
         Preconditions.checkNotNull( resultParam );
         Preconditions.checkArgument( !resultParam.isEmpty() );
 
-        byte[] masterKey = masterKey( algorithm );
+        byte[] userKey = userKey( algorithm );
         byte[] siteKey   = siteKey( siteName, algorithm, siteCounter, keyPurpose, keyContext );
 
         String siteState = algorithm.siteState(
-                masterKey, siteKey, siteName, siteCounter, keyPurpose, keyContext, resultType, resultParam );
+                userKey, siteKey, siteName, siteCounter, keyPurpose, keyContext, resultType, resultParam );
         if (siteState == null)
             throw new MPAlgorithmException( "Could not derive site state." );
 

@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -31,14 +31,14 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
-bool mpw_master_key_v2(
-        const MPMasterKey *masterKey, const char *fullName, const char *masterPassword) {
+bool mpw_user_key_v2(
+        const MPUserKey *userKey, const char *userName, const char *userSecret) {
 
-    return mpw_master_key_v1( masterKey, fullName, masterPassword );
+    return mpw_user_key_v1( userKey, userName, userSecret );
 }
 
-bool mpw_service_key_v2(
-        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName,
+bool mpw_site_key_v2(
+        const MPSiteKey *siteKey, const MPUserKey *userKey, const char *siteName,
         MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
 
     const char *keyScope = mpw_purpose_scope( keyPurpose );
@@ -48,59 +48,59 @@ bool mpw_service_key_v2(
     if (keyCounter == MPCounterValueTOTP)
         keyCounter = ((MPCounterValue)time( NULL ) / MP_otp_window) * MP_otp_window;
 
-    // Calculate the service seed.
-    trc( "serviceSalt: keyScope=%s | #serviceName=%s | serviceName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)strlen( serviceName ), (char[9]){ 0 } ), serviceName, mpw_hex_l( keyCounter, (char[9]){ 0 } ),
+    // Calculate the site seed.
+    trc( "siteSalt: keyScope=%s | #siteName=%s | siteName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
+            keyScope, mpw_hex_l( (uint32_t)strlen( siteName ), (char[9]){ 0 } ), siteName, mpw_hex_l( keyCounter, (char[9]){ 0 } ),
             keyContext? mpw_hex_l( (uint32_t)strlen( keyContext ), (char[9]){ 0 } ): NULL, keyContext );
-    size_t serviceSaltSize = 0;
-    uint8_t *serviceSalt = NULL;
-    if (!(mpw_buf_push( &serviceSalt, &serviceSaltSize, keyScope ) &&
-          mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( serviceName ) ) &&
-          mpw_buf_push( &serviceSalt, &serviceSaltSize, serviceName ) &&
-          mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)keyCounter ) &&
+    size_t siteSaltSize = 0;
+    uint8_t *siteSalt = NULL;
+    if (!(mpw_buf_push( &siteSalt, &siteSaltSize, keyScope ) &&
+          mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)strlen( siteName ) ) &&
+          mpw_buf_push( &siteSalt, &siteSaltSize, siteName ) &&
+          mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)keyCounter ) &&
           (!keyContext? true:
-           mpw_buf_push( &serviceSalt, &serviceSaltSize, (uint32_t)strlen( keyContext ) ) &&
-           mpw_buf_push( &serviceSalt, &serviceSaltSize, keyContext ))) || !serviceSalt) {
-        err( "Could not allocate service salt: %s", strerror( errno ) );
+           mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)strlen( keyContext ) ) &&
+           mpw_buf_push( &siteSalt, &siteSaltSize, keyContext ))) || !siteSalt) {
+        err( "Could not allocate site salt: %s", strerror( errno ) );
         return false;
     }
-    trc( "  => serviceSalt.id: %s", mpw_id_buf( serviceSalt, serviceSaltSize ).hex );
+    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ).hex );
 
-    trc( "serviceKey: hmac-sha256( masterKey.id=%s, serviceSalt )", masterKey->keyID.hex );
-    bool success = mpw_hash_hmac_sha256( (uint8_t *)serviceKey->bytes,
-            masterKey->bytes, sizeof( masterKey->bytes ), serviceSalt, serviceSaltSize );
-    mpw_free( &serviceSalt, serviceSaltSize );
+    trc( "siteKey: hmac-sha256( userKey.id=%s, siteSalt )", userKey->keyID.hex );
+    bool success = mpw_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
+            userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize );
+    mpw_free( &siteSalt, siteSaltSize );
 
     if (!success)
-        err( "Could not derive service key: %s", strerror( errno ) );
+        err( "Could not derive site key: %s", strerror( errno ) );
     else {
-        MPKeyID keyID = mpw_id_buf( serviceKey->bytes, sizeof( serviceKey->bytes ) );
-        memcpy( (MPKeyID *)&serviceKey->keyID, &keyID, sizeof( serviceKey->keyID ) );
-        trc( "  => serviceKey.id: %s (algorithm: %d:2)", serviceKey->keyID.hex, serviceKey->algorithm );
+        MPKeyID keyID = mpw_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
+        memcpy( (MPKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
+        trc( "  => siteKey.id: %s (algorithm: %d:2)", siteKey->keyID.hex, siteKey->algorithm );
     }
     return success;
 }
 
-const char *mpw_service_template_password_v2(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_site_template_password_v2(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_service_template_password_v1( masterKey, serviceKey, resultType, resultParam );
+    return mpw_site_template_password_v1( userKey, siteKey, resultType, resultParam );
 }
 
-const char *mpw_service_crypted_password_v2(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText) {
+const char *mpw_site_crypted_password_v2(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
 
-    return mpw_service_crypted_password_v1( masterKey, serviceKey, resultType, cipherText );
+    return mpw_site_crypted_password_v1( userKey, siteKey, resultType, cipherText );
 }
 
-const char *mpw_service_derived_password_v2(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_site_derived_password_v2(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_service_derived_password_v1( masterKey, serviceKey, resultType, resultParam );
+    return mpw_site_derived_password_v1( userKey, siteKey, resultType, resultParam );
 }
 
-const char *mpw_service_state_v2(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *state) {
+const char *mpw_site_state_v2(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *state) {
 
-    return mpw_service_state_v1( masterKey, serviceKey, resultType, state );
+    return mpw_site_state_v1( userKey, siteKey, resultType, state );
 }

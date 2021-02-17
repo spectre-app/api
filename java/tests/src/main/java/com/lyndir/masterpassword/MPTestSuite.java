@@ -104,10 +104,10 @@ public class MPTestSuite implements Callable<Boolean> {
                         tests.cases.add( currentCase );
                     if ("algorithm".equals( qName ))
                         currentCase.algorithm = ConversionUtils.toInteger( text ).orElse( null );
-                    if ("fullName".equals( qName ))
-                        currentCase.fullName = text;
-                    if ("masterPassword".equals( qName ))
-                        currentCase.masterPassword = text;
+                    if ("userName".equals( qName ))
+                        currentCase.userName = text;
+                    if ("userSecret".equals( qName ))
+                        currentCase.userSecret = text;
                     if ("keyID".equals( qName ))
                         currentCase.keyID = text;
                     if ("siteName".equals( qName ))
@@ -185,8 +185,8 @@ public class MPTestSuite implements Callable<Boolean> {
     public Boolean call()
             throws Exception {
         return forEach( "mpw", testCase -> {
-            MPMasterKey masterKey = new MPMasterKey( testCase.getFullName(), testCase.getMasterPassword().toCharArray() );
-            String sitePassword = masterKey.siteResult( testCase.getSiteName(), testCase.getAlgorithm(), testCase.getSiteCounter(),
+            MPUserKey userKey = new MPUserKey( testCase.getUserName(), testCase.getUserSecret().toCharArray() );
+            String sitePassword = userKey.siteResult( testCase.getSiteName(), testCase.getAlgorithm(), testCase.getSiteCounter(),
                                                         testCase.getKeyPurpose(), testCase.getKeyContext(),
                                                         testCase.getResultType(), null );
 

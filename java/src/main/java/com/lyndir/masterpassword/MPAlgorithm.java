@@ -44,23 +44,23 @@ public interface MPAlgorithm {
     /**
      * Derive a master key that describes a user's identity.
      *
-     * @param fullName       The name of the user whose identity is described by the key.
-     * @param masterPassword The user's secret that authenticates his access to the identity.
+     * @param userName       The name of the user whose identity is described by the key.
+     * @param userSecret The user's secret that authenticates his access to the identity.
      */
     @Nullable
-    byte[] masterKey(String fullName, char[] masterPassword);
+    byte[] userKey(String userName, char[] userSecret);
 
     /**
      * Derive a site key that describes a user's access to a specific entity.
      *
-     * @param masterKey   The identity of the user trying to access the entity.
+     * @param userKey   The identity of the user trying to access the entity.
      * @param siteName    The name of the entity to access.
      * @param siteCounter The site key's generation.
      * @param keyPurpose  The action that the user aims to undertake with this key.
      * @param keyContext  An action-specific context within which to scope the key.
      */
     @Nullable
-    byte[] siteKey(byte[] masterKey, String siteName, UnsignedInteger siteCounter,
+    byte[] siteKey(byte[] userKey, String siteName, UnsignedInteger siteCounter,
                    MPKeyPurpose keyPurpose, @Nullable String keyContext);
 
     /**
@@ -70,7 +70,7 @@ public interface MPAlgorithm {
      * @param resultParam A parameter that provides contextual data specific to the type template.
      */
     @Nullable
-    String siteResult(byte[] masterKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
+    String siteResult(byte[] userKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
                       MPKeyPurpose keyPurpose, @Nullable String keyContext,
                       MPResultType resultType, @Nullable String resultParam);
 
@@ -83,17 +83,17 @@ public interface MPAlgorithm {
      * @param resultParam A parameter that provides contextual data specific to the type template.
      */
     @Nullable
-    String siteState(byte[] masterKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
+    String siteState(byte[] userKey, byte[] siteKey, String siteName, UnsignedInteger siteCounter,
                      MPKeyPurpose keyPurpose, @Nullable String keyContext,
                      MPResultType resultType, String resultParam);
 
     /**
      * Derive an identicon that represents the user's identity in a visually recognizable way.
      *
-     * @param fullName       The name of the user whose identity is described by the key.
-     * @param masterPassword The user's secret that authenticates his access to the identity.
+     * @param userName       The name of the user whose identity is described by the key.
+     * @param userSecret The user's secret that authenticates his access to the identity.
      */
-    MPIdenticon identicon(final String fullName, final char[] masterPassword);
+    MPIdenticon identicon(final String userName, final char[] userSecret);
 
     /**
      * Encode a fingerprint for a message.
@@ -209,101 +209,101 @@ public interface MPAlgorithm {
 
         @Nullable
         @Override
-        public byte[] masterKey(final String fullName, final char[] masterPassword) {
+        public byte[] userKey(final String userName, final char[] userSecret) {
 
-            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of masterPassword.
+            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of userSecret.
             CharsetEncoder encoder             = mpw_charset().newEncoder();
-            byte[]         masterPasswordBytes = new byte[(int) (masterPassword.length * (double) encoder.maxBytesPerChar()) + 1];
+            byte[]         userSecretBytes = new byte[(int) (userSecret.length * (double) encoder.maxBytesPerChar()) + 1];
             try {
-                Arrays.fill( masterPasswordBytes, (byte) 0 );
-                ByteBuffer masterPasswordBuffer = ByteBuffer.wrap( masterPasswordBytes );
+                Arrays.fill( userSecretBytes, (byte) 0 );
+                ByteBuffer userSecretBuffer = ByteBuffer.wrap( userSecretBytes );
 
-                CoderResult result = encoder.encode( CharBuffer.wrap( masterPassword ), masterPasswordBuffer, true );
+                CoderResult result = encoder.encode( CharBuffer.wrap( userSecret ), userSecretBuffer, true );
                 if (result.isError())
                     throw new IllegalStateException( result.toString() );
-                result = encoder.flush( masterPasswordBuffer );
+                result = encoder.flush( userSecretBuffer );
                 if (result.isError())
                     throw new IllegalStateException( result.toString() );
 
-                return _masterKey( fullName, masterPasswordBytes, version().toInt() );
+                return _userKey( userName, userSecretBytes, version().toInt() );
             }
             finally {
-                Arrays.fill( masterPasswordBytes, (byte) 0 );
+                Arrays.fill( userSecretBytes, (byte) 0 );
             }
         }
 
         @Nullable
-        protected native byte[] _masterKey(final String fullName, final byte[] masterPassword, final int algorithmVersion);
+        protected native byte[] _userKey(final String userName, final byte[] userSecret, final int algorithmVersion);
 
         @Nullable
         @Override
-        public byte[] siteKey(final byte[] masterKey, final String siteName, final UnsignedInteger siteCounter,
+        public byte[] siteKey(final byte[] userKey, final String siteName, final UnsignedInteger siteCounter,
                               final MPKeyPurpose keyPurpose, @Nullable final String keyContext) {
 
-            return _siteKey( masterKey, siteName, siteCounter.longValue(), keyPurpose.toInt(), keyContext, version().toInt() );
+            return _siteKey( userKey, siteName, siteCounter.longValue(), keyPurpose.toInt(), keyContext, version().toInt() );
         }
 
         @Nullable
-        protected native byte[] _siteKey(final byte[] masterKey, final String siteName, final long siteCounter,
+        protected native byte[] _siteKey(final byte[] userKey, final String siteName, final long siteCounter,
                                          final int keyPurpose, @Nullable final String keyContext, final int version);
 
         @Nullable
         @Override
-        public String siteResult(final byte[] masterKey, final byte[] siteKey, final String siteName, final UnsignedInteger siteCounter,
+        public String siteResult(final byte[] userKey, final byte[] siteKey, final String siteName, final UnsignedInteger siteCounter,
                                  final MPKeyPurpose keyPurpose, @Nullable final String keyContext,
                                  final MPResultType resultType, @Nullable final String resultParam) {
 
-            return _siteResult( masterKey, siteKey, siteName, siteCounter.longValue(),
+            return _siteResult( userKey, siteKey, siteName, siteCounter.longValue(),
                                 keyPurpose.toInt(), keyContext, resultType.getType(), resultParam, version().toInt() );
         }
 
         @Nullable
-        protected native String _siteResult(final byte[] masterKey, final byte[] siteKey, final String siteName, final long siteCounter,
+        protected native String _siteResult(final byte[] userKey, final byte[] siteKey, final String siteName, final long siteCounter,
                                             final int keyPurpose, @Nullable final String keyContext,
                                             final int resultType, @Nullable final String resultParam, final int algorithmVersion);
 
         @Nullable
         @Override
-        public String siteState(final byte[] masterKey, final byte[] siteKey, final String siteName, final UnsignedInteger siteCounter,
+        public String siteState(final byte[] userKey, final byte[] siteKey, final String siteName, final UnsignedInteger siteCounter,
                                 final MPKeyPurpose keyPurpose, @Nullable final String keyContext,
                                 final MPResultType resultType, final String resultParam) {
 
-            return _siteState( masterKey, siteKey, siteName, siteCounter.longValue(),
+            return _siteState( userKey, siteKey, siteName, siteCounter.longValue(),
                                keyPurpose.toInt(), keyContext, resultType.getType(), resultParam, version().toInt() );
         }
 
         @Nullable
-        protected native String _siteState(final byte[] masterKey, final byte[] siteKey, final String siteName, final long siteCounter,
+        protected native String _siteState(final byte[] userKey, final byte[] siteKey, final String siteName, final long siteCounter,
                                            final int keyPurpose, @Nullable final String keyContext,
                                            final int resultType, final String resultParam, final int algorithmVersion);
 
         @Nullable
         @Override
-        public MPIdenticon identicon(final String fullName, final char[] masterPassword) {
+        public MPIdenticon identicon(final String userName, final char[] userSecret) {
 
-            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of masterPassword.
+            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of userSecret.
             CharsetEncoder encoder             = mpw_charset().newEncoder();
-            byte[]         masterPasswordBytes = new byte[(int) (masterPassword.length * (double) encoder.maxBytesPerChar()) + 1];
+            byte[]         userSecretBytes = new byte[(int) (userSecret.length * (double) encoder.maxBytesPerChar()) + 1];
             try {
-                Arrays.fill( masterPasswordBytes, (byte) 0 );
-                ByteBuffer masterPasswordBuffer = ByteBuffer.wrap( masterPasswordBytes );
+                Arrays.fill( userSecretBytes, (byte) 0 );
+                ByteBuffer userSecretBuffer = ByteBuffer.wrap( userSecretBytes );
 
-                CoderResult result = encoder.encode( CharBuffer.wrap( masterPassword ), masterPasswordBuffer, true );
+                CoderResult result = encoder.encode( CharBuffer.wrap( userSecret ), userSecretBuffer, true );
                 if (result.isError())
                     throw new IllegalStateException( result.toString() );
-                result = encoder.flush( masterPasswordBuffer );
+                result = encoder.flush( userSecretBuffer );
                 if (result.isError())
                     throw new IllegalStateException( result.toString() );
 
-                return _identicon( fullName, masterPasswordBytes );
+                return _identicon( userName, userSecretBytes );
             }
             finally {
-                Arrays.fill( masterPasswordBytes, (byte) 0 );
+                Arrays.fill( userSecretBytes, (byte) 0 );
             }
         }
 
         @Nullable
-        protected native MPIdenticon _identicon(final String fullName, final byte[] masterPassword);
+        protected native MPIdenticon _identicon(final String userName, final byte[] userSecret);
 
         @Override
         public String toID(final String message) {
@@ -312,7 +312,7 @@ public interface MPAlgorithm {
 
         @Override
         public String toID(final char[] message) {
-            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of masterPassword.
+            // Create a memory-safe NUL-terminated UTF-8 C-string byte array variant of userSecret.
             CharsetEncoder encoder             = mpw_charset().newEncoder();
             byte[]         messageBytes = new byte[(int) (message.length * (double) encoder.maxBytesPerChar()) + 1];
             try {

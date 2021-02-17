@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -56,7 +56,7 @@ MP_LIBS_END
 typedef mpw_enum( unsigned int, MPAlgorithmVersion ) {
     /** V0 incorrectly performed host-endian math with bytes translated into 16-bit network-endian. */
     MPAlgorithmVersionV0,
-    /** V1 incorrectly sized service name fields by character count rather than byte count. */
+    /** V1 incorrectly sized site name fields by character count rather than byte count. */
     MPAlgorithmVersionV1,
     /** V2 incorrectly sized user name fields by character count rather than byte count. */
     MPAlgorithmVersionV2,
@@ -83,7 +83,7 @@ typedef struct {
     const MPKeyID keyID;
     /** The algorithm the key was made by & for */
     const MPAlgorithmVersion algorithm;
-} MPMasterKey;
+} MPUserKey;
 
 typedef struct {
     /** The cryptographic key */
@@ -92,7 +92,7 @@ typedef struct {
     const MPKeyID keyID;
     /** The algorithm the key was made by & for */
     const MPAlgorithmVersion algorithm;
-} MPServiceKey;
+} MPSiteKey;
 
 typedef mpw_enum( uint8_t, MPKeyPurpose ) {
     /** Generate a key for authentication. */
@@ -105,25 +105,25 @@ typedef mpw_enum( uint8_t, MPKeyPurpose ) {
 
 // bit 4 - 9
 typedef mpw_opts( uint16_t, MPResultTypeClass ) {
-    /** Use the service key to generate a password from a template. */
+    /** Use the site key to generate a result from a template. */
             MPResultTypeClassTemplate = 1 << 4,
-    /** Use the service key to encrypt and decrypt a stateful entity. */
+    /** Use the site key to encrypt and decrypt a stateful entity. */
             MPResultTypeClassStateful = 1 << 5,
-    /** Use the service key to derive a service-specific object. */
+    /** Use the site key to derive a site-specific object. */
             MPResultTypeClassDerive = 1 << 6,
 };
 
 // bit 10 - 15
-typedef mpw_opts( uint16_t, MPServiceFeature ) {
+typedef mpw_opts( uint16_t, MPSiteFeature ) {
     /** Export the key-protected content data. */
-            MPServiceFeatureExportContent = 1 << 10,
+            MPSiteFeatureExportContent = 1 << 10,
     /** Never export content. */
-            MPServiceFeatureDevicePrivate = 1 << 11,
+            MPSiteFeatureDevicePrivate = 1 << 11,
     /** Don't use this as the primary authentication result type. */
-            MPServiceFeatureAlternative = 1 << 12,
+            MPSiteFeatureAlternative = 1 << 12,
 };
 
-// bit 0-3 | MPResultTypeClass | MPServiceFeature
+// bit 0-3 | MPResultTypeClass | MPSiteFeature
 typedef mpw_enum( uint32_t, MPResultType ) {
     /** 0: Don't produce a result */
             MPResultTypeNone = 0,
@@ -145,13 +145,13 @@ typedef mpw_enum( uint32_t, MPResultType ) {
     /** 31: bir yennoquce fefi */
             MPResultTypeTemplatePhrase = 0xF | MPResultTypeClassTemplate | 0x0,
 
-    /** 1056: Custom saved password. */
-            MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPServiceFeatureExportContent,
-    /** 2081: Custom saved password that should not be exported from the device. */
-            MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPServiceFeatureDevicePrivate,
+    /** 1056: Custom saved result. */
+            MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPSiteFeatureExportContent,
+    /** 2081: Custom saved result that should not be exported from the device. */
+            MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPSiteFeatureDevicePrivate,
 
     /** 4160: Derive a unique binary key. */
-            MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPServiceFeatureAlternative,
+            MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPSiteFeatureAlternative,
 
     MPResultTypeDefaultResult = MPResultTypeTemplateLong,
     MPResultTypeDefaultLogin = MPResultTypeTemplateName,
@@ -160,7 +160,7 @@ typedef mpw_enum( uint32_t, MPResultType ) {
 typedef mpw_enum ( uint32_t, MPCounterValue ) {
     /** Use a time-based counter value, resulting in a TOTP generator. */
             MPCounterValueTOTP = 0,
-    /** The initial value for a service's counter. */
+    /** The initial value for a site's counter. */
             MPCounterValueInitial = 1,
 
     MPCounterValueDefault = MPCounterValueInitial,
@@ -219,19 +219,19 @@ const char *mpw_purpose_name(const MPKeyPurpose purpose);
 const char *mpw_purpose_scope(const MPKeyPurpose purpose);
 
 /**
- * @return The password type represented by the given name or ERR if the name does not represent a known type.
+ * @return The result type represented by the given name or ERR if the name does not represent a known type.
  */
 const MPResultType mpw_type_named(const char *typeName);
 /**
- * @return The standard identifying name (static) for the given password type or NULL if the type is not known.
+ * @return The standard identifying name (static) for the given result type or NULL if the type is not known.
  */
 const char *mpw_type_abbreviation(const MPResultType resultType);
 /**
- * @return The standard identifying name (static) for the given password type or NULL if the type is not known.
+ * @return The standard identifying name (static) for the given result type or NULL if the type is not known.
  */
 const char *mpw_type_short_name(const MPResultType resultType);
 /**
- * @return The descriptive name (static) for the given password type or NULL if the type is not known.
+ * @return The descriptive name (static) for the given result type or NULL if the type is not known.
  */
 const char *mpw_type_long_name(const MPResultType resultType);
 
@@ -241,7 +241,7 @@ const char *mpw_type_long_name(const MPResultType resultType);
  */
 const char **mpw_type_templates(const MPResultType type, size_t *count);
 /**
- * @return A C-string (static) that contains the password encoding template of the given type for a seed that starts with the given byte.
+ * @return A C-string (static) that contains the result encoding template of the given type for a seed that starts with the given byte.
  *         NULL if the type is not known or is not a MPResultTypeClassTemplate.
  */
 const char *mpw_type_template(const MPResultType type, const uint8_t templateIndex);

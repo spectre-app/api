@@ -94,141 +94,141 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_VERSION_1_6;
 }
 
-/* native byte[] _masterKey(final String fullName, final byte[] masterPassword, final int algorithmVersion) */
-JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1masterKey(JNIEnv *env, jobject obj,
-        jstring fullName, jbyteArray masterPassword, jint algorithmVersion) {
+/* native byte[] _userKey(final String userName, final byte[] userSecret, final int algorithmVersion) */
+JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1userKey(JNIEnv *env, jobject obj,
+        jstring userName, jbyteArray userSecret, jint algorithmVersion) {
 #error TODO
-    if (!fullName || !masterPassword)
+    if (!userName || !userSecret)
         return NULL;
 
-    const char *fullNameString = (*env)->GetStringUTFChars( env, fullName, NULL );
-    jbyte *masterPasswordString = (*env)->GetByteArrayElements( env, masterPassword, NULL );
+    const char *userNameString = (*env)->GetStringUTFChars( env, userName, NULL );
+    jbyte *userSecretString = (*env)->GetByteArrayElements( env, userSecret, NULL );
 
-    MPMasterKey *masterKeyBytes = mpw_master_key( fullNameString, (char *)masterPasswordString, (MPAlgorithmVersion)algorithmVersion );
-    (*env)->ReleaseStringUTFChars( env, fullName, fullNameString );
-    (*env)->ReleaseByteArrayElements( env, masterPassword, masterPasswordString, JNI_ABORT );
+    MPUserKey *userKeyBytes = mpw_user_key( userNameString, (char *)userSecretString, (MPAlgorithmVersion)algorithmVersion );
+    (*env)->ReleaseStringUTFChars( env, userName, userNameString );
+    (*env)->ReleaseByteArrayElements( env, userSecret, userSecretString, JNI_ABORT );
 
-    if (!masterKeyBytes)
+    if (!userKeyBytes)
         return NULL;
 
-    jbyteArray masterKey = (*env)->NewByteArray( env, (jsize)sizeof( masterKeyBytes->bytes ) );
-    (*env)->SetByteArrayRegion( env, masterKey, 0, (jsize)sizeof( masterKeyBytes->bytes ), (jbyte *)masterKeyBytes );
-    mpw_free( &masterKeyBytes, sizeof( masterKeyBytes->bytes ) );
+    jbyteArray userKey = (*env)->NewByteArray( env, (jsize)sizeof( userKeyBytes->bytes ) );
+    (*env)->SetByteArrayRegion( env, userKey, 0, (jsize)sizeof( userKeyBytes->bytes ), (jbyte *)userKeyBytes );
+    mpw_free( &userKeyBytes, sizeof( userKeyBytes->bytes ) );
 
-    return masterKey;
+    return userKey;
 }
 
-/* native byte[] _serviceKey(final byte[] masterKey, final String serviceName, final long keyCounter,
+/* native byte[] _siteKey(final byte[] userKey, final String siteName, final long keyCounter,
                           final int keyPurpose, @Nullable final String keyContext, final int version) */
-JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1serviceKey(JNIEnv *env, jobject obj,
-        jbyteArray masterKey, jstring serviceName, jlong keyCounter, jint keyPurpose, jstring keyContext, jint algorithmVersion) {
+JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteKey(JNIEnv *env, jobject obj,
+        jbyteArray userKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext, jint algorithmVersion) {
 #error TODO
-    if (!masterKey || !serviceName)
+    if (!userKey || !siteName)
         return NULL;
 
-    jbyte *masterKeyBytes = (*env)->GetByteArrayElements( env, masterKey, NULL );
-    const char *serviceNameString = (*env)->GetStringUTFChars( env, serviceName, NULL );
+    jbyte *userKeyBytes = (*env)->GetByteArrayElements( env, userKey, NULL );
+    const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
-    MPServiceKey serviceKeyBytes = mpw_service_key(
-            (MPMasterKey)masterKeyBytes, serviceNameString, (MPCounterValue)keyCounter,
+    MPsiteKey siteKeyBytes = mpw_site_key(
+            (MPUserKey)userKeyBytes, siteNameString, (MPCounterValue)keyCounter,
             (MPKeyPurpose)keyPurpose, keyContextString );
-    (*env)->ReleaseByteArrayElements( env, masterKey, masterKeyBytes, JNI_ABORT );
-    (*env)->ReleaseStringUTFChars( env, serviceName, serviceNameString );
+    (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
+    (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
     if (keyContext)
         (*env)->ReleaseStringUTFChars( env, keyContext, keyContextString );
 
-    if (!serviceKeyBytes)
+    if (!siteKeyBytes)
         return NULL;
 
-    jbyteArray serviceKey = (*env)->NewByteArray( env, (jsize)sizeof( *masterKey ) );
-    (*env)->SetByteArrayRegion( env, serviceKey, 0, (jsize)sizeof( *masterKey ), (jbyte *)serviceKeyBytes );
-    mpw_free( &serviceKeyBytes, sizeof( *serviceKey ) );
+    jbyteArray siteKey = (*env)->NewByteArray( env, (jsize)sizeof( *userKey ) );
+    (*env)->SetByteArrayRegion( env, siteKey, 0, (jsize)sizeof( *userKey ), (jbyte *)siteKeyBytes );
+    mpw_free( &siteKeyBytes, sizeof( *siteKey ) );
 
-    return serviceKey;
+    return siteKey;
 }
 
-/* native String _serviceResult(final byte[] masterKey, final byte[] serviceKey, final String serviceName, final long keyCounter,
+/* native String _siteResult(final byte[] userKey, final byte[] siteKey, final String siteName, final long keyCounter,
                              final int keyPurpose, @Nullable final String keyContext,
                              final int resultType, @Nullable final String resultParam, final int algorithmVersion) */
-JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1serviceResult(JNIEnv *env, jobject obj,
-        jbyteArray masterKey, jbyteArray serviceKey, jstring serviceName, jlong keyCounter, jint keyPurpose, jstring keyContext,
+JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteResult(JNIEnv *env, jobject obj,
+        jbyteArray userKey, jbyteArray siteKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext,
         jint resultType, jstring resultParam, jint algorithmVersion) {
 #error TODO
-    if (!masterKey || !serviceKey || !serviceName)
+    if (!userKey || !siteKey || !siteName)
         return NULL;
 
-    jbyte *masterKeyBytes = (*env)->GetByteArrayElements( env, masterKey, NULL );
-    jbyte *serviceKeyBytes = (*env)->GetByteArrayElements( env, serviceKey, NULL );
-    const char *serviceNameString = (*env)->GetStringUTFChars( env, serviceName, NULL );
+    jbyte *userKeyBytes = (*env)->GetByteArrayElements( env, userKey, NULL );
+    jbyte *siteKeyBytes = (*env)->GetByteArrayElements( env, siteKey, NULL );
+    const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
     const char *resultParamString = resultParam? (*env)->GetStringUTFChars( env, resultParam, NULL ): NULL;
-    const char *serviceResultString = mpw_service_result( (MPMasterKey)masterKeyBytes, serviceNameString,
+    const char *siteResultString = mpw_site_result( (MPUserKey)userKeyBytes, siteNameString,
             (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter, (MPKeyPurpose)keyPurpose, keyContextString );
-    (*env)->ReleaseByteArrayElements( env, masterKey, masterKeyBytes, JNI_ABORT );
-    (*env)->ReleaseByteArrayElements( env, serviceKey, serviceKeyBytes, JNI_ABORT );
-    (*env)->ReleaseStringUTFChars( env, serviceName, serviceNameString );
+    (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
+    (*env)->ReleaseByteArrayElements( env, siteKey, siteKeyBytes, JNI_ABORT );
+    (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
     if (keyContext)
         (*env)->ReleaseStringUTFChars( env, keyContext, keyContextString );
     if (resultParam)
         (*env)->ReleaseStringUTFChars( env, resultParam, resultParamString );
 
-    if (!serviceResultString)
+    if (!siteResultString)
         return NULL;
 
-    jstring serviceResult = (*env)->NewStringUTF( env, serviceResultString );
-    mpw_free_string( &serviceResultString );
+    jstring siteResult = (*env)->NewStringUTF( env, siteResultString );
+    mpw_free_string( &siteResultString );
 
-    return serviceResult;
+    return siteResult;
 }
 
-/* native String _serviceState(final byte[] masterKey, final byte[] serviceKey, final String serviceName, final long keyCounter,
+/* native String _siteState(final byte[] userKey, final byte[] siteKey, final String siteName, final long keyCounter,
                             final int keyPurpose, @Nullable final String keyContext,
                             final int resultType, final String resultParam, final int algorithmVersion) */
-JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1serviceState(JNIEnv *env, jobject obj,
-        jbyteArray masterKey, jbyteArray serviceKey, jstring serviceName, jlong keyCounter, jint keyPurpose, jstring keyContext,
+JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteState(JNIEnv *env, jobject obj,
+        jbyteArray userKey, jbyteArray siteKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext,
         jint resultType, jstring resultParam, jint algorithmVersion) {
 #error TODO
-    if (!masterKey || !serviceKey || !serviceName || !resultParam)
+    if (!userKey || !siteKey || !siteName || !resultParam)
         return NULL;
 
-    jbyte *masterKeyBytes = (*env)->GetByteArrayElements( env, masterKey, NULL );
-    jbyte *serviceKeyBytes = (*env)->GetByteArrayElements( env, serviceKey, NULL );
-    const char *serviceNameString = (*env)->GetStringUTFChars( env, serviceName, NULL );
+    jbyte *userKeyBytes = (*env)->GetByteArrayElements( env, userKey, NULL );
+    jbyte *siteKeyBytes = (*env)->GetByteArrayElements( env, siteKey, NULL );
+    const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
     const char *resultParamString = (*env)->GetStringUTFChars( env, resultParam, NULL );
-    const char *serviceStateString = mpw_service_state(
-            (MPMasterKey)masterKeyBytes, serviceNameString, (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter,
+    const char *siteStateString = mpw_site_state(
+            (MPUserKey)userKeyBytes, siteNameString, (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter,
             (MPKeyPurpose)keyPurpose, keyContextString );
-    (*env)->ReleaseByteArrayElements( env, masterKey, masterKeyBytes, JNI_ABORT );
-    (*env)->ReleaseByteArrayElements( env, serviceKey, serviceKeyBytes, JNI_ABORT );
-    (*env)->ReleaseStringUTFChars( env, serviceName, serviceNameString );
+    (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
+    (*env)->ReleaseByteArrayElements( env, siteKey, siteKeyBytes, JNI_ABORT );
+    (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
     if (keyContextString)
         (*env)->ReleaseStringUTFChars( env, keyContext, keyContextString );
     if (resultParam)
         (*env)->ReleaseStringUTFChars( env, resultParam, resultParamString );
 
-    if (!serviceStateString)
+    if (!siteStateString)
         return NULL;
 
-    jstring serviceState = (*env)->NewStringUTF( env, serviceStateString );
-    mpw_free_string( &serviceStateString );
+    jstring siteState = (*env)->NewStringUTF( env, siteStateString );
+    mpw_free_string( &siteStateString );
 
-    return serviceState;
+    return siteState;
 }
 
-/* native MPIdenticon _identicon(final String fullName, final byte[] masterPassword) */
+/* native MPIdenticon _identicon(final String userName, final byte[] userSecret) */
 JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1identicon(JNIEnv *env, jobject obj,
-        jstring fullName, jbyteArray masterPassword) {
+        jstring userName, jbyteArray userSecret) {
 #error TODO
-    if (!fullName || !masterPassword)
+    if (!userName || !userSecret)
         return NULL;
 
-    const char *fullNameString = (*env)->GetStringUTFChars( env, fullName, NULL );
-    jbyte *masterPasswordString = (*env)->GetByteArrayElements( env, masterPassword, NULL );
+    const char *userNameString = (*env)->GetStringUTFChars( env, userName, NULL );
+    jbyte *userSecretString = (*env)->GetByteArrayElements( env, userSecret, NULL );
 
-    MPIdenticon identicon = mpw_identicon( fullNameString, (char *)masterPasswordString );
-    (*env)->ReleaseStringUTFChars( env, fullName, fullNameString );
-    (*env)->ReleaseByteArrayElements( env, masterPassword, masterPasswordString, JNI_ABORT );
+    MPIdenticon identicon = mpw_identicon( userNameString, (char *)userSecretString );
+    (*env)->ReleaseStringUTFChars( env, userName, userNameString );
+    (*env)->ReleaseByteArrayElements( env, userSecret, userSecretString, JNI_ABORT );
     if (identicon.color == MPIdenticonColorUnset)
         return NULL;
 
@@ -249,7 +249,7 @@ JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
     if (!init)
         return NULL;
 
-    return (*env)->NewObject( env, cMPIdenticon, init, fullName,
+    return (*env)->NewObject( env, cMPIdenticon, init, userName,
             (*env)->NewStringUTF( env, identicon.leftArm ),
             (*env)->NewStringUTF( env, identicon.body ),
             (*env)->NewStringUTF( env, identicon.rightArm ),

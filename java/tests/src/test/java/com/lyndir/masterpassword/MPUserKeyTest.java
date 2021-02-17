@@ -28,10 +28,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 
-public class MPMasterKeyTest {
+public class MPUserKeyTest {
 
     @SuppressWarnings("UnusedDeclaration")
-    private static final Logger logger = Logger.get( MPMasterKeyTest.class );
+    private static final Logger logger = Logger.get( MPUserKeyTest.class );
     private static final Random random = new SecureRandom();
 
     private MPTestSuite testSuite;
@@ -45,30 +45,30 @@ public class MPMasterKeyTest {
     }
 
     @Test
-    public void testMasterKey()
+    public void testUserKey()
             throws Exception {
 
-        testSuite.forEach( "testMasterKey", testCase -> {
-            char[]      masterPassword = testCase.getMasterPassword().toCharArray();
-            MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
+        testSuite.forEach( "testUserKey", testCase -> {
+            char[]      userSecret = testCase.getUserSecret().toCharArray();
+            MPUserKey userKey      = new MPUserKey( testCase.getUserName(), userSecret );
 
             // Test key
             assertTrue(
-                    testCase.getKeyID().equalsIgnoreCase( masterKey.getKeyID( testCase.getAlgorithm() ) ),
-                    "[testMasterKey] keyID mismatch for test case: " + testCase );
+                    testCase.getKeyID().equalsIgnoreCase( userKey.getKeyID( testCase.getAlgorithm() ) ),
+                    "[testUserKey] keyID mismatch for test case: " + testCase );
 
             // Test invalidation
-            masterKey.invalidate();
+            userKey.invalidate();
             try {
-                masterKey.getKeyID( testCase.getAlgorithm() );
-                fail( "[testMasterKey] invalidate ineffective for test case: " + testCase );
+                userKey.getKeyID( testCase.getAlgorithm() );
+                fail( "[testUserKey] invalidate ineffective for test case: " + testCase );
             }
             catch (final MPKeyUnavailableException ignored) {
             }
             assertNotEquals(
-                    masterPassword,
-                    testCase.getMasterPassword().toCharArray(),
-                    "[testMasterKey] masterPassword not wiped for test case: " + testCase );
+                    userSecret,
+                    testCase.getUserSecret().toCharArray(),
+                    "[testUserKey] userSecret not wiped for test case: " + testCase );
 
             return true;
         } );
@@ -79,12 +79,12 @@ public class MPMasterKeyTest {
             throws Exception {
 
         testSuite.forEach( "testSiteResult", testCase -> {
-            char[]      masterPassword = testCase.getMasterPassword().toCharArray();
-            MPMasterKey masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
+            char[]      userSecret = testCase.getUserSecret().toCharArray();
+            MPUserKey userKey      = new MPUserKey( testCase.getUserName(), userSecret );
 
             // Test site result
             assertEquals(
-                    masterKey.siteResult( testCase.getSiteName(), testCase.getAlgorithm(), testCase.getSiteCounter(),
+                    userKey.siteResult( testCase.getSiteName(), testCase.getAlgorithm(), testCase.getSiteCounter(),
                                           testCase.getKeyPurpose(),
                                           testCase.getKeyContext(), testCase.getResultType(),
                                           null ),
@@ -100,16 +100,16 @@ public class MPMasterKeyTest {
             throws Exception {
 
         MPTests.Case testCase       = testSuite.getTests().getDefaultCase();
-        char[]       masterPassword = testCase.getMasterPassword().toCharArray();
-        MPMasterKey  masterKey      = new MPMasterKey( testCase.getFullName(), masterPassword );
+        char[]       userSecret = testCase.getUserSecret().toCharArray();
+        MPUserKey    userKey      = new MPUserKey( testCase.getUserName(), userSecret );
 
         String       password   = randomString( 8 );
         MPResultType resultType = MPResultType.StoredPersonal;
         for (final MPAlgorithm.Version algorithm : MPAlgorithm.Version.values()) {
             // Test site state
-            String state = masterKey.siteState( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
+            String state = userKey.siteState( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
                                                 testCase.getKeyContext(), resultType, password );
-            String result = masterKey.siteResult( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
+            String result = userKey.siteResult( testCase.getSiteName(), algorithm, testCase.getSiteCounter(), testCase.getKeyPurpose(),
                                                   testCase.getKeyContext(), resultType, state );
 
             assertEquals(

@@ -9,18 +9,18 @@ extern "C" {
 #endif
 /*
  * Class:     com_lyndir_masterpassword_MPAlgorithm_Version
- * Method:    _masterKey
+ * Method:    _userKey
  * Signature: (Ljava/lang/String;[BI)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1masterKey
+JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1userKey
   (JNIEnv *, jobject, jstring, jbyteArray, jint);
 
 /*
  * Class:     com_lyndir_masterpassword_MPAlgorithm_Version
- * Method:    _serviceKey
+ * Method:    _siteKey
  * Signature: ([BLjava/lang/String;JILjava/lang/String;I)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1serviceKey
+JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteKey
   (JNIEnv *, jobject, jbyteArray, jstring, jlong, jint, jstring, jint);
 
 /*

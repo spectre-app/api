@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -27,105 +27,105 @@ MP_LIBS_BEGIN
 #include <string.h>
 MP_LIBS_END
 
-const MPMasterKey *mpw_master_key(
-        const char *fullName, const char *masterPassword, const MPAlgorithmVersion algorithmVersion) {
+const MPUserKey *mpw_user_key(
+        const char *userName, const char *userSecret, const MPAlgorithmVersion algorithmVersion) {
 
-    if (fullName && !strlen( fullName ))
-        fullName = NULL;
-    if (masterPassword && !strlen( masterPassword ))
-        masterPassword = NULL;
+    if (userName && !strlen( userName ))
+        userName = NULL;
+    if (userSecret && !strlen( userSecret ))
+        userSecret = NULL;
 
-    trc( "-- mpw_master_key (algorithm: %u)", algorithmVersion );
-    trc( "fullName: %s", fullName );
-    trc( "masterPassword.id: %s", masterPassword? mpw_id_buf( (uint8_t *)masterPassword, strlen( masterPassword ) ).hex: NULL );
-    if (!fullName) {
-        err( "Missing fullName" );
+    trc( "-- mpw_user_key (algorithm: %u)", algorithmVersion );
+    trc( "userName: %s", userName );
+    trc( "userSecret.id: %s", userSecret? mpw_id_buf( (uint8_t *)userSecret, strlen( userSecret ) ).hex: NULL );
+    if (!userName) {
+        err( "Missing userName" );
         return NULL;
     }
-    if (!masterPassword) {
-        err( "Missing masterPassword" );
+    if (!userSecret) {
+        err( "Missing userSecret" );
         return NULL;
     }
 
-    MPMasterKey *masterKey = memcpy( malloc( sizeof( MPMasterKey ) ),
-            &(MPMasterKey){ .algorithm = algorithmVersion }, sizeof( MPMasterKey ) );
+    MPUserKey *userKey = memcpy( malloc( sizeof( MPUserKey ) ),
+            &(MPUserKey){ .algorithm = algorithmVersion }, sizeof( MPUserKey ) );
 
     bool success = false;
     switch (algorithmVersion) {
         case MPAlgorithmVersionV0:
-            success = mpw_master_key_v0( masterKey, fullName, masterPassword );
+            success = mpw_user_key_v0( userKey, userName, userSecret );
             break;
         case MPAlgorithmVersionV1:
-            success = mpw_master_key_v1( masterKey, fullName, masterPassword );
+            success = mpw_user_key_v1( userKey, userName, userSecret );
             break;
         case MPAlgorithmVersionV2:
-            success = mpw_master_key_v2( masterKey, fullName, masterPassword );
+            success = mpw_user_key_v2( userKey, userName, userSecret );
             break;
         case MPAlgorithmVersionV3:
-            success = mpw_master_key_v3( masterKey, fullName, masterPassword );
+            success = mpw_user_key_v3( userKey, userName, userSecret );
             break;
         default:
             err( "Unsupported version: %d", algorithmVersion );
     }
 
     if (success)
-        return masterKey;
+        return userKey;
 
-    mpw_free( &masterKey, sizeof( MPMasterKey ) );
+    mpw_free( &userKey, sizeof( MPUserKey ) );
     return NULL;
 }
 
-const MPServiceKey *mpw_service_key(
-        const MPMasterKey *masterKey, const char *serviceName,
+const MPSiteKey *mpw_site_key(
+        const MPUserKey *userKey, const char *siteName,
         const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext) {
 
     if (keyContext && !strlen( keyContext ))
         keyContext = NULL;
-    if (!masterKey) {
-        err( "Missing masterKey" );
+    if (!userKey) {
+        err( "Missing userKey" );
         return NULL;
     }
-    if (!serviceName) {
-        err( "Missing serviceName" );
+    if (!siteName) {
+        err( "Missing siteName" );
         return NULL;
     }
 
-    trc( "-- mpw_service_key (algorithm: %u)", masterKey->algorithm );
-    trc( "serviceName: %s", serviceName );
+    trc( "-- mpw_site_key (algorithm: %u)", userKey->algorithm );
+    trc( "siteName: %s", siteName );
     trc( "keyCounter: %d", keyCounter );
     trc( "keyPurpose: %d (%s)", keyPurpose, mpw_purpose_name( keyPurpose ) );
     trc( "keyContext: %s", keyContext );
 
-    MPServiceKey *serviceKey = memcpy( malloc( sizeof( MPServiceKey ) ),
-            &(MPServiceKey){ .algorithm = masterKey->algorithm }, sizeof( MPServiceKey ) );
+    MPSiteKey *siteKey = memcpy( malloc( sizeof( MPSiteKey ) ),
+            &(MPSiteKey){ .algorithm = userKey->algorithm }, sizeof( MPSiteKey ) );
 
     bool success = false;
-    switch (masterKey->algorithm) {
+    switch (userKey->algorithm) {
         case MPAlgorithmVersionV0:
-            success = mpw_service_key_v0( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
+            success = mpw_site_key_v0( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
             break;
         case MPAlgorithmVersionV1:
-            success = mpw_service_key_v1( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
+            success = mpw_site_key_v1( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
             break;
         case MPAlgorithmVersionV2:
-            success = mpw_service_key_v2( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
+            success = mpw_site_key_v2( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
             break;
         case MPAlgorithmVersionV3:
-            success = mpw_service_key_v3( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
+            success = mpw_site_key_v3( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
             break;
         default:
-            err( "Unsupported version: %d", masterKey->algorithm );
+            err( "Unsupported version: %d", userKey->algorithm );
     }
 
     if (success)
-        return serviceKey;
+        return siteKey;
 
-    mpw_free( &serviceKey, sizeof( MPServiceKey ) );
+    mpw_free( &siteKey, sizeof( MPSiteKey ) );
     return NULL;
 }
 
-const char *mpw_service_result(
-        const MPMasterKey *masterKey, const char *serviceName,
+const char *mpw_site_result(
+        const MPUserKey *userKey, const char *siteName,
         const MPResultType resultType, const char *resultParam,
         const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext) {
 
@@ -133,18 +133,18 @@ const char *mpw_service_result(
         keyContext = NULL;
     if (resultParam && !strlen( resultParam ))
         resultParam = NULL;
-    if (!masterKey) {
-        err( "Missing masterKey" );
+    if (!userKey) {
+        err( "Missing userKey" );
         return NULL;
     }
 
-    const MPServiceKey *serviceKey = mpw_service_key( masterKey, serviceName, keyCounter, keyPurpose, keyContext );
-    if (!serviceKey) {
-        err( "Missing serviceKey" );
+    const MPSiteKey *siteKey = mpw_site_key( userKey, siteName, keyCounter, keyPurpose, keyContext );
+    if (!siteKey) {
+        err( "Missing siteKey" );
         return NULL;
     }
 
-    trc( "-- mpw_service_result (algorithm: %u)", masterKey->algorithm );
+    trc( "-- mpw_site_result (algorithm: %u)", userKey->algorithm );
     trc( "resultType: %d (%s)", resultType, mpw_type_short_name( resultType ) );
     trc( "resultParam: %s", resultParam );
 
@@ -152,47 +152,47 @@ const char *mpw_service_result(
         return NULL;
     }
     else if (resultType & MPResultTypeClassTemplate) {
-        switch (masterKey->algorithm) {
+        switch (userKey->algorithm) {
             case MPAlgorithmVersionV0:
-                return mpw_service_template_password_v0( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_template_password_v0( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV1:
-                return mpw_service_template_password_v1( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_template_password_v1( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV2:
-                return mpw_service_template_password_v2( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_template_password_v2( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV3:
-                return mpw_service_template_password_v3( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_template_password_v3( userKey, siteKey, resultType, resultParam );
             default:
-                err( "Unsupported version: %d", masterKey->algorithm );
+                err( "Unsupported version: %d", userKey->algorithm );
                 return NULL;
         }
     }
     else if (resultType & MPResultTypeClassStateful) {
-        switch (masterKey->algorithm) {
+        switch (userKey->algorithm) {
             case MPAlgorithmVersionV0:
-                return mpw_service_crypted_password_v0( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_crypted_password_v0( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV1:
-                return mpw_service_crypted_password_v1( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_crypted_password_v1( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV2:
-                return mpw_service_crypted_password_v2( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_crypted_password_v2( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV3:
-                return mpw_service_crypted_password_v3( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_crypted_password_v3( userKey, siteKey, resultType, resultParam );
             default:
-                err( "Unsupported version: %d", masterKey->algorithm );
+                err( "Unsupported version: %d", userKey->algorithm );
                 return NULL;
         }
     }
     else if (resultType & MPResultTypeClassDerive) {
-        switch (masterKey->algorithm) {
+        switch (userKey->algorithm) {
             case MPAlgorithmVersionV0:
-                return mpw_service_derived_password_v0( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_derived_password_v0( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV1:
-                return mpw_service_derived_password_v1( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_derived_password_v1( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV2:
-                return mpw_service_derived_password_v2( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_derived_password_v2( userKey, siteKey, resultType, resultParam );
             case MPAlgorithmVersionV3:
-                return mpw_service_derived_password_v3( masterKey, serviceKey, resultType, resultParam );
+                return mpw_site_derived_password_v3( userKey, siteKey, resultType, resultParam );
             default:
-                err( "Unsupported version: %d", masterKey->algorithm );
+                err( "Unsupported version: %d", userKey->algorithm );
                 return NULL;
         }
     }
@@ -203,8 +203,8 @@ const char *mpw_service_result(
     return NULL;
 }
 
-const char *mpw_service_state(
-        const MPMasterKey *masterKey, const char *serviceName,
+const char *mpw_site_state(
+        const MPUserKey *userKey, const char *siteName,
         const MPResultType resultType, const char *resultParam,
         const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext) {
 
@@ -212,14 +212,14 @@ const char *mpw_service_state(
         keyContext = NULL;
     if (resultParam && !strlen( resultParam ))
         resultParam = NULL;
-    if (!masterKey) {
-        err( "Missing masterKey" );
+    if (!userKey) {
+        err( "Missing userKey" );
         return NULL;
     }
 
-    const MPServiceKey *serviceKey = mpw_service_key( masterKey, serviceName, keyCounter, keyPurpose, keyContext );
-    if (!serviceKey) {
-        err( "Missing serviceKey" );
+    const MPSiteKey *siteKey = mpw_site_key( userKey, siteName, keyCounter, keyPurpose, keyContext );
+    if (!siteKey) {
+        err( "Missing siteKey" );
         return NULL;
     }
     if (!resultParam) {
@@ -227,7 +227,7 @@ const char *mpw_service_state(
         return NULL;
     }
 
-    trc( "-- mpw_service_state (algorithm: %u)", masterKey->algorithm );
+    trc( "-- mpw_site_state (algorithm: %u)", userKey->algorithm );
     trc( "resultType: %d (%s)", resultType, mpw_type_short_name( resultType ) );
     trc( "resultParam: %zu bytes = %s", resultParam? strlen( resultParam ): 0, resultParam );
 
@@ -235,17 +235,17 @@ const char *mpw_service_state(
         return NULL;
     }
 
-    switch (masterKey->algorithm) {
+    switch (userKey->algorithm) {
         case MPAlgorithmVersionV0:
-            return mpw_service_state_v0( masterKey, serviceKey, resultType, resultParam );
+            return mpw_site_state_v0( userKey, siteKey, resultType, resultParam );
         case MPAlgorithmVersionV1:
-            return mpw_service_state_v1( masterKey, serviceKey, resultType, resultParam );
+            return mpw_site_state_v1( userKey, siteKey, resultType, resultParam );
         case MPAlgorithmVersionV2:
-            return mpw_service_state_v2( masterKey, serviceKey, resultType, resultParam );
+            return mpw_site_state_v2( userKey, siteKey, resultType, resultParam );
         case MPAlgorithmVersionV3:
-            return mpw_service_state_v3( masterKey, serviceKey, resultType, resultParam );
+            return mpw_site_state_v3( userKey, siteKey, resultType, resultParam );
         default:
-            err( "Unsupported version: %d", masterKey->algorithm );
+            err( "Unsupported version: %d", userKey->algorithm );
             return NULL;
     }
 }
@@ -260,13 +260,13 @@ static const char *mpw_identicon_accessories[] = {
 };
 
 const MPIdenticon mpw_identicon(
-        const char *fullName, const char *masterPassword) {
+        const char *userName, const char *userSecret) {
 
     uint8_t seed[32] = { 0 };
-    if (fullName && strlen( fullName ) && masterPassword && strlen( masterPassword ))
+    if (userName && strlen( userName ) && userSecret && strlen( userSecret ))
         if (!mpw_hash_hmac_sha256( seed,
-                (const uint8_t *)masterPassword, strlen( masterPassword ),
-                (const uint8_t *)fullName, strlen( fullName ) )) {
+                (const uint8_t *)userSecret, strlen( userSecret ),
+                (const uint8_t *)userName, strlen( userName ) )) {
             mpw_zero( &seed, sizeof( seed ) );
             return MPIdenticonUnset;
         }

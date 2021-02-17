@@ -86,8 +86,8 @@ public class MPTests {
         String parent;
         @Nullable
         Integer algorithm;
-        String fullName;
-        String masterPassword;
+        String userName;
+        String userSecret;
         String keyID;
         String siteName;
         @Nullable
@@ -114,18 +114,18 @@ public class MPTests {
                     return checkNotNull( parentCase.algorithm );
                 }
             } );
-            fullName = ifNotNullElse( fullName, new NNSupplier<String>() {
+            userName = ifNotNullElse( userName, new NNSupplier<String>() {
                 @Nonnull
                 @Override
                 public String get() {
-                    return checkNotNull( parentCase.fullName );
+                    return checkNotNull( parentCase.userName );
                 }
             } );
-            masterPassword = ifNotNullElse( masterPassword, new NNSupplier<String>() {
+            userSecret = ifNotNullElse( userSecret, new NNSupplier<String>() {
                 @Nonnull
                 @Override
                 public String get() {
-                    return checkNotNull( parentCase.masterPassword );
+                    return checkNotNull( parentCase.userSecret );
                 }
             } );
             keyID = ifNotNullElse( keyID, new NNSupplier<String>() {
@@ -195,13 +195,13 @@ public class MPTests {
         }
 
         @Nonnull
-        public String getFullName() {
-            return checkNotNull( fullName );
+        public String getUserName() {
+            return checkNotNull( userName );
         }
 
         @Nonnull
-        public String getMasterPassword() {
-            return checkNotNull( masterPassword );
+        public String getUserSecret() {
+            return checkNotNull( userSecret );
         }
 
         @Nonnull

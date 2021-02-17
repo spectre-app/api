@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -48,12 +48,12 @@ time_t mpw_get_timegm(
 
 /// mpw.
 
-/** Calculate a master key if the target master key algorithm is different from the given master key algorithm.
- * @param masterKey A buffer (allocated, MPMasterKeySize).
- * @return false if an error occurred during the derivation of the master key. */
-bool mpw_update_master_key(
-        const MPMasterKey **masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
-        const char *fullName, const char *masterPassword);
+/** Calculate a user key if the target user key algorithm is different from the given user key algorithm.
+ * @param userKey A buffer (allocated, MPUserKeySize).
+ * @return false if an error occurred during the derivation of the user key. */
+bool mpw_update_user_key(
+        const MPUserKey **userKey, MPAlgorithmVersion *userKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+        const char *userName, const char *userSecret);
 
 
 /// JSON parsing.
@@ -81,7 +81,7 @@ int64_t mpw_get_json_int(
 bool mpw_get_json_boolean(
         json_object *obj, const char *key, const bool defaultValue);
 /** Translate a JSON object tree into a source-agnostic data object.
- * @param data A Master Password data object or NULL.
+ * @param data A Spectre data object or NULL.
  * @param obj A JSON object tree or NULL. */
 void mpw_set_json_data(
         MPMarshalledData *data, json_object *obj);

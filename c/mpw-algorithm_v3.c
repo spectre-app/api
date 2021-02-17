@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -30,69 +30,69 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
-bool mpw_master_key_v3(
-        const MPMasterKey *masterKey, const char *fullName, const char *masterPassword) {
+bool mpw_user_key_v3(
+        const MPUserKey *userKey, const char *userName, const char *userSecret) {
 
     const char *keyScope = mpw_purpose_scope( MPKeyPurposeAuthentication );
     trc( "keyScope: %s", keyScope );
 
-    // Calculate the master key salt.
-    trc( "masterKeySalt: keyScope=%s | #fullName=%s | fullName=%s",
-            keyScope, mpw_hex_l( (uint32_t)strlen( fullName ), (char[9]){ 0 } ), fullName );
-    size_t masterKeySaltSize = 0;
-    uint8_t *masterKeySalt = NULL;
-    if (!(mpw_buf_push( &masterKeySalt, &masterKeySaltSize, keyScope ) &&
-          mpw_buf_push( &masterKeySalt, &masterKeySaltSize, (uint32_t)strlen( fullName ) ) &&
-          mpw_buf_push( &masterKeySalt, &masterKeySaltSize, fullName )) || !masterKeySalt) {
-        mpw_free( &masterKeySalt, masterKeySaltSize );
-        err( "Could not allocate master key salt: %s", strerror( errno ) );
+    // Calculate the user key salt.
+    trc( "userKeySalt: keyScope=%s | #userName=%s | userName=%s",
+            keyScope, mpw_hex_l( (uint32_t)strlen( userName ), (char[9]){ 0 } ), userName );
+    size_t userKeySaltSize = 0;
+    uint8_t *userKeySalt = NULL;
+    if (!(mpw_buf_push( &userKeySalt, &userKeySaltSize, keyScope ) &&
+          mpw_buf_push( &userKeySalt, &userKeySaltSize, (uint32_t)strlen( userName ) ) &&
+          mpw_buf_push( &userKeySalt, &userKeySaltSize, userName )) || !userKeySalt) {
+        mpw_free( &userKeySalt, userKeySaltSize );
+        err( "Could not allocate user key salt: %s", strerror( errno ) );
         return false;
     }
-    trc( "  => masterKeySalt.id: %s", mpw_id_buf( masterKeySalt, masterKeySaltSize ).hex );
+    trc( "  => userKeySalt.id: %s", mpw_id_buf( userKeySalt, userKeySaltSize ).hex );
 
-    // Calculate the master key.
-    trc( "masterKey: scrypt( masterPassword, masterKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
-    bool success = mpw_kdf_scrypt( (uint8_t *)masterKey->bytes, sizeof( masterKey->bytes ),
-            (uint8_t *)masterPassword, strlen( masterPassword ), masterKeySalt, masterKeySaltSize, MP_N, MP_r, MP_p );
-    mpw_free( &masterKeySalt, masterKeySaltSize );
+    // Calculate the user key.
+    trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
+    bool success = mpw_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
+            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, MP_N, MP_r, MP_p );
+    mpw_free( &userKeySalt, userKeySaltSize );
 
     if (!success)
-        err( "Could not derive master key: %s", strerror( errno ) );
+        err( "Could not derive user key: %s", strerror( errno ) );
     else {
-        MPKeyID keyID = mpw_id_buf( masterKey->bytes, sizeof( masterKey->bytes ) );
-        memcpy( (MPKeyID *)&masterKey->keyID, &keyID, sizeof( masterKey->keyID ) );
-        trc( "  => masterKey.id: %s (algorithm: %d:3)", masterKey->keyID.hex, masterKey->algorithm );
+        MPKeyID keyID = mpw_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
+        memcpy( (MPKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
+        trc( "  => userKey.id: %s (algorithm: %d:3)", userKey->keyID.hex, userKey->algorithm );
     }
     return success;
 }
 
-bool mpw_service_key_v3(
-        const MPServiceKey *serviceKey, const MPMasterKey *masterKey, const char *serviceName,
+bool mpw_site_key_v3(
+        const MPSiteKey *siteKey, const MPUserKey *userKey, const char *siteName,
         MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
 
-    return mpw_service_key_v2( serviceKey, masterKey, serviceName, keyCounter, keyPurpose, keyContext );
+    return mpw_site_key_v2( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
 }
 
-const char *mpw_service_template_password_v3(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_site_template_password_v3(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_service_template_password_v2( masterKey, serviceKey, resultType, resultParam );
+    return mpw_site_template_password_v2( userKey, siteKey, resultType, resultParam );
 }
 
-const char *mpw_service_crypted_password_v3(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *cipherText) {
+const char *mpw_site_crypted_password_v3(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
 
-    return mpw_service_crypted_password_v2( masterKey, serviceKey, resultType, cipherText );
+    return mpw_site_crypted_password_v2( userKey, siteKey, resultType, cipherText );
 }
 
-const char *mpw_service_derived_password_v3(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *resultParam) {
+const char *mpw_site_derived_password_v3(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
 
-    return mpw_service_derived_password_v2( masterKey, serviceKey, resultType, resultParam );
+    return mpw_site_derived_password_v2( userKey, siteKey, resultType, resultParam );
 }
 
-const char *mpw_service_state_v3(
-        const MPMasterKey *masterKey, const MPServiceKey *serviceKey, MPResultType resultType, const char *state) {
+const char *mpw_site_state_v3(
+        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *state) {
 
-    return mpw_service_state_v2( masterKey, serviceKey, resultType, state );
+    return mpw_site_state_v2( userKey, siteKey, resultType, state );
 }

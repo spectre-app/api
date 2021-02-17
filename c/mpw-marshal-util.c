@@ -1,13 +1,13 @@
 //==============================================================================
-// This file is part of Master Password.
+// This file is part of Spectre.
 // Copyright (c) 2011-2017, Maarten Billemont.
 //
-// Master Password is free software: you can redistribute it and/or modify
+// Spectre is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Master Password is distributed in the hope that it will be useful,
+// Spectre is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -63,19 +63,19 @@ time_t mpw_get_timegm(const char *in) {
     return ERR;
 }
 
-bool mpw_update_master_key(const MPMasterKey **masterKey, MPAlgorithmVersion *masterKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
-        const char *fullName, const char *masterPassword) {
+bool mpw_update_user_key(const MPUserKey **userKey, MPAlgorithmVersion *userKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+        const char *userName, const char *userSecret) {
 
-    if (!masterKey || !masterKeyAlgorithm)
+    if (!userKey || !userKeyAlgorithm)
         return false;
 
-    if (!*masterKey || *masterKeyAlgorithm != targetKeyAlgorithm) {
-        mpw_free( masterKey, sizeof( **masterKey ) );
-        *masterKeyAlgorithm = targetKeyAlgorithm;
-        *masterKey = mpw_master_key( fullName, masterPassword, *masterKeyAlgorithm );
+    if (!*userKey || *userKeyAlgorithm != targetKeyAlgorithm) {
+        mpw_free( userKey, sizeof( **userKey ) );
+        *userKeyAlgorithm = targetKeyAlgorithm;
+        *userKey = mpw_user_key( userName, userSecret, *userKeyAlgorithm );
     }
 
-    return *masterKey != NULL;
+    return *userKey != NULL;
 }
 
 #if MPW_JSON
