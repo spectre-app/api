@@ -127,10 +127,12 @@ bool mpw_get_json_boolean(
 }
 
 static bool mpw_marshal_data_filter_keyed(MPMarshalledData *child, __unused void *args) {
+
     return child->obj_key != NULL;
 }
 
 static bool mpw_marshal_data_filter_unkeyed(MPMarshalledData *child, __unused void *args) {
+
     return child->obj_key == NULL;
 }
 
@@ -164,9 +166,11 @@ void mpw_set_json_data(
     // Clean up children
     if (type != json_type_object && type != json_type_array) {
         mpw_marshal_data_filter( data, mpw_marshal_data_filter_empty, NULL );
-    } else if (type == json_type_array) {
+    }
+    else if (type == json_type_array) {
         mpw_marshal_data_filter( data, mpw_marshal_data_filter_unkeyed, NULL );
-    } else /* type == json_type_object */ {
+    }
+    else /* type == json_type_object */ {
         mpw_marshal_data_filter( data, mpw_marshal_data_filter_keyed, NULL );
     }
 

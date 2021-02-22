@@ -61,17 +61,17 @@ MP_LIBS_END
 
 typedef mpw_enum( int, MPLogLevel ) {
     /** Logging internal state. */
-            MPLogLevelTrace = 3,
+    MPLogLevelTrace = 3,
     /** Logging state and events interesting when investigating issues. */
-            MPLogLevelDebug = 2,
+    MPLogLevelDebug = 2,
     /** User messages. */
-            MPLogLevelInfo = 1,
+    MPLogLevelInfo = 1,
     /** Recoverable issues and user suggestions. */
-            MPLogLevelWarning = 0,
+    MPLogLevelWarning = 0,
     /** Unrecoverable issues. */
-            MPLogLevelError = -1,
+    MPLogLevelError = -1,
     /** Issues that lead to abortion. */
-            MPLogLevelFatal = -2,
+    MPLogLevelFatal = -2,
 };
 extern MPLogLevel mpw_verbosity;
 

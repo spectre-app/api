@@ -7,11 +7,13 @@
 
 // TODO: We may need to zero the jbytes safely.
 
-static JavaVM* _vm;
+static JavaVM *_vm;
 static jobject logger;
 
 MPLogSink mpw_log_sink_jni;
+
 bool mpw_log_sink_jni(const MPLogEvent *record) {
+
     bool sunk = false;
 
     JNIEnv *env;
@@ -52,7 +54,8 @@ bool mpw_log_sink_jni(const MPLogEvent *record) {
     return sunk;
 }
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+
     JNIEnv *env;
     if ((*vm)->GetEnv( _vm = vm, (void **)&env, JNI_VERSION_1_6 ) != JNI_OK)
         return -1;
@@ -97,6 +100,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 /* native byte[] _userKey(final String userName, final byte[] userSecret, final int algorithmVersion) */
 JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1userKey(JNIEnv *env, jobject obj,
         jstring userName, jbyteArray userSecret, jint algorithmVersion) {
+
 #error TODO
     if (!userName || !userSecret)
         return NULL;
@@ -122,6 +126,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
                           final int keyPurpose, @Nullable final String keyContext, final int version) */
 JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteKey(JNIEnv *env, jobject obj,
         jbyteArray userKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext, jint algorithmVersion) {
+
 #error TODO
     if (!userKey || !siteName)
         return NULL;
@@ -153,6 +158,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
 JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteResult(JNIEnv *env, jobject obj,
         jbyteArray userKey, jbyteArray siteKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext,
         jint resultType, jstring resultParam, jint algorithmVersion) {
+
 #error TODO
     if (!userKey || !siteKey || !siteName)
         return NULL;
@@ -187,6 +193,7 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
 JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1siteState(JNIEnv *env, jobject obj,
         jbyteArray userKey, jbyteArray siteKey, jstring siteName, jlong keyCounter, jint keyPurpose, jstring keyContext,
         jint resultType, jstring resultParam, jint algorithmVersion) {
+
 #error TODO
     if (!userKey || !siteKey || !siteName || !resultParam)
         return NULL;
@@ -219,6 +226,7 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
 /* native MPIdenticon _identicon(final String userName, final byte[] userSecret) */
 JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1identicon(JNIEnv *env, jobject obj,
         jstring userName, jbyteArray userSecret) {
+
 #error TODO
     if (!userName || !userSecret)
         return NULL;
@@ -260,6 +268,7 @@ JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
 /* native String _toID(final byte[] buffer) */
 JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1toID(JNIEnv *env, jobject obj,
         jbyteArray buffer) {
+
 #error TODO
     return (*env)->NewStringUTF( env, mpw_id_buf( (*env)->GetByteArrayElements( env, buffer, NULL ), (*env)->GetArrayLength( env, buffer ) ) );
 }

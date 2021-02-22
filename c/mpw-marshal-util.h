@@ -25,7 +25,7 @@
 MP_LIBS_BEGIN
 #include <time.h>
 #if MPW_JSON
-#include <json-c/json.h>
+#include "json-c/json.h"
 #endif
 MP_LIBS_END
 

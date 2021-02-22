@@ -30,11 +30,11 @@ MP_LIBS_END
 
 typedef mpw_enum( unsigned int, MPMarshalFormat ) {
     /** Do not marshal. */
-            MPMarshalFormatNone,
+    MPMarshalFormatNone,
     /** Marshal using the line-based plain-text format. */
-            MPMarshalFormatFlat,
+    MPMarshalFormatFlat,
     /** Marshal using the JSON structured format. */
-            MPMarshalFormatJSON,
+    MPMarshalFormatJSON,
 
 #if MPW_JSON
     MPMarshalFormatDefault = MPMarshalFormatJSON,
@@ -47,19 +47,19 @@ typedef mpw_enum( unsigned int, MPMarshalFormat ) {
 
 typedef mpw_enum( unsigned int, MPMarshalErrorType ) {
     /** The marshalling operation completed successfully. */
-            MPMarshalSuccess,
+    MPMarshalSuccess,
     /** An error in the structure of the marshall file interrupted marshalling. */
-            MPMarshalErrorStructure,
+    MPMarshalErrorStructure,
     /** The marshall file uses an unsupported format version. */
-            MPMarshalErrorFormat,
+    MPMarshalErrorFormat,
     /** A required value is missing or not specified. */
-            MPMarshalErrorMissing,
+    MPMarshalErrorMissing,
     /** The given user secret is not valid. */
-            MPMarshalErrorUserSecret,
+    MPMarshalErrorUserSecret,
     /** An illegal value was specified. */
-            MPMarshalErrorIllegal,
+    MPMarshalErrorIllegal,
     /** An internal system error interrupted marshalling. */
-            MPMarshalErrorInternal,
+    MPMarshalErrorInternal,
 };
 
 /** A function that can resolve a user key of the given algorithm for the user with the given name.

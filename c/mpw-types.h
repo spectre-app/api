@@ -37,7 +37,7 @@ MP_LIBS_END
 
 #ifdef NS_ENUM
 #define mpw_enum(_type, _name) NS_ENUM(_type, _name)
-#elif __clang__ || __has_feature(c_fixed_enum) || __has_feature(objc_fixed_enum) || __has_feature(cxx_fixed_enum)
+#elif __clang__ || __has_feature( c_fixed_enum ) || __has_feature( objc_fixed_enum ) || __has_feature( cxx_fixed_enum )
 #define mpw_enum(_type, _name) enum _name : _type _name; enum _name : _type
 #else
 #define mpw_enum(_type, _name) _type _name; enum _name
@@ -45,7 +45,7 @@ MP_LIBS_END
 
 #ifdef NS_OPTIONS
 #define mpw_opts(_type, _name) NS_OPTIONS(_type, _name)
-#elif __clang__ || __has_feature(c_fixed_enum) || __has_feature(objc_fixed_enum) || __has_feature(cxx_fixed_enum)
+#elif __clang__ || __has_feature( c_fixed_enum ) || __has_feature( objc_fixed_enum ) || __has_feature( cxx_fixed_enum )
 #define mpw_opts(_type, _name) enum _name : _type _name; enum _name : _type
 #else
 #define mpw_opts(_type, _name) _type _name; enum _name
@@ -96,62 +96,62 @@ typedef struct {
 
 typedef mpw_enum( uint8_t, MPKeyPurpose ) {
     /** Generate a key for authentication. */
-            MPKeyPurposeAuthentication,
+    MPKeyPurposeAuthentication,
     /** Generate a name for identification. */
-            MPKeyPurposeIdentification,
+    MPKeyPurposeIdentification,
     /** Generate a recovery token. */
-            MPKeyPurposeRecovery,
+    MPKeyPurposeRecovery,
 };
 
 // bit 4 - 9
 typedef mpw_opts( uint16_t, MPResultTypeClass ) {
     /** Use the site key to generate a result from a template. */
-            MPResultTypeClassTemplate = 1 << 4,
+    MPResultTypeClassTemplate = 1 << 4,
     /** Use the site key to encrypt and decrypt a stateful entity. */
-            MPResultTypeClassStateful = 1 << 5,
+    MPResultTypeClassStateful = 1 << 5,
     /** Use the site key to derive a site-specific object. */
-            MPResultTypeClassDerive = 1 << 6,
+    MPResultTypeClassDerive = 1 << 6,
 };
 
 // bit 10 - 15
 typedef mpw_opts( uint16_t, MPSiteFeature ) {
     /** Export the key-protected content data. */
-            MPSiteFeatureExportContent = 1 << 10,
+    MPSiteFeatureExportContent = 1 << 10,
     /** Never export content. */
-            MPSiteFeatureDevicePrivate = 1 << 11,
+    MPSiteFeatureDevicePrivate = 1 << 11,
     /** Don't use this as the primary authentication result type. */
-            MPSiteFeatureAlternative = 1 << 12,
+    MPSiteFeatureAlternative = 1 << 12,
 };
 
 // bit 0-3 | MPResultTypeClass | MPSiteFeature
 typedef mpw_enum( uint32_t, MPResultType ) {
     /** 0: Don't produce a result */
-            MPResultTypeNone = 0,
+    MPResultTypeNone = 0,
 
     /** 16: pg^VMAUBk5x3p%HP%i4= */
-            MPResultTypeTemplateMaximum = 0x0 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateMaximum = 0x0 | MPResultTypeClassTemplate | 0x0,
     /** 17: BiroYena8:Kixa */
-            MPResultTypeTemplateLong = 0x1 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateLong = 0x1 | MPResultTypeClassTemplate | 0x0,
     /** 18: BirSuj0- */
-            MPResultTypeTemplateMedium = 0x2 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateMedium = 0x2 | MPResultTypeClassTemplate | 0x0,
     /** 19: Bir8 */
-            MPResultTypeTemplateShort = 0x3 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateShort = 0x3 | MPResultTypeClassTemplate | 0x0,
     /** 20: pO98MoD0 */
-            MPResultTypeTemplateBasic = 0x4 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateBasic = 0x4 | MPResultTypeClassTemplate | 0x0,
     /** 21: 2798 */
-            MPResultTypeTemplatePIN = 0x5 | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplatePIN = 0x5 | MPResultTypeClassTemplate | 0x0,
     /** 30: birsujano */
-            MPResultTypeTemplateName = 0xE | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplateName = 0xE | MPResultTypeClassTemplate | 0x0,
     /** 31: bir yennoquce fefi */
-            MPResultTypeTemplatePhrase = 0xF | MPResultTypeClassTemplate | 0x0,
+    MPResultTypeTemplatePhrase = 0xF | MPResultTypeClassTemplate | 0x0,
 
     /** 1056: Custom saved result. */
-            MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPSiteFeatureExportContent,
+    MPResultTypeStatefulPersonal = 0x0 | MPResultTypeClassStateful | MPSiteFeatureExportContent,
     /** 2081: Custom saved result that should not be exported from the device. */
-            MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPSiteFeatureDevicePrivate,
+    MPResultTypeStatefulDevice = 0x1 | MPResultTypeClassStateful | MPSiteFeatureDevicePrivate,
 
     /** 4160: Derive a unique binary key. */
-            MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPSiteFeatureAlternative,
+    MPResultTypeDeriveKey = 0x0 | MPResultTypeClassDerive | MPSiteFeatureAlternative,
 
     MPResultTypeDefaultResult = MPResultTypeTemplateLong,
     MPResultTypeDefaultLogin = MPResultTypeTemplateName,
@@ -159,9 +159,9 @@ typedef mpw_enum( uint32_t, MPResultType ) {
 
 typedef mpw_enum ( uint32_t, MPCounterValue ) {
     /** Use a time-based counter value, resulting in a TOTP generator. */
-            MPCounterValueTOTP = 0,
+    MPCounterValueTOTP = 0,
     /** The initial value for a site's counter. */
-            MPCounterValueInitial = 1,
+    MPCounterValueInitial = 1,
 
     MPCounterValueDefault = MPCounterValueInitial,
     MPCounterValueFirst = MPCounterValueTOTP,
