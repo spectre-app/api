@@ -16,56 +16,63 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#ifndef _MPW_MARSHAL_H
-#define _MPW_MARSHAL_H
+#ifndef _SPECTRE_MARSHAL_H
+#define _SPECTRE_MARSHAL_H
 
-#include "mpw-algorithm.h"
+#include "spectre-algorithm.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <time.h>
 #include <stdarg.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 //// Types.
 
-typedef mpw_enum( unsigned int, MPMarshalFormat ) {
+typedef spectre_enum( unsigned int, SpectreFormat ) {
     /** Do not marshal. */
-    MPMarshalFormatNone,
+    SpectreFormatNone,
     /** Marshal using the line-based plain-text format. */
-    MPMarshalFormatFlat,
+    SpectreFormatFlat,
     /** Marshal using the JSON structured format. */
-    MPMarshalFormatJSON,
+    SpectreFormatJSON,
 
-#if MPW_JSON
-    MPMarshalFormatDefault = MPMarshalFormatJSON,
+#if SPECTRE_JSON
+    SpectreFormatDefault = SpectreFormatJSON,
 #else
-    MPMarshalFormatDefault = MPMarshalFormatFlat,
+    SpectreFormatDefault = SpectreFormatFlat,
 #endif
-    MPMarshalFormatFirst = MPMarshalFormatFlat,
-    MPMarshalFormatLast = MPMarshalFormatJSON,
+    SpectreFormatFirst = SpectreFormatFlat,
+    SpectreFormatLast = SpectreFormatJSON,
 };
 
-typedef mpw_enum( unsigned int, MPMarshalErrorType ) {
+typedef spectre_enum( unsigned int, SpectreMarshalErrorType ) {
     /** The marshalling operation completed successfully. */
-    MPMarshalSuccess,
+    SpectreMarshalSuccess,
     /** An error in the structure of the marshall file interrupted marshalling. */
-    MPMarshalErrorStructure,
+    SpectreMarshalErrorStructure,
     /** The marshall file uses an unsupported format version. */
-    MPMarshalErrorFormat,
+    SpectreMarshalErrorFormat,
     /** A required value is missing or not specified. */
-    MPMarshalErrorMissing,
+    SpectreMarshalErrorMissing,
     /** The given user secret is not valid. */
-    MPMarshalErrorUserSecret,
+    SpectreMarshalErrorUserSecret,
     /** An illegal value was specified. */
-    MPMarshalErrorIllegal,
+    SpectreMarshalErrorIllegal,
     /** An internal system error interrupted marshalling. */
-    MPMarshalErrorInternal,
+    SpectreMarshalErrorInternal,
 };
+
+typedef struct SpectreMarshalError {
+    /** The status of the most recent processing operation. */
+    SpectreMarshalErrorType type;
+    /** An explanation of the situation that caused the current status type. */
+    const char *message;
+} SpectreMarshalError;
 
 /** A function that can resolve a user key of the given algorithm for the user with the given name.
  * @return A user key (allocated), or NULL if the key could not be resolved. */
-typedef const MPUserKey *(*MPUserKeyProvider)(
-        MPAlgorithmVersion algorithm, const char *userName);
+typedef const SpectreUserKey *(*SpectreKeyProvider)(
+        SpectreAlgorithm algorithm, const char *userName);
 /** A function that updates the currentKey with the userKey of the given algorithm for the user with the given name.
  * @param currentKey A pointer to where the current userKey (allocated) can be found and a new one can be placed.
  *                   Free the old value if you update it. If NULL, the proxy is invalidated and should free any state it holds.
@@ -73,28 +80,25 @@ typedef const MPUserKey *(*MPUserKeyProvider)(
  * @param algorithm The algorithm of the userKey that should be placed in currentKey.
  * @param userName The name of the user whose userKey should be placed in currentKey.
  * @return false if not able to resolve the requested userKey. */
-typedef bool (*MPUserKeyProviderProxy)(
-        const MPUserKey **currentKey, MPAlgorithmVersion *currentAlgorithm, MPAlgorithmVersion algorithm, const char *userName);
+typedef bool (*SpectreKeyProviderProxy)(
+        const SpectreUserKey **currentKey, SpectreAlgorithm *currentAlgorithm, SpectreAlgorithm algorithm, const char *userName);
 
 /** Create a key provider which handles key generation by proxying the given function.
  * The proxy function receives the currently cached key and its algorithm.  If those are NULL, the proxy function should clean up its state. */
-MPUserKeyProvider mpw_userKeyProvider_proxy(
-        const MPUserKeyProviderProxy proxy);
+SpectreKeyProvider spectre_proxy_provider_set(
+        const SpectreKeyProviderProxy proxy);
 /** Create a key provider that computes a user key for the given user secret. */
-MPUserKeyProvider mpw_userKeyProvider_str(
+SpectreKeyProvider spectre_proxy_provider_set_secret(
         const char *userSecret);
 
-/** Free the cached keys and proxy state. */
-void mpw_userKeyProvider_free(void);
+/** Unset the active proxy and free the proxy provider. */
+void spectre_proxy_provider_unset(void);
 
-typedef struct MPMarshalError {
-    /** The status of the most recent processing operation. */
-    MPMarshalErrorType type;
-    /** An explanation of the situation that caused the current status type. */
-    const char *message;
-} MPMarshalError;
+/** Free the key provider's internal state. */
+void spectre_key_provider_free(
+        SpectreKeyProvider keyProvider);
 
-typedef struct MPMarshalledData {
+typedef struct SpectreMarshalledData {
     /** If the parent is an object, this holds the key by which this data value is referenced. */
     const char *obj_key;
     /** If the parent is an array, this holds the index at which this data value is referenced. */
@@ -112,55 +116,55 @@ typedef struct MPMarshalledData {
     /** Amount of data values references under this value if it represents an object or an array. */
     size_t children_count;
     /** Array of data values referenced under this value. */
-    struct MPMarshalledData *children;
-} MPMarshalledData;
+    struct SpectreMarshalledData *children;
+} SpectreMarshalledData;
 
-typedef struct MPMarshalledInfo {
+typedef struct SpectreMarshalledInfo {
     /** The data format used for serializing the file and user data into a byte stream. */
-    MPMarshalFormat format;
+    SpectreFormat format;
     /** Date of when the file was previously serialized. */
     time_t exportDate;
     /** Whether secrets and state should be visible in clear-text (false) when serialized. */
     bool redacted;
 
     /** Algorithm version to use for user operations (eg. key ID operations). */
-    MPAlgorithmVersion algorithm;
+    SpectreAlgorithm algorithm;
     /** A number identifying the avatar to display for the user in this file. */
     unsigned int avatar;
     /** Unique name for this file's user, preferably the user's full legal name. */
     const char *userName;
     /** User metadata: The identicon that was generated to represent this file's user identity. */
-    MPIdenticon identicon;
+    SpectreIdenticon identicon;
     /** A unique identifier (hex) for the user key, primarily for authentication/verification. */
-    MPKeyID keyID;
+    SpectreKeyID keyID;
     /** User metadata: Date of the most recent action taken by this user. */
     time_t lastUsed;
-} MPMarshalledInfo;
+} SpectreMarshalledInfo;
 
-typedef struct MPMarshalledQuestion {
+typedef struct SpectreMarshalledQuestion {
     /** Unique name for the security question, preferably a single key word from the question sentence. */
     const char *keyword;
     /** The result type to use for generating an answer. */
-    MPResultType type;
+    SpectreResultType type;
     /** State data (base64), if any, necessary for generating the question's answer. */
     const char *state;
-} MPMarshalledQuestion;
+} SpectreMarshalledQuestion;
 
-typedef struct MPMarshalledSite {
+typedef struct SpectreMarshalledSite {
     /** Unique name for this site. */
     const char *siteName;
     /** Algorithm version to use for all site operations (eg. result, login, question operations). */
-    MPAlgorithmVersion algorithm;
+    SpectreAlgorithm algorithm;
 
     /** The counter value of the site result to generate. */
-    MPCounterValue counter;
+    SpectreCounter counter;
     /** The result type to use for generating a site result. */
-    MPResultType resultType;
+    SpectreResultType resultType;
     /** State data (base64), if any, necessary for generating the site result. */
     const char *resultState;
 
     /** The result type to use for generating a site login. */
-    MPResultType loginType;
+    SpectreResultType loginType;
     /** State data (base64), if any, necessary for generating the site login. */
     const char *loginState;
 
@@ -174,11 +178,11 @@ typedef struct MPMarshalledSite {
     /** Amount of security questions associated with this site. */
     size_t questions_count;
     /** Array of security questions associated with this site. */
-    MPMarshalledQuestion *questions;
-} MPMarshalledSite;
+    SpectreMarshalledQuestion *questions;
+} SpectreMarshalledSite;
 
-typedef struct MPMarshalledUser {
-    MPUserKeyProvider userKeyProvider;
+typedef struct SpectreMarshalledUser {
+    SpectreKeyProvider userKeyProvider;
     bool redacted;
 
     /** A number identifying the avatar to display for this user. */
@@ -186,15 +190,15 @@ typedef struct MPMarshalledUser {
     /** Unique name for this user, preferably the user's full legal name. */
     const char *userName;
     /** User metadata: The identicon that was generated to represent this user's identity. */
-    MPIdenticon identicon;
+    SpectreIdenticon identicon;
     /** Algorithm version to use for user operations (eg. key ID operations). */
-    MPAlgorithmVersion algorithm;
+    SpectreAlgorithm algorithm;
     /** A unique identifier (hex) for the user key, primarily for authentication/verification. */
-    MPKeyID keyID;
+    SpectreKeyID keyID;
     /** The initial result type to use for new sites created by the user. */
-    MPResultType defaultType;
+    SpectreResultType defaultType;
     /** The result type to use for generating the user's standard login. */
-    MPResultType loginType;
+    SpectreResultType loginType;
     /** State data (base64), if any, necessary for generating the user's standard login. */
     const char *loginState;
     /** User metadata: Date of the most recent action taken by this user. */
@@ -203,17 +207,17 @@ typedef struct MPMarshalledUser {
     /** Amount of sites associated to this user. */
     size_t sites_count;
     /** Array of sites associated to this user. */
-    MPMarshalledSite *sites;
-} MPMarshalledUser;
+    SpectreMarshalledSite *sites;
+} SpectreMarshalledUser;
 
-typedef struct MPMarshalledFile {
+typedef struct SpectreMarshalledFile {
     /** Metadata from the file that holds user data, available without the need for user authentication. */
-    MPMarshalledInfo *info;
+    SpectreMarshalledInfo *info;
     /** All data in the file, including extensions and other data present, even if not used by this library. */
-    MPMarshalledData *data;
+    SpectreMarshalledData *data;
     /** Status of parsing the file and any errors that might have occurred during the process. */
-    MPMarshalError error;
-} MPMarshalledFile;
+    SpectreMarshalError error;
+} SpectreMarshalledFile;
 
 //// Marshalling.
 
@@ -221,160 +225,160 @@ typedef struct MPMarshalledFile {
  * @param file A pointer to the original file object to update with the user's data or to NULL to make a new.
  *             File object will be updated with state or new (allocated).  May be NULL if not interested in a file object.
  * @return A C-string (allocated), or NULL if the file is missing, format is unrecognized, does not support marshalling or a format error occurred. */
-const char *mpw_marshal_write(
-        const MPMarshalFormat outFormat, MPMarshalledFile **file, MPMarshalledUser *user);
+const char *spectre_marshal_write(
+        const SpectreFormat outFormat, SpectreMarshalledFile **file, SpectreMarshalledUser *user);
 /** Parse the user configuration in the input buffer.  Fields that could not be parsed remain at their type's initial value.
  * @return The updated file object or a new one (allocated) if none was provided; NULL if a file object could not be allocated. */
-MPMarshalledFile *mpw_marshal_read(
-        MPMarshalledFile *file, const char *in);
+SpectreMarshalledFile *spectre_marshal_read(
+        SpectreMarshalledFile *file, const char *in);
 /** Authenticate as the user identified by the given marshalled file.
  * @note This object stores a reference to the given key provider.
  * @return A user object (allocated), or NULL if the file format provides no marshalling or a format error occurred. */
-MPMarshalledUser *mpw_marshal_auth(
-        MPMarshalledFile *file, const MPUserKeyProvider userKeyProvider);
+SpectreMarshalledUser *spectre_marshal_auth(
+        SpectreMarshalledFile *file, const SpectreKeyProvider userKeyProvider);
 
 //// Creating.
 
 /** Create a new user object ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
  * @return A user object (allocated), or NULL if the userName is missing or the marshalled user couldn't be allocated. */
-MPMarshalledUser *mpw_marshal_user(
-        const char *userName, const MPUserKeyProvider userKeyProvider, const MPAlgorithmVersion algorithmVersion);
+SpectreMarshalledUser *spectre_marshal_user(
+        const char *userName, const SpectreKeyProvider userKeyProvider, const SpectreAlgorithm algorithmVersion);
 /** Create a new site attached to the given user object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
  * @return A site object (allocated), or NULL if the siteName is missing or the marshalled site couldn't be allocated. */
-MPMarshalledSite *mpw_marshal_site(
-        MPMarshalledUser *user,
-        const char *siteName, const MPResultType resultType, const MPCounterValue keyCounter, const MPAlgorithmVersion algorithmVersion);
+SpectreMarshalledSite *spectre_marshal_site(
+        SpectreMarshalledUser *user,
+        const char *siteName, const SpectreResultType resultType, const SpectreCounter keyCounter, const SpectreAlgorithm algorithmVersion);
 /** Create a new question attached to the given site object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
  * @return A question object (allocated), or NULL if the marshalled question couldn't be allocated. */
-MPMarshalledQuestion *mpw_marshal_question(
-        MPMarshalledSite *site, const char *keyword);
+SpectreMarshalledQuestion *spectre_marshal_question(
+        SpectreMarshalledSite *site, const char *keyword);
 /** Create or update a marshal file descriptor.
  * @param file If NULL, a new file will be allocated.  Otherwise, the given file will be updated and the updated file returned.
  * @param info If NULL, the file's info will be left as-is, otherwise it will be replaced by the given one.  The file will manage the info's deallocation.
  * @param data If NULL, the file's data will be left as-is, otherwise it will be replaced by the given one.  The file will manage the data's deallocation.
  * @return The given file or new (allocated) if file is NULL; or NULL if the user is missing or the file couldn't be allocated. */
-MPMarshalledFile *mpw_marshal_file(
-        MPMarshalledFile *file, MPMarshalledInfo *info, MPMarshalledData *data);
+SpectreMarshalledFile *spectre_marshal_file(
+        SpectreMarshalledFile *file, SpectreMarshalledInfo *info, SpectreMarshalledData *data);
 /** Record a marshal error.
  * @return The given file or new (allocated) if file is NULL; or NULL if the file couldn't be allocated. */
-MPMarshalledFile *mpw_marshal_error(
-        MPMarshalledFile *file, MPMarshalErrorType type, const char *format, ...);
+SpectreMarshalledFile *spectre_marshal_error(
+        SpectreMarshalledFile *file, SpectreMarshalErrorType type, const char *format, ...);
 
 //// Disposing.
 
 /** Free the given user object and all associated data. */
-#define mpw_marshal_free(object) _Generic( (object), \
-        MPMarshalledInfo**: mpw_marshal_info_free,   \
-        MPMarshalledUser**: mpw_marshal_user_free,   \
-        MPMarshalledData**: mpw_marshal_data_free,   \
-        MPMarshalledFile**: mpw_marshal_file_free)   \
+#define spectre_marshal_free(object) _Generic( (object), \
+        SpectreMarshalledInfo**: spectre_marshal_info_free,   \
+        SpectreMarshalledUser**: spectre_marshal_user_free,   \
+        SpectreMarshalledData**: spectre_marshal_data_free,   \
+        SpectreMarshalledFile**: spectre_marshal_file_free)   \
         (object)
-void mpw_marshal_info_free(
-        MPMarshalledInfo **info);
-void mpw_marshal_user_free(
-        MPMarshalledUser **user);
-void mpw_marshal_data_free(
-        MPMarshalledData **data);
-void mpw_marshal_file_free(
-        MPMarshalledFile **file);
+void spectre_marshal_info_free(
+        SpectreMarshalledInfo **info);
+void spectre_marshal_user_free(
+        SpectreMarshalledUser **user);
+void spectre_marshal_data_free(
+        SpectreMarshalledData **data);
+void spectre_marshal_file_free(
+        SpectreMarshalledFile **file);
 
 //// Exploring.
 
 /** Create a null value.
  * @return A new data value (allocated), initialized to a null value, or NULL if the value couldn't be allocated. */
-MPMarshalledData *mpw_marshal_data_new(void);
+SpectreMarshalledData *spectre_marshal_data_new(void);
 /** Get or create a value for the given path in the data store.
  * @return The value at this path (shared), or NULL if the value didn't exist and couldn't be created. */
-MPMarshalledData *mpw_marshal_data_get(
-        MPMarshalledData *data, ...);
-MPMarshalledData *mpw_marshal_data_vget(
-        MPMarshalledData *data, va_list nodes);
+SpectreMarshalledData *spectre_marshal_data_get(
+        SpectreMarshalledData *data, ...);
+SpectreMarshalledData *spectre_marshal_data_vget(
+        SpectreMarshalledData *data, va_list nodes);
 /** Look up the value at the given path in the data store.
  * @return The value at this path (shared), or NULL if there is no value at this path. */
-const MPMarshalledData *mpw_marshal_data_find(
-        const MPMarshalledData *data, ...);
-const MPMarshalledData *mpw_marshal_data_vfind(
-        const MPMarshalledData *data, va_list nodes);
+const SpectreMarshalledData *spectre_marshal_data_find(
+        const SpectreMarshalledData *data, ...);
+const SpectreMarshalledData *spectre_marshal_data_vfind(
+        const SpectreMarshalledData *data, va_list nodes);
 /** Check if the data represents a NULL value.
  * @return true if the value at this path is null or is missing, false if it is a non-null type. */
-bool mpw_marshal_data_is_null(
-        const MPMarshalledData *data, ...);
-bool mpw_marshal_data_vis_null(
-        const MPMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_is_null(
+        const SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vis_null(
+        const SpectreMarshalledData *data, va_list nodes);
 /** Set a null value at the given path in the data store.
  * @return true if the object was successfully modified. */
-bool mpw_marshal_data_set_null(
-        MPMarshalledData *data, ...);
-bool mpw_marshal_data_vset_null(
-        MPMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_set_null(
+        SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset_null(
+        SpectreMarshalledData *data, va_list nodes);
 /** Look up the boolean value at the given path in the data store.
  * @return true if the value at this path is true, false if it is not or there is no boolean value at this path. */
-bool mpw_marshal_data_get_bool(
-        const MPMarshalledData *data, ...);
-bool mpw_marshal_data_vget_bool(
-        const MPMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_get_bool(
+        const SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vget_bool(
+        const SpectreMarshalledData *data, va_list nodes);
 /** Set a boolean value at the given path in the data store.
  * @return true if the object was successfully modified. */
-bool mpw_marshal_data_set_bool(
-        const bool value, MPMarshalledData *data, ...);
-bool mpw_marshal_data_vset_bool(
-        const bool value, MPMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_set_bool(
+        const bool value, SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset_bool(
+        const bool value, SpectreMarshalledData *data, va_list nodes);
 /** Look up the numeric value at the given path in the data store.
  * @return A number or NAN if there is no numeric value at this path. */
-double mpw_marshal_data_get_num(
-        const MPMarshalledData *data, ...);
-double mpw_marshal_data_vget_num(
-        const MPMarshalledData *data, va_list nodes);
-bool mpw_marshal_data_set_num(
-        const double value, MPMarshalledData *data, ...);
-bool mpw_marshal_data_vset_num(
-        const double value, MPMarshalledData *data, va_list nodes);
+double spectre_marshal_data_get_num(
+        const SpectreMarshalledData *data, ...);
+double spectre_marshal_data_vget_num(
+        const SpectreMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_set_num(
+        const double value, SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset_num(
+        const double value, SpectreMarshalledData *data, va_list nodes);
 /** Look up string value at the given path in the data store.
  * @return The string value (shared) or string representation of the number at this path; NULL if there is no such value at this path. */
-const char *mpw_marshal_data_get_str(
-        const MPMarshalledData *data, ...);
-const char *mpw_marshal_data_vget_str(
-        const MPMarshalledData *data, va_list nodes);
+const char *spectre_marshal_data_get_str(
+        const SpectreMarshalledData *data, ...);
+const char *spectre_marshal_data_vget_str(
+        const SpectreMarshalledData *data, va_list nodes);
 /** Save a C-string value at the given path into the data store.
  * @param value The string value to save into the data store.  The data store will hold a copy of this object.
  * @return true if the value has been saved into the data store.  false if a node at the path didn't exist and couldn't be created or initialized. */
-bool mpw_marshal_data_set_str(
-        const char *value, MPMarshalledData *data, ...);
-bool mpw_marshal_data_vset_str(
-        const char *value, MPMarshalledData *data, va_list nodes);
+bool spectre_marshal_data_set_str(
+        const char *value, SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset_str(
+        const char *value, SpectreMarshalledData *data, va_list nodes);
 /** Keep only the data children that pass the filter test. */
-void mpw_marshal_data_filter(
-        MPMarshalledData *data, bool (*filter)(MPMarshalledData *child, void *args), void *args);
-bool mpw_marshal_data_filter_empty(
-        MPMarshalledData *child, void *args);
+void spectre_marshal_data_filter(
+        SpectreMarshalledData *data, bool (*filter)(SpectreMarshalledData *child, void *args), void *args);
+bool spectre_marshal_data_filter_empty(
+        SpectreMarshalledData *child, void *args);
 
 //// Format.
 
 /**
  * @return The purpose represented by the given name or ERR if the format was not recognized.
  */
-const MPMarshalFormat mpw_format_named(
+const SpectreFormat spectre_format_named(
         const char *formatName);
 /**
  * @return The standard name (static) for the given purpose or NULL if the format was not recognized.
  */
-const char *mpw_format_name(
-        const MPMarshalFormat format);
+const char *spectre_format_name(
+        const SpectreFormat format);
 /**
  * @return The file extension (static) that's recommended and currently used for output files,
  *         or NULL if the format was not recognized or does not support marshalling.
  */
-const char *mpw_format_extension(
-        const MPMarshalFormat format);
+const char *spectre_format_extension(
+        const SpectreFormat format);
 /**
  * @return An array (allocated, count) of filename extensions (static) that are used for files of this format,
  *         the first being the currently preferred/output extension.
  *         NULL if the format is unrecognized or does not support marshalling.
  */
-const char **mpw_format_extensions(
-        const MPMarshalFormat format, size_t *count);
+const char **spectre_format_extensions(
+        const SpectreFormat format, size_t *count);
 
-#endif // _MPW_MARSHAL_H
+#endif // _SPECTRE_MARSHAL_H

@@ -54,29 +54,29 @@
 * project, please see <http://www.apache.org/>.
 */
 
-#include "mpw-util.h"
+#include "spectre-util.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <stddef.h>
 #include <stdint.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 /**
  * @return The amount of bytes needed to decode the given b64Text.
  */
-size_t mpw_base64_decode_max(const char *b64Text);
+size_t spectre_base64_decode_max(const char *b64Text);
 /** Decodes a base-64 encoded string into a plain byte buffer.
-  * @param plainBuf a byte buffer, size should be at least mpw_base64_decode_max(b64Text)
+  * @param plainBuf a byte buffer, size should be at least spectre_base64_decode_max(b64Text)
   * @return The amount of bytes that were written to plainBuf.
   */
-size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf);
+size_t spectre_base64_decode(const char *b64Text, uint8_t *plainBuf);
 
 /**
  * @return The amount of characters needed to encode a plainBuf of the given size as base-64 (excluding the terminating NUL).
  */
-size_t mpw_base64_encode_max(size_t plainSize);
+size_t spectre_base64_encode_max(size_t plainSize);
 /** Encodes a plain byte buffer into a base-64 encoded string.
-  * @param b64Text a character buffer, size should be at least mpw_base64_encode_max(plainSize) + 1
+  * @param b64Text a character buffer, size should be at least spectre_base64_encode_max(plainSize) + 1
   * @return The amount of characters that were written to b64Text, excluding the terminating NUL.
   */
-size_t mpw_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text);
+size_t spectre_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text);

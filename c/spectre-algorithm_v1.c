@@ -16,12 +16,12 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#include "mpw-algorithm_v1.h"
-#include "mpw-util.h"
+#include "spectre-algorithm_v1.h"
+#include "spectre-util.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <string.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 #define MP_N                32768LU
 #define MP_r                8U
@@ -29,25 +29,25 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
-bool mpw_user_key_v1(
-        const MPUserKey *userKey, const char *userName, const char *userSecret) {
+bool spectre_user_key_v1(
+        const SpectreUserKey *userKey, const char *userName, const char *userSecret) {
 
-    return mpw_user_key_v0( userKey, userName, userSecret );
+    return spectre_user_key_v0( userKey, userName, userSecret );
 }
 
-bool mpw_site_key_v1(
-        const MPSiteKey *siteKey, const MPUserKey *userKey, const char *siteName,
-        MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
+bool spectre_site_key_v1(
+        const SpectreSiteKey *siteKey, const SpectreUserKey *userKey, const char *siteName,
+        SpectreCounter keyCounter, SpectreKeyPurpose keyPurpose, const char *keyContext) {
 
-    return mpw_site_key_v0( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
+    return spectre_site_key_v0( siteKey, userKey, siteName, keyCounter, keyPurpose, keyContext );
 }
 
-const char *mpw_site_template_password_v1(
-        __unused const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, __unused const char *resultParam) {
+const char *spectre_site_template_password_v1(
+        __unused const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, __unused const char *resultParam) {
 
     // Determine the template.
     uint8_t seedByte = siteKey->bytes[0];
-    const char *template = mpw_type_template( resultType, seedByte );
+    const char *template = spectre_type_template( resultType, seedByte );
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
@@ -60,7 +60,7 @@ const char *mpw_site_template_password_v1(
     char *const sitePassword = calloc( strlen( template ) + 1, sizeof( char ) );
     for (size_t c = 0; c < strlen( template ); ++c) {
         seedByte = siteKey->bytes[c + 1];
-        sitePassword[c] = mpw_class_character( template[c], seedByte );
+        sitePassword[c] = spectre_class_character( template[c], seedByte );
         trc( "  - class: %c, index: %3u (0x%.2hhX) => character: %c",
                 template[c], seedByte, seedByte, sitePassword[c] );
     }
@@ -69,20 +69,20 @@ const char *mpw_site_template_password_v1(
     return sitePassword;
 }
 
-const char *mpw_site_crypted_password_v1(
-        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *cipherText) {
+const char *spectre_site_crypted_password_v1(
+        const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, const char *cipherText) {
 
-    return mpw_site_crypted_password_v0( userKey, siteKey, resultType, cipherText );
+    return spectre_site_crypted_password_v0( userKey, siteKey, resultType, cipherText );
 }
 
-const char *mpw_site_derived_password_v1(
-        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *spectre_site_derived_password_v1(
+        const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, const char *resultParam) {
 
-    return mpw_site_derived_password_v0( userKey, siteKey, resultType, resultParam );
+    return spectre_site_derived_password_v0( userKey, siteKey, resultType, resultParam );
 }
 
-const char *mpw_site_state_v1(
-        const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *state) {
+const char *spectre_site_state_v1(
+        const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, const char *state) {
 
-    return mpw_site_state_v0( userKey, siteKey, resultType, state );
+    return spectre_site_state_v0( userKey, siteKey, resultType, state );
 }

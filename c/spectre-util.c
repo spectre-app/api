@@ -16,33 +16,33 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#include "mpw-util.h"
+#include "spectre-util.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
 
-#if MPW_CPERCIVA
+#if SPECTRE_CPERCIVA
 #include <scrypt/crypto_scrypt.h>
 #include <scrypt/sha256.h>
-#elif MPW_SODIUM
+#elif SPECTRE_SODIUM
 #include "sodium.h"
 #endif
 #define AES_ECB 0
 #define AES_CBC 1
 #include "aes.h"
-MP_LIBS_END
+SPECTRE_LIBS_END
 
-MPLogLevel mpw_verbosity = MPLogLevelInfo;
-FILE *mpw_log_sink_file_target = NULL;
+SpectreLogLevel spectre_verbosity = SpectreLogLevelInfo;
+FILE *spectre_log_sink_file_target = NULL;
 
-static MPLogSink **sinks;
+static SpectreLogSink **sinks;
 static size_t sinks_count;
 
-bool mpw_log_sink_register(MPLogSink *sink) {
+bool spectre_log_sink_register(SpectreLogSink *sink) {
 
-    if (!mpw_realloc( &sinks, NULL, MPLogSink *, ++sinks_count )) {
+    if (!spectre_realloc( &sinks, NULL, SpectreLogSink *, ++sinks_count )) {
         --sinks_count;
         return false;
     }
@@ -51,7 +51,7 @@ bool mpw_log_sink_register(MPLogSink *sink) {
     return true;
 }
 
-bool mpw_log_sink_unregister(MPLogSink *sink) {
+bool spectre_log_sink_unregister(SpectreLogSink *sink) {
 
     for (unsigned int r = 0; r < sinks_count; ++r) {
         if (sinks[r] == sink) {
@@ -63,37 +63,37 @@ bool mpw_log_sink_unregister(MPLogSink *sink) {
     return false;
 }
 
-bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *function, const char *format, ...) {
+bool spectre_log(SpectreLogLevel level, const char *file, int line, const char *function, const char *format, ...) {
 
-    if (mpw_verbosity < level)
+    if (spectre_verbosity < level)
         return false;
 
     va_list args;
     va_start( args, format );
-    bool sunk = mpw_log_vsink( level, file, line, function, format, &args );
+    bool sunk = spectre_vlog( level, file, line, function, format, &args );
     va_end( args );
 
     return sunk;
 }
 
-static const char *mpw_log_formatter(MPLogEvent *event) {
+static const char *spectre_log_formatter(SpectreLogEvent *event) {
 
     if (!event->formatted) {
         va_list args;
         va_copy( args, *(va_list *)event->args );
-        event->formatted = mpw_vstr( event->format, args );
+        event->formatted = spectre_vstr( event->format, args );
         va_end( args );
     }
 
     return event->formatted;
 }
 
-bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args) {
+bool spectre_vlog(SpectreLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args) {
 
-    if (mpw_verbosity < level)
+    if (spectre_verbosity < level)
         return false;
 
-    MPLogEvent event = {
+    SpectreLogEvent event = {
             .occurrence = time( NULL ),
             .level = level,
             .file = file,
@@ -101,82 +101,82 @@ bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *fun
             .function = function,
             .format = format,
             .args = args,
-            .formatter = &mpw_log_formatter,
+            .formatter = &spectre_log_formatter,
     };
-    bool sunk = mpw_log_esink( &event );
+    bool sunk = spectre_elog( &event );
 
     return sunk;
 }
 
-bool mpw_log_esink(MPLogEvent *event) {
+bool spectre_elog(SpectreLogEvent *event) {
 
-    if (mpw_verbosity < event->level)
+    if (spectre_verbosity < event->level)
         return false;
 
     bool sunk = false;
     if (!sinks_count)
-        sunk = mpw_log_sink_file( event );
+        sunk = spectre_log_sink_file( event );
 
     else
         for (unsigned int s = 0; s < sinks_count; ++s) {
-            MPLogSink *sink = sinks[s];
+            SpectreLogSink *sink = sinks[s];
 
             if (sink)
                 sunk |= sink( event );
         }
 
-    if (event->level <= MPLogLevelWarning) {
+    if (event->level <= SpectreLogLevelWarning) {
         (void)event->level/* error breakpoint opportunity */;
     }
-    mpw_free_string( &event->formatted );
-    if (event->level <= MPLogLevelFatal)
+    spectre_free_string( &event->formatted );
+    if (event->level <= SpectreLogLevelFatal)
         abort();
 
     return sunk;
 }
 
-bool mpw_log_sink_file(MPLogEvent *event) {
+bool spectre_log_sink_file(SpectreLogEvent *event) {
 
-    if (!mpw_log_sink_file_target)
-        mpw_log_sink_file_target = stderr;
+    if (!spectre_log_sink_file_target)
+        spectre_log_sink_file_target = stderr;
 
-    if (mpw_verbosity >= MPLogLevelDebug) {
+    if (spectre_verbosity >= SpectreLogLevelDebug) {
         switch (event->level) {
-            case MPLogLevelTrace:
-                fprintf( mpw_log_sink_file_target, "[TRC] " );
+            case SpectreLogLevelTrace:
+                fprintf( spectre_log_sink_file_target, "[TRC] " );
                 break;
-            case MPLogLevelDebug:
-                fprintf( mpw_log_sink_file_target, "[DBG] " );
+            case SpectreLogLevelDebug:
+                fprintf( spectre_log_sink_file_target, "[DBG] " );
                 break;
-            case MPLogLevelInfo:
-                fprintf( mpw_log_sink_file_target, "[INF] " );
+            case SpectreLogLevelInfo:
+                fprintf( spectre_log_sink_file_target, "[INF] " );
                 break;
-            case MPLogLevelWarning:
-                fprintf( mpw_log_sink_file_target, "[WRN] " );
+            case SpectreLogLevelWarning:
+                fprintf( spectre_log_sink_file_target, "[WRN] " );
                 break;
-            case MPLogLevelError:
-                fprintf( mpw_log_sink_file_target, "[ERR] " );
+            case SpectreLogLevelError:
+                fprintf( spectre_log_sink_file_target, "[ERR] " );
                 break;
-            case MPLogLevelFatal:
-                fprintf( mpw_log_sink_file_target, "[FTL] " );
+            case SpectreLogLevelFatal:
+                fprintf( spectre_log_sink_file_target, "[FTL] " );
                 break;
             default:
-                fprintf( mpw_log_sink_file_target, "[???] " );
+                fprintf( spectre_log_sink_file_target, "[???] " );
                 break;
         }
     }
 
-    fprintf( mpw_log_sink_file_target, "%s\n", event->formatter( event ) );
+    fprintf( spectre_log_sink_file_target, "%s\n", event->formatter( event ) );
     return true;
 }
 
-void mpw_uint16(const uint16_t number, uint8_t buf[static 2]) {
+void spectre_uint16(const uint16_t number, uint8_t buf[static 2]) {
 
     buf[0] = (uint8_t)((number >> 8L) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
-void mpw_uint32(const uint32_t number, uint8_t buf[static 4]) {
+void spectre_uint32(const uint32_t number, uint8_t buf[static 4]) {
 
     buf[0] = (uint8_t)((number >> 24) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 16) & UINT8_MAX);
@@ -184,7 +184,7 @@ void mpw_uint32(const uint32_t number, uint8_t buf[static 4]) {
     buf[3] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
-void mpw_uint64(const uint64_t number, uint8_t buf[static 8]) {
+void spectre_uint64(const uint64_t number, uint8_t buf[static 8]) {
 
     buf[0] = (uint8_t)((number >> 56) & UINT8_MAX);
     buf[1] = (uint8_t)((number >> 48) & UINT8_MAX);
@@ -196,7 +196,7 @@ void mpw_uint64(const uint64_t number, uint8_t buf[static 8]) {
     buf[7] = (uint8_t)((number >> 0L) & UINT8_MAX);
 }
 
-const char **mpw_strings(size_t *count, const char *strings, ...) {
+const char **spectre_strings(size_t *count, const char *strings, ...) {
 
     *count = 0;
     size_t size = 0;
@@ -207,8 +207,8 @@ const char **mpw_strings(size_t *count, const char *strings, ...) {
     for (const char *string = strings; string; (string = va_arg( args, const char * ))) {
         size_t cursor = *count;
 
-        if (!mpw_realloc( &array, &size, const char *, cursor + 1 )) {
-            mpw_free( &array, size );
+        if (!spectre_realloc( &array, &size, const char *, cursor + 1 )) {
+            spectre_free( &array, size );
             break;
         }
 
@@ -220,7 +220,7 @@ const char **mpw_strings(size_t *count, const char *strings, ...) {
     return array;
 }
 
-bool mpw_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
+bool spectre_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
 
     if (!buffer || !bufferSize || !pushBuffer || !pushSize)
         return false;
@@ -228,9 +228,9 @@ bool mpw_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushB
         // The buffer was marked as broken, it is missing a previous push.  Abort to avoid corrupt content.
         return false;
 
-    if (!mpw_realloc( buffer, bufferSize, uint8_t, (*bufferSize + pushSize) / sizeof( uint8_t ) )) {
+    if (!spectre_realloc( buffer, bufferSize, uint8_t, (*bufferSize + pushSize) / sizeof( uint8_t ) )) {
         // realloc failed, we can't push.  Mark the buffer as broken.
-        mpw_free( buffer, *bufferSize );
+        spectre_free( buffer, *bufferSize );
         *bufferSize = (size_t)ERR;
         return false;
     }
@@ -240,41 +240,41 @@ bool mpw_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushB
     return true;
 }
 
-bool mpw_buf_push_uint32(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) {
+bool spectre_buf_push_uint32(uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt) {
 
     uint8_t pushBuf[4 /* 32 / 8 */];
-    mpw_uint32( pushInt, pushBuf );
-    return mpw_buf_push( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
+    spectre_uint32( pushInt, pushBuf );
+    return spectre_buf_push( buffer, bufferSize, pushBuf, sizeof( pushBuf ) );
 }
 
-bool mpw_buf_push_str(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
+bool spectre_buf_push_str(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
 
-    return pushString && mpw_buf_push( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
+    return pushString && spectre_buf_push( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
 }
 
-bool mpw_string_push(char **string, const char *pushString) {
+bool spectre_string_push(char **string, const char *pushString) {
 
     if (!string || !pushString)
         return false;
 
     // We overwrite an existing trailing NUL byte.
-    return pushString && mpw_buf_push( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
+    return pushString && spectre_buf_push( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
             (const uint8_t *)pushString, strlen( pushString ) + 1 );
 }
 
-bool mpw_string_pushf(char **string, const char *pushFormat, ...) {
+bool spectre_string_pushf(char **string, const char *pushFormat, ...) {
 
     va_list args;
     va_start( args, pushFormat );
-    const char *pushString = mpw_vstr( pushFormat, args );
-    bool success = mpw_string_push( string, pushString );
-    mpw_free_string( &pushString );
+    const char *pushString = spectre_vstr( pushFormat, args );
+    bool success = spectre_string_push( string, pushString );
+    spectre_free_string( &pushString );
     va_end( args );
 
     return success;
 }
 
-bool __mpw_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
+bool __spectre_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
 
     if (!buffer)
         return false;
@@ -292,66 +292,66 @@ bool __mpw_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
     return true;
 }
 
-void mpw_zero(void *buffer, size_t bufferSize) {
+void spectre_zero(void *buffer, size_t bufferSize) {
 
     uint8_t *b = buffer;
     for (; bufferSize > 0; --bufferSize)
         *b++ = 0;
 }
 
-bool __mpw_free(void **buffer, const size_t bufferSize) {
+bool __spectre_free(void **buffer, const size_t bufferSize) {
 
     if (!buffer || !*buffer)
         return false;
 
-    mpw_zero( *buffer, bufferSize );
+    spectre_zero( *buffer, bufferSize );
     free( *buffer );
     *buffer = NULL;
 
     return true;
 }
 
-bool __mpw_free_string(char **string) {
+bool __spectre_free_string(char **string) {
 
-    return string && *string && __mpw_free( (void **)string, strlen( *string ) );
+    return string && *string && __spectre_free( (void **)string, strlen( *string ) );
 }
 
-bool __mpw_free_strings(char **strings, ...) {
+bool __spectre_free_strings(char **strings, ...) {
 
     bool success = true;
 
     va_list args;
     va_start( args, strings );
-    success &= mpw_free_string( strings );
+    success &= spectre_free_string( strings );
     for (char **string; (string = va_arg( args, char ** ));)
-        success &= mpw_free_string( string );
+        success &= spectre_free_string( string );
     va_end( args );
 
     return success;
 }
 
-bool mpw_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
+bool spectre_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p) {
 
     if (!key || !keySize || !secret || !secretSize || !salt || !saltSize)
         return false;
 
-#if MPW_CPERCIVA
+#if SPECTRE_CPERCIVA
     if (crypto_scrypt( (const void *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
         return false;
     }
-#elif MPW_SODIUM
+#elif SPECTRE_SODIUM
     if (crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != OK) {
         return false;
     }
 #else
-#error No crypto support for mpw_scrypt.
+#error No crypto support for spectre_kdf_scrypt.
 #endif
 
     return true;
 }
 
-bool mpw_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *key, const size_t keySize,
+bool spectre_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *key, const size_t keySize,
         const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal) {
 
     if (!subkey || !subkeySize || !key || !keySize) {
@@ -359,7 +359,7 @@ bool mpw_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *ke
         return false;
     }
 
-#if MPW_SODIUM
+#if SPECTRE_SODIUM
     if (keySize < crypto_generichash_blake2b_KEYBYTES_MIN || keySize > crypto_generichash_blake2b_KEYBYTES_MAX ||
         subkeySize < crypto_generichash_blake2b_KEYBYTES_MIN || subkeySize > crypto_generichash_blake2b_KEYBYTES_MAX ||
         (personal && strlen( personal ) > crypto_generichash_blake2b_PERSONALBYTES)) {
@@ -369,7 +369,7 @@ bool mpw_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *ke
 
     uint8_t saltBuf[crypto_generichash_blake2b_SALTBYTES] = { 0 };
     if (id)
-        mpw_uint64( id, saltBuf );
+        spectre_uint64( id, saltBuf );
 
     uint8_t personalBuf[crypto_generichash_blake2b_PERSONALBYTES] = { 0 };
     if (personal && strlen( personal ))
@@ -378,31 +378,31 @@ bool mpw_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t *ke
     if (crypto_generichash_blake2b_salt_personal( subkey, subkeySize, context, contextSize, key, keySize, saltBuf, personalBuf ) != OK)
         return false;
 #else
-#error No crypto support for mpw_kdf_blake2b.
+#error No crypto support for spectre_kdf_blake2b.
 #endif
 
     return true;
 }
 
-bool mpw_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize) {
+bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize) {
 
     if (!mac || !key || !keySize || !message || !messageSize)
         return false;
 
-#if MPW_CPERCIVA
+#if SPECTRE_CPERCIVA
     HMAC_SHA256_Buf( key, keySize, message, messageSize, mac );
     return true;
-#elif MPW_SODIUM
+#elif SPECTRE_SODIUM
     crypto_auth_hmacsha256_state state;
     return crypto_auth_hmacsha256_init( &state, key, keySize ) == OK &&
            crypto_auth_hmacsha256_update( &state, message, messageSize ) == OK &&
            crypto_auth_hmacsha256_final( &state, mac ) == OK;
 #else
-#error No crypto support for mpw_hmac_sha256.
+#error No crypto support for spectre_hash_hmac_sha256.
 #endif
 }
 
-const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
+const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
     if (!key || keySize < AES_BLOCK_SIZE || !bufSize || !*bufSize)
         return NULL;
@@ -421,7 +421,7 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
         return NULL;
     uint8_t *aesBuf = malloc( aesSize );
     if (!aesBuf) {
-        mpw_free( &resultBuf, aesSize );
+        spectre_free( &resultBuf, aesSize );
         return NULL;
     }
 
@@ -432,7 +432,7 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
         AES_CBC_encrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
     else
         AES_CBC_decrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
-    mpw_free( &aesBuf, aesSize );
+    spectre_free( &aesBuf, aesSize );
 
     // Truncate PKCS#7 padding
     if (encrypt)
@@ -444,22 +444,22 @@ const static uint8_t *mpw_aes(bool encrypt, const uint8_t *key, const size_t key
     return resultBuf;
 }
 
-const uint8_t *mpw_aes_encrypt(const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize) {
+const uint8_t *spectre_aes_encrypt(const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize) {
 
-    return mpw_aes( true, key, keySize, plainBuffer, bufferSize );
+    return spectre_aes( true, key, keySize, plainBuffer, bufferSize );
 }
 
-const uint8_t *mpw_aes_decrypt(const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize) {
+const uint8_t *spectre_aes_decrypt(const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize) {
 
-    return mpw_aes( false, key, keySize, cipherBuffer, bufferSize );
+    return spectre_aes( false, key, keySize, cipherBuffer, bufferSize );
 }
 
 #if UNUSED
-const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
+const char *spectre_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset) {
 
     // Hash the moving factor with the key.
     uint8_t counter[8];
-    mpw_uint64( movingFactor, counter );
+    spectre_uint64( movingFactor, counter );
     uint8_t hash[20];
     hmac_sha1( key, keySize, counter, sizeof( counter ), hash );
 
@@ -479,21 +479,21 @@ const char *mpw_hotp(const uint8_t *key, size_t keySize, uint64_t movingFactor, 
 
     // Render the OTP as `digits` decimal digits.
     otp %= (int)pow(10, digits);
-    return mpw_strdup( mpw_str( "%0*d", digits, otp ) );
+    return spectre_strdup( spectre_str( "%0*d", digits, otp ) );
 }
 #endif
 
-const char *mpw_str(const char *format, ...) {
+const char *spectre_str(const char *format, ...) {
 
     va_list args;
     va_start( args, format );
-    const char *str = mpw_vstr( format, args );
+    const char *str = spectre_vstr( format, args );
     va_end( args );
 
     return str;
 }
 
-const char *mpw_vstr(const char *format, va_list args) {
+const char *spectre_vstr(const char *format, va_list args) {
 
     if (!format || !*format)
         return NULL;
@@ -511,19 +511,19 @@ const char *mpw_vstr(const char *format, va_list args) {
             break;
         if (chars < size)
             return str;
-        if (!mpw_realloc( &str, &size, char, chars + 1 ))
+        if (!spectre_realloc( &str, &size, char, chars + 1 ))
             break;
     }
 
-    mpw_free( &str, size );
+    spectre_free( &str, size );
     return NULL;
 }
 
-char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize) {
+char *spectre_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize) {
 
     if (!buf || !size)
         return NULL;
-    if (!mpw_realloc( &hex, hexSize, char, size * 2 + 1 ))
+    if (!spectre_realloc( &hex, hexSize, char, size * 2 + 1 ))
         return NULL;
 
     for (size_t kH = 0; kH < size; kH++)
@@ -532,16 +532,16 @@ char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize)
     return hex;
 }
 
-const char *mpw_hex_l(const uint32_t number, char hex[static 9]) {
+const char *spectre_hex_l(const uint32_t number, char hex[static 9]) {
 
     uint8_t buf[4 /* 32 / 8 */];
-    mpw_uint32( number, buf );
+    spectre_uint32( number, buf );
 
     size_t hexSize = 9;
-    return mpw_hex( buf, sizeof( buf ), hex, &hexSize );
+    return spectre_hex( buf, sizeof( buf ), hex, &hexSize );
 }
 
-const uint8_t *mpw_unhex(const char *hex, size_t *size) {
+const uint8_t *spectre_unhex(const char *hex, size_t *size) {
 
     if (!hex)
         return NULL;
@@ -557,14 +557,14 @@ const uint8_t *mpw_unhex(const char *hex, size_t *size) {
     uint8_t *buf = malloc( bufSize );
     for (size_t b = 0; b < bufSize; ++b)
         if (sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
-            mpw_free( &buf, bufSize );
+            spectre_free( &buf, bufSize );
             return NULL;
         }
 
     return buf;
 }
 
-size_t mpw_utf8_char_size(const char *utf8String) {
+size_t spectre_utf8_char_size(const char *utf8String) {
 
     if (!utf8String)
         return 0U;
@@ -583,17 +583,17 @@ size_t mpw_utf8_char_size(const char *utf8String) {
     return 0U;
 }
 
-size_t mpw_utf8_char_count(const char *utf8String) {
+size_t spectre_utf8_char_count(const char *utf8String) {
 
     size_t strchars = 0, charlen;
     for (char *remaining = (char *)utf8String; remaining && *remaining; remaining += charlen, ++strchars)
-        if (!(charlen = mpw_utf8_char_size( remaining )))
+        if (!(charlen = spectre_utf8_char_size( remaining )))
             return 0;
 
     return strchars;
 }
 
-void *mpw_memdup(const void *src, const size_t len) {
+void *spectre_memdup(const void *src, const size_t len) {
 
     if (!src)
         return NULL;
@@ -605,16 +605,16 @@ void *mpw_memdup(const void *src, const size_t len) {
     return dst;
 }
 
-const char *mpw_strdup(const char *src) {
+const char *spectre_strdup(const char *src) {
 
     if (!src)
         return NULL;
 
     size_t len = strlen( src );
-    return mpw_memdup( src, len + 1 );
+    return spectre_memdup( src, len + 1 );
 }
 
-const char *mpw_strndup(const char *src, const size_t max) {
+const char *spectre_strndup(const char *src, const size_t max) {
 
     if (!src)
         return NULL;
@@ -629,12 +629,12 @@ const char *mpw_strndup(const char *src, const size_t max) {
     return dst;
 }
 
-int mpw_strcasecmp(const char *s1, const char *s2) {
+int spectre_strcasecmp(const char *s1, const char *s2) {
 
-    return mpw_strncasecmp( s1, s2, s1 && s2? min( strlen( s1 ), strlen( s2 ) ): 0 );
+    return spectre_strncasecmp( s1, s2, s1 && s2? min( strlen( s1 ), strlen( s2 ) ): 0 );
 }
 
-int mpw_strncasecmp(const char *s1, const char *s2, size_t max) {
+int spectre_strncasecmp(const char *s1, const char *s2, size_t max) {
 
     if (s1 == s2)
         return 0;

@@ -2,17 +2,17 @@
 
 #include "java/com_lyndir_masterpassword_MPAlgorithm_Version.h"
 
-#include "mpw-algorithm.h"
-#include "mpw-util.h"
+#include "spectre-algorithm.h"
+#include "spectre-util.h"
 
 // TODO: We may need to zero the jbytes safely.
 
 static JavaVM *_vm;
 static jobject logger;
 
-MPLogSink mpw_log_sink_jni;
+SpectreLogSink spectre_log_sink_jni;
 
-bool mpw_log_sink_jni(const MPLogEvent *record) {
+bool spectre_log_sink_jni(const SpectreLogEvent *record) {
 
     bool sunk = false;
 
@@ -24,20 +24,20 @@ bool mpw_log_sink_jni(const MPLogEvent *record) {
         jmethodID method = NULL;
         jclass cLogger = (*env)->GetObjectClass( env, logger );
         switch (record->level) {
-            case MPLogLevelTrace:
+            case SpectreLogLevelTrace:
                 method = (*env)->GetMethodID( env, cLogger, "trace", "(Ljava/lang/String;)V" );
                 break;
-            case MPLogLevelDebug:
+            case SpectreLogLevelDebug:
                 method = (*env)->GetMethodID( env, cLogger, "debug", "(Ljava/lang/String;)V" );
                 break;
-            case MPLogLevelInfo:
+            case SpectreLogLevelInfo:
                 method = (*env)->GetMethodID( env, cLogger, "info", "(Ljava/lang/String;)V" );
                 break;
-            case MPLogLevelWarning:
+            case SpectreLogLevelWarning:
                 method = (*env)->GetMethodID( env, cLogger, "warn", "(Ljava/lang/String;)V" );
                 break;
-            case MPLogLevelError:
-            case MPLogLevelFatal:
+            case SpectreLogLevelError:
+            case SpectreLogLevelFatal:
                 method = (*env)->GetMethodID( env, cLogger, "error", "(Ljava/lang/String;)V" );
                 break;
         }
@@ -76,19 +76,19 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
         jclass cLogger = (*env)->GetObjectClass( env, logger );
         if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isTraceEnabled", "()Z" ) ))
-            mpw_verbosity = MPLogLevelTrace;
+            spectre_verbosity = SpectreLogLevelTrace;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isDebugEnabled", "()Z" ) ))
-            mpw_verbosity = MPLogLevelDebug;
+            spectre_verbosity = SpectreLogLevelDebug;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isInfoEnabled", "()Z" ) ))
-            mpw_verbosity = MPLogLevelInfo;
+            spectre_verbosity = SpectreLogLevelInfo;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isWarnEnabled", "()Z" ) ))
-            mpw_verbosity = MPLogLevelWarning;
+            spectre_verbosity = SpectreLogLevelWarning;
         else if ((*env)->CallBooleanMethod( env, logger, (*env)->GetMethodID( env, cLogger, "isErrorEnabled", "()Z" ) ))
-            mpw_verbosity = MPLogLevelError;
+            spectre_verbosity = SpectreLogLevelError;
         else
-            mpw_verbosity = MPLogLevelFatal;
+            spectre_verbosity = SpectreLogLevelFatal;
 
-        mpw_log_sink_register( &mpw_log_sink_jni );
+        spectre_log_sink_register( &spectre_log_sink_jni );
     } while (false);
 
     if (!logger)
@@ -108,7 +108,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
     const char *userNameString = (*env)->GetStringUTFChars( env, userName, NULL );
     jbyte *userSecretString = (*env)->GetByteArrayElements( env, userSecret, NULL );
 
-    MPUserKey *userKeyBytes = mpw_user_key( userNameString, (char *)userSecretString, (MPAlgorithmVersion)algorithmVersion );
+    SpectreUserKey *userKeyBytes = spectre_user_key( userNameString, (char *)userSecretString, (SpectreAlgorithm)algorithmVersion );
     (*env)->ReleaseStringUTFChars( env, userName, userNameString );
     (*env)->ReleaseByteArrayElements( env, userSecret, userSecretString, JNI_ABORT );
 
@@ -117,7 +117,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
 
     jbyteArray userKey = (*env)->NewByteArray( env, (jsize)sizeof( userKeyBytes->bytes ) );
     (*env)->SetByteArrayRegion( env, userKey, 0, (jsize)sizeof( userKeyBytes->bytes ), (jbyte *)userKeyBytes );
-    mpw_free( &userKeyBytes, sizeof( userKeyBytes->bytes ) );
+    spectre_free( &userKeyBytes, sizeof( userKeyBytes->bytes ) );
 
     return userKey;
 }
@@ -134,9 +134,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
     jbyte *userKeyBytes = (*env)->GetByteArrayElements( env, userKey, NULL );
     const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
-    MPsiteKey siteKeyBytes = mpw_site_key(
-            (MPUserKey)userKeyBytes, siteNameString, (MPCounterValue)keyCounter,
-            (MPKeyPurpose)keyPurpose, keyContextString );
+    SpectreSiteKey siteKeyBytes = spectre_site_key(
+            (SpectreUserKey)userKeyBytes, siteNameString, (SpectreCounter)keyCounter,
+            (SpectreKeyPurpose)keyPurpose, keyContextString );
     (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
     (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
     if (keyContext)
@@ -147,7 +147,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Ver
 
     jbyteArray siteKey = (*env)->NewByteArray( env, (jsize)sizeof( *userKey ) );
     (*env)->SetByteArrayRegion( env, siteKey, 0, (jsize)sizeof( *userKey ), (jbyte *)siteKeyBytes );
-    mpw_free( &siteKeyBytes, sizeof( *siteKey ) );
+    spectre_free( &siteKeyBytes, sizeof( *siteKey ) );
 
     return siteKey;
 }
@@ -168,8 +168,8 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
     const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
     const char *resultParamString = resultParam? (*env)->GetStringUTFChars( env, resultParam, NULL ): NULL;
-    const char *siteResultString = mpw_site_result( (MPUserKey)userKeyBytes, siteNameString,
-            (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter, (MPKeyPurpose)keyPurpose, keyContextString );
+    const char *siteResultString = spectre_site_result( (SpectreUserKey)userKeyBytes, siteNameString,
+            (SpectreResultType)resultType, resultParamString, (SpectreCounter)keyCounter, (SpectreKeyPurpose)keyPurpose, keyContextString );
     (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
     (*env)->ReleaseByteArrayElements( env, siteKey, siteKeyBytes, JNI_ABORT );
     (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
@@ -182,7 +182,7 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
         return NULL;
 
     jstring siteResult = (*env)->NewStringUTF( env, siteResultString );
-    mpw_free_string( &siteResultString );
+    spectre_free_string( &siteResultString );
 
     return siteResult;
 }
@@ -203,9 +203,9 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
     const char *siteNameString = (*env)->GetStringUTFChars( env, siteName, NULL );
     const char *keyContextString = keyContext? (*env)->GetStringUTFChars( env, keyContext, NULL ): NULL;
     const char *resultParamString = (*env)->GetStringUTFChars( env, resultParam, NULL );
-    const char *siteStateString = mpw_site_state(
-            (MPUserKey)userKeyBytes, siteNameString, (MPResultType)resultType, resultParamString, (MPCounterValue)keyCounter,
-            (MPKeyPurpose)keyPurpose, keyContextString );
+    const char *siteStateString = spectre_site_state(
+            (SpectreUserKey)userKeyBytes, siteNameString, (SpectreResultType)resultType, resultParamString, (SpectreCounter)keyCounter,
+            (SpectreKeyPurpose)keyPurpose, keyContextString );
     (*env)->ReleaseByteArrayElements( env, userKey, userKeyBytes, JNI_ABORT );
     (*env)->ReleaseByteArrayElements( env, siteKey, siteKeyBytes, JNI_ABORT );
     (*env)->ReleaseStringUTFChars( env, siteName, siteNameString );
@@ -218,12 +218,12 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
         return NULL;
 
     jstring siteState = (*env)->NewStringUTF( env, siteStateString );
-    mpw_free_string( &siteStateString );
+    spectre_free_string( &siteStateString );
 
     return siteState;
 }
 
-/* native MPIdenticon _identicon(final String userName, final byte[] userSecret) */
+/* native SpectreIdenticon _identicon(final String userName, final byte[] userSecret) */
 JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Version__1identicon(JNIEnv *env, jobject obj,
         jstring userName, jbyteArray userSecret) {
 
@@ -234,30 +234,30 @@ JNIEXPORT jobject JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
     const char *userNameString = (*env)->GetStringUTFChars( env, userName, NULL );
     jbyte *userSecretString = (*env)->GetByteArrayElements( env, userSecret, NULL );
 
-    MPIdenticon identicon = mpw_identicon( userNameString, (char *)userSecretString );
+    SpectreIdenticon identicon = spectre_identicon( userNameString, (char *)userSecretString );
     (*env)->ReleaseStringUTFChars( env, userName, userNameString );
     (*env)->ReleaseByteArrayElements( env, userSecret, userSecretString, JNI_ABORT );
-    if (identicon.color == MPIdenticonColorUnset)
+    if (identicon.color == SpectreIdenticonColorUnset)
         return NULL;
 
-    jclass cMPIdenticonColor = (*env)->FindClass( env, "com/lyndir/masterpassword/MPIdenticon$Color" );
-    if (!cMPIdenticonColor)
+    jclass cspectre_identicon_color = (*env)->FindClass( env, "com/lyndir/masterpassword/spectre_identicon$Color" );
+    if (!cspectre_identicon_color)
         return NULL;
-    jmethodID method = (*env)->GetStaticMethodID( env, cMPIdenticonColor, "values", "()[Lcom/lyndir/masterpassword/MPIdenticon$Color;" );
+    jmethodID method = (*env)->GetStaticMethodID( env, cspectre_identicon_color, "values", "()[Lcom/lyndir/masterpassword/spectre_identicon$Color;" );
     if (!method)
         return NULL;
-    jobject values = (*env)->CallStaticObjectMethod( env, cMPIdenticonColor, method );
+    jobject values = (*env)->CallStaticObjectMethod( env, cspectre_identicon_color, method );
     if (!values)
         return NULL;
 
-    jclass cMPIdenticon = (*env)->FindClass( env, "com/lyndir/masterpassword/MPIdenticon" );
-    if (!cMPIdenticon)
+    jclass cspectre_identicon = (*env)->FindClass( env, "com/lyndir/masterpassword/SpectreIdenticon" );
+    if (!cspectre_identicon)
         return NULL;
-    jmethodID init = (*env)->GetMethodID( env, cMPIdenticon, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/lyndir/masterpassword/MPIdenticon$Color;)V" );
+    jmethodID init = (*env)->GetMethodID( env, cspectre_identicon, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/lyndir/masterpassword/spectre_identicon$Color;)V" );
     if (!init)
         return NULL;
 
-    return (*env)->NewObject( env, cMPIdenticon, init, userName,
+    return (*env)->NewObject( env, cspectre_identicon, init, userName,
             (*env)->NewStringUTF( env, identicon.leftArm ),
             (*env)->NewStringUTF( env, identicon.body ),
             (*env)->NewStringUTF( env, identicon.rightArm ),
@@ -270,5 +270,5 @@ JNIEXPORT jstring JNICALL Java_com_lyndir_masterpassword_MPAlgorithm_00024Versio
         jbyteArray buffer) {
 
 #error TODO
-    return (*env)->NewStringUTF( env, mpw_id_buf( (*env)->GetByteArrayElements( env, buffer, NULL ), (*env)->GetArrayLength( env, buffer ) ) );
+    return (*env)->NewStringUTF( env, spectre_id_buf( (*env)->GetByteArrayElements( env, buffer, NULL ), (*env)->GetArrayLength( env, buffer ) ) );
 }

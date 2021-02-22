@@ -39,9 +39,9 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 /*****************************************************************************/
 #include "aes.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <string.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 /*****************************************************************************/
 /* Defines:                                                                  */
@@ -493,7 +493,7 @@ void AES_ECB_encrypt(uint8_t *output, const uint8_t *input, const uint32_t size,
   // The next function call encrypts the PlainText with the Key using AES algorithm.
   Cipher(&state);
 
-  mpw_zero( &state, sizeof(state) );
+  spectre_zero( &state, sizeof(state) );
 }
 
 void AES_ECB_decrypt(uint8_t *output, const uint8_t *input, const uint32_t size, const uint8_t *key)
@@ -511,7 +511,7 @@ void AES_ECB_decrypt(uint8_t *output, const uint8_t *input, const uint32_t size,
 
   InvCipher(&state);
 
-  mpw_zero( &state, sizeof(state) );
+  spectre_zero( &state, sizeof(state) );
 }
 
 
@@ -564,7 +564,7 @@ void AES_CBC_encrypt_buffer(uint8_t* output, uint8_t* input, uint32_t size, cons
     Cipher(&state);
   }
 
-  mpw_zero( &state, sizeof(state) );
+  spectre_zero( &state, sizeof(state) );
 }
 
 void AES_CBC_decrypt_buffer(uint8_t* output, uint8_t* input, uint32_t size, const uint8_t* key, const uint8_t* iv)
@@ -597,7 +597,7 @@ void AES_CBC_decrypt_buffer(uint8_t* output, uint8_t* input, uint32_t size, cons
     InvCipher(&state);
   }
 
-  mpw_zero( &state, sizeof(state) );
+  spectre_zero( &state, sizeof(state) );
 }
 
 #endif // #if defined(AES_CBC) && (AES_CBC == 1)

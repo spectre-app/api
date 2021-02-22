@@ -16,75 +16,75 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#ifndef _MPW_MARSHAL_UTIL_H
-#define _MPW_MARSHAL_UTIL_H
+#ifndef _SPECTRE_MARSHAL_UTIL_H
+#define _SPECTRE_MARSHAL_UTIL_H
 
-#include "mpw-algorithm.h"
-#include "mpw-marshal.h"
+#include "spectre-algorithm.h"
+#include "spectre-marshal.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <time.h>
-#if MPW_JSON
+#if SPECTRE_JSON
 #include "json-c/json.h"
 #endif
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 /// Type parsing.
 
 /** Get a token from a string by searching until the first character in delim, no farther than eol.
  * The input string reference is advanced beyond the token delimitor if one is found.
  * @return A C-string (allocated) containing the token or NULL if the delim wasn't found before eol. */
-const char *mpw_get_token(
+const char *spectre_get_token(
         const char **in, const char *eol, const char *delim);
 /** Get a boolean value as expressed by the given string.
  * @return true if the string is not NULL and holds a number larger than 0, or starts with a t (for true) or y (for yes). */
-bool mpw_get_bool(
+bool spectre_get_bool(
         const char *in);
 /** Convert an RFC 3339 time string into epoch time.
  * @return ERR if the string could not be parsed. */
-time_t mpw_get_timegm(
+time_t spectre_get_timegm(
         const char *in);
 
 
-/// mpw.
+/// Spectre.
 
 /** Calculate a user key if the target user key algorithm is different from the given user key algorithm.
- * @param userKey A buffer (allocated, MPUserKeySize).
+ * @param userKey A buffer (allocated).
  * @return false if an error occurred during the derivation of the user key. */
-bool mpw_update_user_key(
-        const MPUserKey **userKey, MPAlgorithmVersion *userKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+bool spectre_update_user_key(
+        const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,
         const char *userName, const char *userSecret);
 
 
 /// JSON parsing.
 
-#if MPW_JSON
+#if SPECTRE_JSON
 /** Search for an object in a JSON object tree.
  * @param key A JSON object key for the child in this object.
  * @param create If true, create and insert new objects for any missing path components.
  * @return An object (shared) or a new object (shared) installed in the tree if the path's object path was not found. */
-json_object *mpw_get_json_object(
+json_object *spectre_get_json_object(
         json_object *obj, const char *key, const bool create);
 /** Search for a string in a JSON object tree.
  * @param key A dot-delimited list of JSON object keys to walk toward the child object.
  * @return A C-string (shared) or defaultValue if one of the path's object keys was not found in the source object's tree. */
-const char *mpw_get_json_string(
+const char *spectre_get_json_string(
         json_object *obj, const char *key, const char *defaultValue);
 /** Search for an integer in a JSON object tree.
  * @param key A dot-delimited list of JSON object keys to walk toward the child object.
  * @return The integer value or defaultValue if one of the path's object keys was not found in the source object's tree. */
-int64_t mpw_get_json_int(
+int64_t spectre_get_json_int(
         json_object *obj, const char *key, const int64_t defaultValue);
 /** Search for a boolean in a JSON object tree.
  * @param key A dot-delimited list of JSON object keys to walk toward the child object.
  * @return The boolean value or defaultValue if one of the path's object keys was not found in the source object's tree. */
-bool mpw_get_json_boolean(
+bool spectre_get_json_boolean(
         json_object *obj, const char *key, const bool defaultValue);
 /** Translate a JSON object tree into a source-agnostic data object.
  * @param data A Spectre data object or NULL.
  * @param obj A JSON object tree or NULL. */
-void mpw_set_json_data(
-        MPMarshalledData *data, json_object *obj);
+void spectre_set_json_data(
+        SpectreMarshalledData *data, json_object *obj);
 #endif
 
-#endif // _MPW_MARSHAL_UTIL_H
+#endif // _SPECTRE_MARSHAL_UTIL_H

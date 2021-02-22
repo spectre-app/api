@@ -16,109 +16,109 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#ifndef _MPW_UTIL_H
-#define _MPW_UTIL_H
+#ifndef _SPECTRE_UTIL_H
+#define _SPECTRE_UTIL_H
 
-#include "mpw-types.h"
+#include "spectre-types.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 //// Logging.
 ///
-/// mpw's log mechanism uses a layered approach:
+/// spectre's log mechanism uses a layered approach:
 /// 1. trc/dbg/inf/wrn/err/ftl macros initiate a log event.
 ///    They record metadata such as severity, source code and time. Events are recorded as a static message and a set of data arguments.
 ///    The log message should be a static printf(3)-style format string with compatible arguments.
-/// 2. The macros are handled by the MPW_LOG define, which defaults to mpw_log_sink.
+/// 2. The macros are handled by the SPECTRE_LOG define, which defaults to spectre_log.
 ///    It should reference a symbol with the signature:
-///    (bool) (MPLogLevel level, const char *file, int line, const char *function, const char *format, ... args)
-/// 3. mpw_verbosity determines the severity threshold for log processing; any messages above its threshold are discarded.
+///    (bool) (SpectreLogLevel level, const char *file, int line, const char *function, const char *format, ... args)
+/// 3. spectre_verbosity determines the severity threshold for log processing; any messages above its threshold are discarded.
 ///    This avoids triggering the log mechanism for events which are not considered interesting at the time.
-/// 4. The mpw_log_sink implementation consumes the log event through mpw's log sink mechanism.
+/// 4. The spectre_log implementation consumes the log event through spectre's log sink mechanism.
 ///    The sink mechanism aims to make log messages available to any interested party.
-///    Only if there are no interested parties registered, log events will be sunk into mpw_log_sink_file.
+///    Only if there are no interested parties registered, log events will be sunk into spectre_log_sink_file.
 ///    The return value can be used to check if the event was consumed by any sink.
-/// 5. MPLogEvent values are created by mpw_log_sink to host the log event data for relaying into log sinks.
+/// 5. SpectreLogEvent values are created by spectre_log to host the log event data for relaying into log sinks.
 ///    All values come directly from the log event macros, with two exceptions:
 ///    .formatter is a function capable of merging the message format and data arguments into a complete log message.
 ///    .formatted is a heap allocated string representing the completely merged log message.
-///    mpw_log_esink can be used to introduce events into the system which do not originate from the macros.
+///    spectre_elog can be used to introduce events into the system which do not originate from the macros.
 ///    These events need to at a minimum provide a .formatter to ensure argument data can be merged into the format message.
-/// 6. mpw_log_sink_register records an MPLogSink as interested in receiving subsequent log events.
-///    Any events dispatched into the mpw_log_esink mechanism hence forth will be relayed into the newly registered log sink.
-///    mpw_log_sink_unregister should be used when a sink is no longer interested in consuming log events.
-/// 7. An MPLogSink consumes MPLogEvent values in whatever way it sees fit.
+/// 6. spectre_log_sink_register records an SpectreLogSink as interested in receiving subsequent log events.
+///    Any events dispatched into the spectre_elog mechanism hence forth will be relayed into the newly registered log sink.
+///    spectre_log_sink_unregister should be used when a sink is no longer interested in consuming log events.
+/// 7. An SpectreLogSink consumes SpectreLogEvent values in whatever way it sees fit.
 ///    If a sink is interested in a complete formatted message, it should use .formatted, if available, or .formatter
 ///    to obtain the message (and then store it in .formatted for future sinks).
 ///    If for whatever reason the sink did not act on the message, it should return false.
-/// 8. The default sink, mpw_log_sink_file, consumes log events by writing them to the mpw_log_sink_file_target FILE.
+/// 8. The default sink, spectre_log_sink_file, consumes log events by writing them to the spectre_log_sink_file_target FILE.
 ///    A log event's complete message is resolved through its .formatter, prefixed with its severity and terminated by a newline.
-///    The default mpw_log_sink_file_target is stderr, yielding a default behaviour that writes log events to the system's standard error.
+///    The default spectre_log_sink_file_target is stderr, yielding a default behaviour that writes log events to the system's standard error.
 
-typedef mpw_enum( int, MPLogLevel ) {
+typedef spectre_enum( int, SpectreLogLevel ) {
     /** Logging internal state. */
-    MPLogLevelTrace = 3,
+    SpectreLogLevelTrace = 3,
     /** Logging state and events interesting when investigating issues. */
-    MPLogLevelDebug = 2,
+    SpectreLogLevelDebug = 2,
     /** User messages. */
-    MPLogLevelInfo = 1,
+    SpectreLogLevelInfo = 1,
     /** Recoverable issues and user suggestions. */
-    MPLogLevelWarning = 0,
+    SpectreLogLevelWarning = 0,
     /** Unrecoverable issues. */
-    MPLogLevelError = -1,
+    SpectreLogLevelError = -1,
     /** Issues that lead to abortion. */
-    MPLogLevelFatal = -2,
+    SpectreLogLevelFatal = -2,
 };
-extern MPLogLevel mpw_verbosity;
+extern SpectreLogLevel spectre_verbosity;
 
 /** A log event describes a message emitted through the log subsystem. */
-typedef struct MPLogEvent {
+typedef struct SpectreLogEvent {
     time_t occurrence;
-    MPLogLevel level;
+    SpectreLogLevel level;
     const char *file;
     int line;
     const char *function;
     /** @return A C-string (allocated), cached in .formatted, of the .args interpolated into the .format message. */
-    const char *(*formatter)(struct MPLogEvent *);
+    const char *(*formatter)(struct SpectreLogEvent *);
     const char *formatted;
     const char *format;
     const va_list *args;
-} MPLogEvent;
+} SpectreLogEvent;
 
 /** A log sink describes a function that can receive log events. */
-typedef bool (MPLogSink)(MPLogEvent *event);
+typedef bool (SpectreLogSink)(SpectreLogEvent *event);
 
-/** mpw_log_sink_file is a sink that writes log messages to the mpw_log_sink_file_target, which defaults to stderr. */
-extern MPLogSink mpw_log_sink_file;
-extern FILE *mpw_log_sink_file_target;
+/** spectre_log_sink_file is a sink that writes log messages to the spectre_log_sink_file_target, which defaults to stderr. */
+extern SpectreLogSink spectre_log_sink_file;
+extern FILE *spectre_log_sink_file_target;
 
-/** To receive events, sinks need to be registered.  If no sinks are registered, log events are sent to the mpw_log_sink_file sink. */
-bool mpw_log_sink_register(MPLogSink *sink);
-bool mpw_log_sink_unregister(MPLogSink *sink);
+/** To receive events, sinks need to be registered.  If no sinks are registered, log events are sent to the spectre_log_sink_file sink. */
+bool spectre_log_sink_register(SpectreLogSink *sink);
+bool spectre_log_sink_unregister(SpectreLogSink *sink);
 
 /** These functions dispatch log events to the registered sinks.
  * @return false if no sink processed the log event (sinks may reject messages or fail). */
-bool mpw_log_sink(MPLogLevel level, const char *file, int line, const char *function, const char *format, ...);
-bool mpw_log_vsink(MPLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args);
-bool mpw_log_esink(MPLogEvent *event);
+bool spectre_log(SpectreLogLevel level, const char *file, int line, const char *function, const char *format, ...);
+bool spectre_vlog(SpectreLogLevel level, const char *file, int line, const char *function, const char *format, va_list *args);
+bool spectre_elog(SpectreLogEvent *event);
 
-/** The log dispatcher you want to channel log messages into; defaults to mpw_log_sink, enabling the log sink mechanism. */
-#ifndef MPW_LOG
-#define MPW_LOG mpw_log_sink
+/** The log dispatcher you want to channel log messages into; defaults to spectre_log, enabling the log sink mechanism. */
+#ifndef SPECTRE_LOG
+#define SPECTRE_LOG spectre_log
 #endif
 
 /** Application interface for logging events into the subsystem. */
 #ifndef trc
-#define trc(format, ...) MPW_LOG( MPLogLevelTrace, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define dbg(format, ...) MPW_LOG( MPLogLevelDebug, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define inf(format, ...) MPW_LOG( MPLogLevelInfo, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define wrn(format, ...) MPW_LOG( MPLogLevelWarning, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define err(format, ...) MPW_LOG( MPLogLevelError, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
-#define ftl(format, ...) MPW_LOG( MPLogLevelFatal, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define trc(format, ...) SPECTRE_LOG( SpectreLogLevelTrace, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define dbg(format, ...) SPECTRE_LOG( SpectreLogLevelDebug, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define inf(format, ...) SPECTRE_LOG( SpectreLogLevelInfo, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define wrn(format, ...) SPECTRE_LOG( SpectreLogLevelWarning, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define err(format, ...) SPECTRE_LOG( SpectreLogLevelError, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
+#define ftl(format, ...) SPECTRE_LOG( SpectreLogLevelFatal, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__ )
 #endif
 
 
@@ -151,8 +151,8 @@ bool mpw_log_esink(MPLogEvent *event);
     __typeof__ (b) _b = (b); \
     _a > _b ? _a : _b; })
 #endif
-#define mpw_default(__default, __value) ({ __typeof__ (__value) _v = (__value); _v? _v: (__default); })
-#define mpw_default_num(__default, __num) ({ __typeof__ (__num) _n = (__num); !isnan( _n )? (__typeof__ (__default))_n: (__default); })
+#define spectre_default(__default, __value) ({ __typeof__ (__value) _v = (__value); _v? _v: (__default); })
+#define spectre_default_num(__default, __num) ({ __typeof__ (__num) _n = (__num); !isnan( _n )? (__typeof__ (__default))_n: (__default); })
 #else
 #ifndef min
 #define min(a, b) ( (a) < (b) ? (a) : (b) )
@@ -160,20 +160,20 @@ bool mpw_log_esink(MPLogEvent *event);
 #ifndef max
 #define max(a, b) ( (a) > (b) ? (a) : (b) )
 #endif
-#define mpw_default(__default, __value) ( (__value)? (__value): (__default) )
-#define mpw_default_num(__default, __num) ( !isnan( (__num) )? (__num): (__default) )
+#define spectre_default(__default, __value) ( (__value)? (__value): (__default) )
+#define spectre_default_num(__default, __num) ( !isnan( (__num) )? (__num): (__default) )
 #endif
 
 
 //// Buffers and memory.
 
-/** Write a number to a byte buffer using mpw's endianness (big/network). */
-void mpw_uint16(const uint16_t number, uint8_t buf[2]);
-void mpw_uint32(const uint32_t number, uint8_t buf[4]);
-void mpw_uint64(const uint64_t number, uint8_t buf[8]);
+/** Write a number to a byte buffer using spectre's endianness (big/network). */
+void spectre_uint16(const uint16_t number, uint8_t buf[2]);
+void spectre_uint32(const uint32_t number, uint8_t buf[4]);
+void spectre_uint64(const uint64_t number, uint8_t buf[8]);
 
 /** @return An array of strings (allocated, count) or NULL if no strings were given or we could not allocate space for the new array. */
-const char **mpw_strings(
+const char **spectre_strings(
         size_t *count, const char *strings, ...);
 
 /** Push a value onto a buffer.  The given buffer is realloc'ed and the value appended to the end of it.
@@ -181,27 +181,27 @@ const char **mpw_strings(
  * @param value The object to append to the buffer.
  *              If char*, copies a C-string from the value.
  *              If uint8_t*, takes a size_t argument indicating the amount of uint8_t's to copy from the value. */
-#define mpw_buf_push(buffer, bufferSize, value, ...) _Generic( (value), \
-        uint32_t: mpw_buf_push_uint32,                                  \
-        uint8_t *: mpw_buf_push_buf, const uint8_t *: mpw_buf_push_buf, \
-        char *: mpw_buf_push_str, const char *: mpw_buf_push_str )      \
+#define spectre_buf_push(buffer, bufferSize, value, ...) _Generic( (value), \
+        uint32_t: spectre_buf_push_uint32,                                  \
+        uint8_t *: spectre_buf_push_buf, const uint8_t *: spectre_buf_push_buf, \
+        char *: spectre_buf_push_str, const char *: spectre_buf_push_str )      \
         ( buffer, bufferSize, value, ##__VA_ARGS__)
-bool mpw_buf_push_buf(
+bool spectre_buf_push_buf(
         uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize);
-/** Push an integer onto a buffer.  reallocs the given buffer and appends the given integer using mpw's endianness (big/network).
+/** Push an integer onto a buffer.  reallocs the given buffer and appends the given integer using spectre's endianness (big/network).
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
-bool mpw_buf_push_uint32(
+bool spectre_buf_push_uint32(
         uint8_t **buffer, size_t *bufferSize, const uint32_t pushInt);
 /** Push a C-string onto a buffer.  reallocs the given buffer and appends the given string.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to append to, may be NULL. */
-bool mpw_buf_push_str(
+bool spectre_buf_push_str(
         uint8_t **buffer, size_t *bufferSize, const char *pushString);
 
 /** Push a C-string onto another string.  reallocs the target string and appends the source string.
  * @param string A pointer to the string (allocated) to append to, may be NULL. */
-bool mpw_string_push(
+bool spectre_string_push(
         char **string, const char *pushString);
-bool mpw_string_pushf(
+bool spectre_string_pushf(
         char **string, const char *pushFormat, ...);
 
 // These defines merely exist to do type-checking, force the void** cast & drop any const qualifier.
@@ -213,82 +213,82 @@ bool mpw_string_pushf(
  * @param targetSize The amount to reallocate the buffer's size into.
  * @return true if successful, false if reallocation failed.
  */
-#define mpw_realloc(\
+#define spectre_realloc(\
         /* const void** */buffer, /* size_t* */bufferSize, type, /* const size_t */typeCount) \
-        ({ type **_buffer = buffer; __mpw_realloc( (void **)_buffer, bufferSize, sizeof( type ) * (typeCount) ); })
+        ({ type **_buffer = buffer; __spectre_realloc( (void **)_buffer, bufferSize, sizeof( type ) * (typeCount) ); })
 /** Free a buffer after zero'ing its contents, then set the reference to NULL.
  * @param bufferSize The byte-size of the buffer, these bytes will be zeroed prior to deallocation. */
-#define mpw_free(\
+#define spectre_free(\
         /* void** */buffer, /* size_t */ bufferSize) \
-        ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __mpw_free( (void **)_b, bufferSize ); })
+        ({ __typeof__(buffer) _b = buffer; const void *__b = *_b; (void)__b; __spectre_free( (void **)_b, bufferSize ); })
 /** Free a C-string after zero'ing its contents, then set the reference to NULL. */
-#define mpw_free_string(\
+#define spectre_free_string(\
         /* char** */string) \
-        ({ __typeof__(string) _s = string; const char *__s = *_s; (void)__s; __mpw_free_string( (char **)_s ); })
+        ({ __typeof__(string) _s = string; const char *__s = *_s; (void)__s; __spectre_free_string( (char **)_s ); })
 /** Free strings after zero'ing their contents, then set the references to NULL.  Terminate the va_list with NULL. */
-#define mpw_free_strings(\
+#define spectre_free_strings(\
         /* char** */strings, ...) \
-        ({ __typeof__(strings) _s = strings; const char *__s = *_s; (void)__s; __mpw_free_strings( (char **)_s, __VA_ARGS__ ); })
+        ({ __typeof__(strings) _s = strings; const char *__s = *_s; (void)__s; __spectre_free_strings( (char **)_s, __VA_ARGS__ ); })
 /** Free a C-string after zero'ing its contents, then set the reference to the replacement string.
  * The replacement string is generated before the original is freed; so it can be a derivative of the original. */
-#define mpw_replace_string(\
+#define spectre_replace_string(\
         /* char* */string, /* char* */replacement) \
-        do { const char *replacement_ = replacement; mpw_free_string( &string ); string = replacement_; } while (0)
+        do { const char *replacement_ = replacement; spectre_free_string( &string ); string = replacement_; } while (0)
 #ifdef _MSC_VER
-#undef mpw_realloc
-#define mpw_realloc(buffer, bufferSize, targetSize) \
-        __mpw_realloc( (void **)buffer, bufferSize, targetSize )
-#undef mpw_free
-#define mpw_free(buffer, bufferSize) \
-        __mpw_free( (void **)buffer, bufferSize )
-#undef mpw_free_string
-#define mpw_free_string(string) \
-        __mpw_free_string( (char **)string )
-#undef mpw_free_strings
-#define mpw_free_strings(strings, ...) \
-        __mpw_free_strings( (char **)strings, __VA_ARGS__ )
+#undef spectre_realloc
+#define spectre_realloc(buffer, bufferSize, targetSize) \
+        __spectre_realloc( (void **)buffer, bufferSize, targetSize )
+#undef spectre_free
+#define spectre_free(buffer, bufferSize) \
+        __spectre_free( (void **)buffer, bufferSize )
+#undef spectre_free_string
+#define spectre_free_string(string) \
+        __spectre_free_string( (char **)string )
+#undef spectre_free_strings
+#define spectre_free_strings(strings, ...) \
+        __spectre_free_strings( (char **)strings, __VA_ARGS__ )
 #endif
-bool __mpw_realloc(
+bool __spectre_realloc(
         void **buffer, size_t *bufferSize, const size_t targetSize);
-bool __mpw_free(
+bool __spectre_free(
         void **buffer, size_t bufferSize);
-bool __mpw_free_string(
+bool __spectre_free_string(
         char **string);
-bool __mpw_free_strings(
+bool __spectre_free_strings(
         char **strings, ...);
-void mpw_zero(
+void spectre_zero(
         void *buffer, const size_t bufferSize);
 
 //// Cryptographic functions.
 
 /** Derive a key from the given secret and salt using the scrypt KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if secret or salt is missing, key could not be allocated or the KDF failed. */
-bool mpw_kdf_scrypt(
+bool spectre_kdf_scrypt(
         uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p);
 /** Derive a subkey from the given key using the blake2b KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if the key or subkeySize is missing, the key sizes are out of bounds, the subkey could not be allocated or derived. */
-bool mpw_kdf_blake2b(
+bool spectre_kdf_blake2b(
         uint8_t *subkey, const size_t subkeySize, const uint8_t *key, const size_t keySize,
         const uint8_t *context, const size_t contextSize, const uint64_t id, const char *personal);
 /** Calculate the MAC for the given message with the given key using SHA256-HMAC.
  * @return A buffer (allocated, 32-byte) containing the MAC or NULL if the key or message is missing, the MAC could not be allocated or generated. */
-bool mpw_hash_hmac_sha256(
+bool spectre_hash_hmac_sha256(
         uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize);
 /** Encrypt a plainBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the plain buffer on input, and the size of the returned cipher buffer on output.
  * @return A buffer (allocated, bufferSize) containing the cipherBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-const uint8_t *mpw_aes_encrypt(
+const uint8_t *spectre_aes_encrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize);
 /** Decrypt a cipherBuffer with the given key using AES-128-CBC.
  * @param bufferSize A pointer to the size of the cipher buffer on input, and the size of the returned plain buffer on output.
  * @return A buffer (allocated, bufferSize) containing the plainBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
-const uint8_t *mpw_aes_decrypt(
+const uint8_t *spectre_aes_decrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize);
 #if UNUSED
 /** Calculate an OTP using RFC-4226.
  * @return A C-string (allocated) containing exactly `digits` decimal OTP digits. */
-const char *mpw_hotp(
+const char *spectre_hotp(
         const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset);
 #endif
 
@@ -296,38 +296,38 @@ const char *mpw_hotp(
 
 /** Compose a formatted string.
  * @return A C-string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
-const char *mpw_str(const char *format, ...);
-const char *mpw_vstr(const char *format, va_list args);
+const char *spectre_str(const char *format, ...);
+const char *spectre_vstr(const char *format, va_list args);
 /** Encode size-bytes from a buffer as a C-string of hexadecimal characters.
  * @param hex If not NULL, use it to store the hexadecimal characters.  Will be realloc'ed if it isn't large enough.  Result is returned.
  * @return A C-string (allocated, size * 2 + 1 bytes); NULL if the buffer is missing or the result could not be allocated. */
-char *mpw_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize);
-const char *mpw_hex_l(const uint32_t number, char hex[static 9]);
+char *spectre_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize);
+const char *spectre_hex_l(const uint32_t number, char hex[static 9]);
 /** Decode a C-string of hexadecimal characters into a buffer of size-bytes.
  * @return A buffer (allocated, *size); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
-const uint8_t *mpw_unhex(const char *hex, size_t *size);
+const uint8_t *spectre_unhex(const char *hex, size_t *size);
 
 //// String utilities.
 
 /** @return The byte size of the UTF-8 character at the start of the given string or 0 if it is NULL, empty or not a legal UTF-8 character. */
-size_t mpw_utf8_char_size(const char *utf8String);
+size_t spectre_utf8_char_size(const char *utf8String);
 /** @return The amount of UTF-8 characters in the given string or 0 if it is NULL, empty, or contains bytes that are not legal in UTF-8. */
-size_t mpw_utf8_char_count(const char *utf8String);
+size_t spectre_utf8_char_count(const char *utf8String);
 
 //// Compatibility.
 
 /** Drop-in for memdup(3).
  * @return A buffer (allocated, len) with len bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
-void *mpw_memdup(const void *src, const size_t len);
+void *spectre_memdup(const void *src, const size_t len);
 /** Drop-in for POSIX strdup(3).
  * @return A C-string (allocated) copied from src or NULL if src is missing or the buffer could not be allocated. */
-const char *mpw_strdup(const char *src);
+const char *spectre_strdup(const char *src);
 /** Drop-in for POSIX strndup(3).
  * @return A C-string (allocated) with no more than max bytes copied from src or NULL if src is missing or the buffer could not be allocated. */
-const char *mpw_strndup(const char *src, const size_t max);
+const char *spectre_strndup(const char *src, const size_t max);
 /** Drop-in for POSIX strcasecmp(3). */
-int mpw_strcasecmp(const char *s1, const char *s2);
+int spectre_strcasecmp(const char *s1, const char *s2);
 /** Drop-in for POSIX strncasecmp(3). */
-int mpw_strncasecmp(const char *s1, const char *s2, const size_t max);
+int spectre_strncasecmp(const char *s1, const char *s2, const size_t max);
 
-#endif // _MPW_UTIL_H
+#endif // _SPECTRE_UTIL_H

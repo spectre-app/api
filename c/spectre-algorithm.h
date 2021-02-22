@@ -16,46 +16,46 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#ifndef _MPW_ALGORITHM_H
-#define _MPW_ALGORITHM_H
+#ifndef _SPECTRE_ALGORITHM_H
+#define _SPECTRE_ALGORITHM_H
 
-#include "mpw-types.h"
+#include "spectre-types.h"
 
 /** Derive the user key for a user based on their name and user secret.
- * @return A MPUserKey value (allocated) or NULL if the userName or userSecret is missing, the algorithm is unknown, or an algorithm error occurred. */
-const MPUserKey *mpw_user_key(
-        const char *userName, const char *userSecret, const MPAlgorithmVersion algorithmVersion);
+ * @return A SpectreUserKey value (allocated) or NULL if the userName or userSecret is missing, the algorithm is unknown, or an algorithm error occurred. */
+const SpectreUserKey *spectre_user_key(
+        const char *userName, const char *userSecret, const SpectreAlgorithm algorithmVersion);
 
 /** Generate a result token for a user from the user's user key and result parameters.
- * @param resultParam A parameter for the resultType.  For stateful result types, the output of mpw_site_state.
+ * @param resultParam A parameter for the resultType.  For stateful result types, the output of spectre_site_state.
  * @return A C-string (allocated) or NULL if the userKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
-const char *mpw_site_result(
-        const MPUserKey *userKey, const char *siteName,
-        const MPResultType resultType, const char *resultParam,
-        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
+const char *spectre_site_result(
+        const SpectreUserKey *userKey, const char *siteName,
+        const SpectreResultType resultType, const char *resultParam,
+        const SpectreCounter keyCounter, const SpectreKeyPurpose keyPurpose, const char *keyContext);
 
 /** Encrypt a result token for stateful persistence.
- * @param resultParam A parameter for the resultType.  For stateful result types, the desired mpw_site_result.
+ * @param resultParam A parameter for the resultType.  For stateful result types, the desired spectre_site_result.
  * @return A C-string (allocated) or NULL if the userKey, siteName or resultType's resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
-const char *mpw_site_state(
-        const MPUserKey *userKey, const char *siteName,
-        const MPResultType resultType, const char *resultParam,
-        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
+const char *spectre_site_state(
+        const SpectreUserKey *userKey, const char *siteName,
+        const SpectreResultType resultType, const char *resultParam,
+        const SpectreCounter keyCounter, const SpectreKeyPurpose keyPurpose, const char *keyContext);
 
 /** Derive the result key for a user from the user's user key and result parameters.
- * @return An MPSiteKey value (allocated) or NULL if the userKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
-const MPSiteKey *mpw_site_key(
-        const MPUserKey *userKey, const char *siteName,
-        const MPCounterValue keyCounter, const MPKeyPurpose keyPurpose, const char *keyContext);
+ * @return An SpectreSiteKey value (allocated) or NULL if the userKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
+const SpectreSiteKey *spectre_site_key(
+        const SpectreUserKey *userKey, const char *siteName,
+        const SpectreCounter keyCounter, const SpectreKeyPurpose keyPurpose, const char *keyContext);
 
 /** @return An identicon (static) that represents the user's identity. */
-const MPIdenticon mpw_identicon(
+const SpectreIdenticon spectre_identicon(
         const char *userName, const char *userSecret);
 /** @return A C-string encoded representation (allocated) of the given identicon or NULL if the identicon is unset. */
-const char *mpw_identicon_encode(
-        const MPIdenticon identicon);
+const char *spectre_identicon_encode(
+        const SpectreIdenticon identicon);
 /** @return An identicon (static) decoded from the given encoded identicon representation or an identicon with empty fields if the identicon could not be parsed. */
-const MPIdenticon mpw_identicon_encoded(
+const SpectreIdenticon spectre_identicon_encoded(
         const char *encoding);
 
-#endif // _MPW_ALGORITHM_H
+#endif // _SPECTRE_ALGORITHM_H

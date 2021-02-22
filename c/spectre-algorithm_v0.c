@@ -16,15 +16,15 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#include "mpw-algorithm_v0.h"
-#include "mpw-util.h"
+#include "spectre-algorithm_v0.h"
+#include "spectre-util.h"
 #include "base64.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
 #define MP_N                32768LU
 #define MP_r                8U
@@ -32,19 +32,19 @@ MP_LIBS_END
 #define MP_otp_window       5 * 60 /* s */
 
 // Algorithm version helpers.
-const char *mpw_type_template_v0(const MPResultType type, uint16_t templateIndex) {
+const char *spectre_type_template_v0(const SpectreResultType type, uint16_t templateIndex) {
 
     size_t count = 0;
-    const char **templates = mpw_type_templates( type, &count );
+    const char **templates = spectre_type_templates( type, &count );
     char const *template = templates && count? templates[templateIndex % count]: NULL;
     free( templates );
 
     return template;
 }
 
-const char mpw_class_character_v0(char characterClass, uint16_t classIndex) {
+const char spectre_class_character_v0(char characterClass, uint16_t classIndex) {
 
-    const char *classCharacters = mpw_class_characters( characterClass );
+    const char *classCharacters = spectre_class_characters( characterClass );
     if (!classCharacters)
         return '\0';
 
@@ -52,96 +52,96 @@ const char mpw_class_character_v0(char characterClass, uint16_t classIndex) {
 }
 
 // Algorithm version overrides.
-bool mpw_user_key_v0(
-        const MPUserKey *userKey, const char *userName, const char *userSecret) {
+bool spectre_user_key_v0(
+        const SpectreUserKey *userKey, const char *userName, const char *userSecret) {
 
-    const char *keyScope = mpw_purpose_scope( MPKeyPurposeAuthentication );
+    const char *keyScope = spectre_purpose_scope( SpectreKeyPurposeAuthentication );
     trc( "keyScope: %s", keyScope );
 
     // Calculate the user key salt.
     trc( "userKeySalt: keyScope=%s | #userName=%s | userName=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( userName ), (char[9]){ 0 } ), userName );
+            keyScope, spectre_hex_l( (uint32_t)spectre_utf8_char_count( userName ), (char[9]){ 0 } ), userName );
     size_t userKeySaltSize = 0;
     uint8_t *userKeySalt = NULL;
-    if (!(mpw_buf_push( &userKeySalt, &userKeySaltSize, keyScope ) &&
-          mpw_buf_push( &userKeySalt, &userKeySaltSize, (uint32_t)mpw_utf8_char_count( userName ) ) &&
-          mpw_buf_push( &userKeySalt, &userKeySaltSize, userName )) || !userKeySalt) {
-        mpw_free( &userKeySalt, userKeySaltSize );
+    if (!(spectre_buf_push( &userKeySalt, &userKeySaltSize, keyScope ) &&
+          spectre_buf_push( &userKeySalt, &userKeySaltSize, (uint32_t)spectre_utf8_char_count( userName ) ) &&
+          spectre_buf_push( &userKeySalt, &userKeySaltSize, userName )) || !userKeySalt) {
+        spectre_free( &userKeySalt, userKeySaltSize );
         err( "Could not allocate user key salt: %s", strerror( errno ) );
         return false;
     }
-    trc( "  => userKeySalt.id: %s", mpw_id_buf( userKeySalt, userKeySaltSize ).hex );
+    trc( "  => userKeySalt.id: %s", spectre_id_buf( userKeySalt, userKeySaltSize ).hex );
 
     // Calculate the user key.
     trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
-    bool success = mpw_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
+    bool success = spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
             (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, MP_N, MP_r, MP_p );
-    mpw_free( &userKeySalt, userKeySaltSize );
+    spectre_free( &userKeySalt, userKeySaltSize );
 
     if (!success)
         err( "Could not derive user key: %s", strerror( errno ) );
     else {
-        MPKeyID keyID = mpw_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
-        memcpy( (MPKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
+        SpectreKeyID keyID = spectre_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
+        memcpy( (SpectreKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
         trc( "  => userKey.id: %s (algorithm: %d:0)", userKey->keyID.hex, userKey->algorithm );
     }
     return success;
 }
 
-bool mpw_site_key_v0(
-        const MPSiteKey *siteKey, const MPUserKey *userKey, const char *siteName,
-        MPCounterValue keyCounter, MPKeyPurpose keyPurpose, const char *keyContext) {
+bool spectre_site_key_v0(
+        const SpectreSiteKey *siteKey, const SpectreUserKey *userKey, const char *siteName,
+        SpectreCounter keyCounter, SpectreKeyPurpose keyPurpose, const char *keyContext) {
 
-    const char *keyScope = mpw_purpose_scope( keyPurpose );
+    const char *keyScope = spectre_purpose_scope( keyPurpose );
     trc( "keyScope: %s", keyScope );
 
     // OTP counter value.
-    if (keyCounter == MPCounterValueTOTP)
-        keyCounter = ((MPCounterValue)time( NULL ) / MP_otp_window) * MP_otp_window;
+    if (keyCounter == SpectreCounterTOTP)
+        keyCounter = ((SpectreCounter)time( NULL ) / MP_otp_window) * MP_otp_window;
 
     // Calculate the site seed.
     trc( "siteSalt: keyScope=%s | #siteName=%s | siteName=%s | keyCounter=%s | #keyContext=%s | keyContext=%s",
-            keyScope, mpw_hex_l( (uint32_t)mpw_utf8_char_count( siteName ), (char[9]){ 0 } ), siteName,
-            mpw_hex_l( keyCounter, (char[9]){ 0 } ),
-            keyContext? mpw_hex_l( (uint32_t)mpw_utf8_char_count( keyContext ), (char[9]){ 0 } ): NULL, keyContext );
+            keyScope, spectre_hex_l( (uint32_t)spectre_utf8_char_count( siteName ), (char[9]){ 0 } ), siteName,
+            spectre_hex_l( keyCounter, (char[9]){ 0 } ),
+            keyContext? spectre_hex_l( (uint32_t)spectre_utf8_char_count( keyContext ), (char[9]){ 0 } ): NULL, keyContext );
     size_t siteSaltSize = 0;
     uint8_t *siteSalt = NULL;
-    if (!(mpw_buf_push( &siteSalt, &siteSaltSize, keyScope ) &&
-          mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)mpw_utf8_char_count( siteName ) ) &&
-          mpw_buf_push( &siteSalt, &siteSaltSize, siteName ) &&
-          mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)keyCounter ) &&
+    if (!(spectre_buf_push( &siteSalt, &siteSaltSize, keyScope ) &&
+          spectre_buf_push( &siteSalt, &siteSaltSize, (uint32_t)spectre_utf8_char_count( siteName ) ) &&
+          spectre_buf_push( &siteSalt, &siteSaltSize, siteName ) &&
+          spectre_buf_push( &siteSalt, &siteSaltSize, (uint32_t)keyCounter ) &&
           (!keyContext? true:
-           mpw_buf_push( &siteSalt, &siteSaltSize, (uint32_t)mpw_utf8_char_count( keyContext ) ) &&
-           mpw_buf_push( &siteSalt, &siteSaltSize, keyContext ))) || !siteSalt) {
+           spectre_buf_push( &siteSalt, &siteSaltSize, (uint32_t)spectre_utf8_char_count( keyContext ) ) &&
+           spectre_buf_push( &siteSalt, &siteSaltSize, keyContext ))) || !siteSalt) {
         err( "Could not allocate site salt: %s", strerror( errno ) );
         return false;
     }
-    trc( "  => siteSalt.id: %s", mpw_id_buf( siteSalt, siteSaltSize ).hex );
+    trc( "  => siteSalt.id: %s", spectre_id_buf( siteSalt, siteSaltSize ).hex );
 
     trc( "siteKey: hmac-sha256( userKey.id=%s, siteSalt )", userKey->keyID.hex );
-    bool success = mpw_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
+    bool success = spectre_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
             userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize );
-    mpw_free( &siteSalt, siteSaltSize );
+    spectre_free( &siteSalt, siteSaltSize );
 
     if (!success)
         err( "Could not derive site key: %s", strerror( errno ) );
     else {
-        MPKeyID keyID = mpw_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
-        memcpy( (MPKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
+        SpectreKeyID keyID = spectre_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
+        memcpy( (SpectreKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
         trc( "  => siteKey.id: %s (algorithm: %d:0)", siteKey->keyID.hex, siteKey->algorithm );
     }
     return success;
 }
 
-const char *mpw_site_template_password_v0(
-        __unused const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, __unused const char *resultParam) {
+const char *spectre_site_template_password_v0(
+        __unused const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, __unused const char *resultParam) {
 
     const char *_siteKey = (const char *)siteKey->bytes;
 
     // Determine the template.
     uint16_t seedByte;
-    mpw_uint16( (uint16_t)_siteKey[0], (uint8_t *)&seedByte );
-    const char *template = mpw_type_template_v0( resultType, seedByte );
+    spectre_uint16( (uint16_t)_siteKey[0], (uint8_t *)&seedByte );
+    const char *template = spectre_type_template_v0( resultType, seedByte );
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
@@ -153,8 +153,8 @@ const char *mpw_site_template_password_v0(
     // Encode the password from the seed using the template.
     char *const sitePassword = calloc( strlen( template ) + 1, sizeof( char ) );
     for (size_t c = 0; c < strlen( template ); ++c) {
-        mpw_uint16( (uint16_t)_siteKey[c + 1], (uint8_t *)&seedByte );
-        sitePassword[c] = mpw_class_character_v0( template[c], seedByte );
+        spectre_uint16( (uint16_t)_siteKey[c + 1], (uint8_t *)&seedByte );
+        sitePassword[c] = spectre_class_character_v0( template[c], seedByte );
         trc( "  - class: %c, index: %5u (0x%.2hX) => character: %c",
                 template[c], seedByte, seedByte, sitePassword[c] );
     }
@@ -163,8 +163,8 @@ const char *mpw_site_template_password_v0(
     return sitePassword;
 }
 
-const char *mpw_site_crypted_password_v0(
-        const MPUserKey *userKey, __unused const MPSiteKey *siteKey, __unused MPResultType resultType, const char *cipherText) {
+const char *spectre_site_crypted_password_v0(
+        const SpectreUserKey *userKey, __unused const SpectreSiteKey *siteKey, __unused SpectreResultType resultType, const char *cipherText) {
 
     if (!cipherText) {
         err( "Missing encrypted state." );
@@ -173,43 +173,43 @@ const char *mpw_site_crypted_password_v0(
     if (strlen( cipherText ) % 4 != 0) {
         wrn( "Malformed encrypted state, not base64." );
         // This can happen if state was stored in a non-encrypted form, eg. login in old mpsites.
-        return mpw_strdup( cipherText );
+        return spectre_strdup( cipherText );
     }
 
     // Base64-decode
     char *hex = NULL;
-    uint8_t *cipherBuf = calloc( 1, mpw_base64_decode_max( cipherText ) );
-    size_t bufSize = mpw_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
+    uint8_t *cipherBuf = calloc( 1, spectre_base64_decode_max( cipherText ) );
+    size_t bufSize = spectre_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
-        mpw_free( &cipherBuf, mpw_base64_decode_max( cipherText ) );
+        spectre_free( &cipherBuf, spectre_base64_decode_max( cipherText ) );
         return NULL;
     }
-    trc( "b64 decoded: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexSize ) );
+    trc( "b64 decoded: %zu bytes = %s", bufSize, hex = spectre_hex( cipherBuf, bufSize, hex, &hexSize ) );
 
     // Decrypt
-    const uint8_t *plainBytes = mpw_aes_decrypt( userKey->bytes, sizeof( userKey->bytes ), cipherBuf, &bufSize );
-    mpw_free( &cipherBuf, cipherBufSize );
-    const char *plainText = mpw_strndup( (char *)plainBytes, bufSize );
-    mpw_free( &plainBytes, bufSize );
+    const uint8_t *plainBytes = spectre_aes_decrypt( userKey->bytes, sizeof( userKey->bytes ), cipherBuf, &bufSize );
+    spectre_free( &cipherBuf, cipherBufSize );
+    const char *plainText = spectre_strndup( (char *)plainBytes, bufSize );
+    spectre_free( &plainBytes, bufSize );
     if (!plainText)
         err( "AES decryption error: %s", strerror( errno ) );
-    else if (!mpw_utf8_char_count( plainText ))
+    else if (!spectre_utf8_char_count( plainText ))
         wrn( "decrypted -> plainText: %zu bytes = illegal UTF-8 = %s",
-                bufSize, hex = mpw_hex( plainBytes, bufSize, hex, &hexSize ) );
+                bufSize, hex = spectre_hex( plainBytes, bufSize, hex, &hexSize ) );
     else
         trc( "decrypted -> plainText: %zu chars = %s :: %zu bytes = %s",
-                strlen( plainText ), plainText, bufSize, hex = mpw_hex( plainBytes, bufSize, hex, &hexSize ) );
-    mpw_free_string( &hex );
+                strlen( plainText ), plainText, bufSize, hex = spectre_hex( plainBytes, bufSize, hex, &hexSize ) );
+    spectre_free_string( &hex );
 
     return plainText;
 }
 
-const char *mpw_site_derived_password_v0(
-        __unused const MPUserKey *userKey, const MPSiteKey *siteKey, MPResultType resultType, const char *resultParam) {
+const char *spectre_site_derived_password_v0(
+        __unused const SpectreUserKey *userKey, const SpectreSiteKey *siteKey, SpectreResultType resultType, const char *resultParam) {
 
     switch (resultType) {
-        case MPResultTypeDeriveKey: {
+        case SpectreResultDeriveKey: {
             if (!resultParam) {
                 err( "Missing key size parameter." );
                 return NULL;
@@ -225,21 +225,21 @@ const char *mpw_site_derived_password_v0(
             // Derive key
             uint8_t resultKey[parameter / 8];
             trc( "keySize: %u", sizeof( resultKey ) );
-            if (!mpw_kdf_blake2b( resultKey, sizeof( resultKey ), siteKey->bytes, sizeof( siteKey->bytes ), NULL, 0, 0, NULL )) {
+            if (!spectre_kdf_blake2b( resultKey, sizeof( resultKey ), siteKey->bytes, sizeof( siteKey->bytes ), NULL, 0, 0, NULL )) {
                 err( "Could not derive result key: %s", strerror( errno ) );
                 return NULL;
             }
 
             // Base64-encode
-            size_t b64Max = mpw_base64_encode_max( sizeof( resultKey ) );
+            size_t b64Max = spectre_base64_encode_max( sizeof( resultKey ) );
             char *b64Key = calloc( 1, b64Max + 1 );
-            if (mpw_base64_encode( resultKey, sizeof( resultKey ), b64Key ) < 0) {
+            if (spectre_base64_encode( resultKey, sizeof( resultKey ), b64Key ) < 0) {
                 err( "Base64 encoding error." );
-                mpw_free_string( &b64Key );
+                spectre_free_string( &b64Key );
             }
             else
                 trc( "b64 encoded -> key: %s", b64Key );
-            mpw_zero( &resultKey, sizeof( resultKey ) );
+            spectre_zero( &resultKey, sizeof( resultKey ) );
 
             return b64Key;
         }
@@ -249,30 +249,30 @@ const char *mpw_site_derived_password_v0(
     }
 }
 
-const char *mpw_site_state_v0(
-        const MPUserKey *userKey, __unused const MPSiteKey *siteKey, __unused MPResultType resultType, const char *plainText) {
+const char *spectre_site_state_v0(
+        const SpectreUserKey *userKey, __unused const SpectreSiteKey *siteKey, __unused SpectreResultType resultType, const char *plainText) {
 
     // Encrypt
     char *hex = NULL;
     size_t bufSize = strlen( plainText ), hexSize = 0;
-    const uint8_t *cipherBuf = mpw_aes_encrypt( userKey->bytes, sizeof( userKey->bytes ), (const uint8_t *)plainText, &bufSize );
+    const uint8_t *cipherBuf = spectre_aes_encrypt( userKey->bytes, sizeof( userKey->bytes ), (const uint8_t *)plainText, &bufSize );
     if (!cipherBuf) {
         err( "AES encryption error: %s", strerror( errno ) );
         return NULL;
     }
-    trc( "cipherBuf: %zu bytes = %s", bufSize, hex = mpw_hex( cipherBuf, bufSize, hex, &hexSize ) );
+    trc( "cipherBuf: %zu bytes = %s", bufSize, hex = spectre_hex( cipherBuf, bufSize, hex, &hexSize ) );
 
     // Base64-encode
-    size_t b64Max = mpw_base64_encode_max( bufSize );
+    size_t b64Max = spectre_base64_encode_max( bufSize );
     char *cipherText = calloc( 1, b64Max + 1 );
-    if (mpw_base64_encode( cipherBuf, bufSize, cipherText ) < 0) {
+    if (spectre_base64_encode( cipherBuf, bufSize, cipherText ) < 0) {
         err( "Base64 encoding error." );
-        mpw_free_string( &cipherText );
+        spectre_free_string( &cipherText );
     }
     else
         trc( "b64 encoded -> cipherText: %s", cipherText );
-    mpw_free( &cipherBuf, bufSize );
-    mpw_free_string( &hex );
+    spectre_free( &cipherBuf, bufSize );
+    spectre_free_string( &hex );
 
     return cipherText;
 }

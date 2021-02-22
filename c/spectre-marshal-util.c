@@ -16,34 +16,34 @@
 // LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
-#include "mpw-marshal-util.h"
-#include "mpw-util.h"
+#include "spectre-marshal-util.h"
+#include "spectre-util.h"
 
-MP_LIBS_BEGIN
+SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <math.h>
-MP_LIBS_END
+SPECTRE_LIBS_END
 
-const char *mpw_get_token(const char **in, const char *eol, const char *delim) {
+const char *spectre_get_token(const char **in, const char *eol, const char *delim) {
 
     // Skip leading spaces.
     for (; **in == ' '; ++*in);
 
     // Find characters up to the first delim.
     size_t len = strcspn( *in, delim );
-    const char *token = len <= (size_t)(eol - *in)? mpw_strndup( *in, len ): NULL;
+    const char *token = len <= (size_t)(eol - *in)? spectre_strndup( *in, len ): NULL;
 
     // Advance past the delimitor.
     *in = min( eol, *in + len + 1 );
     return token;
 }
 
-bool mpw_get_bool(const char *in) {
+bool spectre_get_bool(const char *in) {
 
     return in && (in[0] == 'y' || in[0] == 't' || strtol( in, NULL, 10 ) > 0);
 }
 
-time_t mpw_get_timegm(const char *in) {
+time_t spectre_get_timegm(const char *in) {
 
     // TODO: Support for parsing non-UTC time strings
     // Parse as a UTC timestamp, into a tm.
@@ -63,24 +63,24 @@ time_t mpw_get_timegm(const char *in) {
     return ERR;
 }
 
-bool mpw_update_user_key(const MPUserKey **userKey, MPAlgorithmVersion *userKeyAlgorithm, const MPAlgorithmVersion targetKeyAlgorithm,
+bool spectre_update_user_key(const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,
         const char *userName, const char *userSecret) {
 
     if (!userKey || !userKeyAlgorithm)
         return false;
 
     if (!*userKey || *userKeyAlgorithm != targetKeyAlgorithm) {
-        mpw_free( userKey, sizeof( **userKey ) );
+        spectre_free( userKey, sizeof( **userKey ) );
         *userKeyAlgorithm = targetKeyAlgorithm;
-        *userKey = mpw_user_key( userName, userSecret, *userKeyAlgorithm );
+        *userKey = spectre_user_key( userName, userSecret, *userKeyAlgorithm );
     }
 
     return *userKey != NULL;
 }
 
-#if MPW_JSON
+#if SPECTRE_JSON
 
-json_object *mpw_get_json_object(
+json_object *spectre_get_json_object(
         json_object *obj, const char *key, const bool create) {
 
     if (!obj)
@@ -96,48 +96,48 @@ json_object *mpw_get_json_object(
     return json_value;
 }
 
-const char *mpw_get_json_string(
+const char *spectre_get_json_string(
         json_object *obj, const char *key, const char *defaultValue) {
 
-    json_object *json_value = mpw_get_json_object( obj, key, false );
+    json_object *json_value = spectre_get_json_object( obj, key, false );
     if (!json_value)
         return defaultValue;
 
     return json_object_get_string( json_value );
 }
 
-int64_t mpw_get_json_int(
+int64_t spectre_get_json_int(
         json_object *obj, const char *key, const int64_t defaultValue) {
 
-    json_object *json_value = mpw_get_json_object( obj, key, false );
+    json_object *json_value = spectre_get_json_object( obj, key, false );
     if (!json_value)
         return defaultValue;
 
     return json_object_get_int64( json_value );
 }
 
-bool mpw_get_json_boolean(
+bool spectre_get_json_boolean(
         json_object *obj, const char *key, const bool defaultValue) {
 
-    json_object *json_value = mpw_get_json_object( obj, key, false );
+    json_object *json_value = spectre_get_json_object( obj, key, false );
     if (!json_value)
         return defaultValue;
 
     return json_object_get_boolean( json_value ) == true;
 }
 
-static bool mpw_marshal_data_filter_keyed(MPMarshalledData *child, __unused void *args) {
+static bool spectre_marshal_data_filter_keyed(SpectreMarshalledData *child, __unused void *args) {
 
     return child->obj_key != NULL;
 }
 
-static bool mpw_marshal_data_filter_unkeyed(MPMarshalledData *child, __unused void *args) {
+static bool spectre_marshal_data_filter_unkeyed(SpectreMarshalledData *child, __unused void *args) {
 
     return child->obj_key == NULL;
 }
 
-void mpw_set_json_data(
-        MPMarshalledData *data, json_object *obj) {
+void spectre_set_json_data(
+        SpectreMarshalledData *data, json_object *obj) {
 
     if (!data)
         return;
@@ -159,26 +159,26 @@ void mpw_set_json_data(
     if (type == json_type_string || !isnan( data->num_value ))
         str = json_object_get_string( obj );
     if (!str || !data->str_value || strcmp( str, data->str_value ) != OK) {
-        mpw_free_string( &data->str_value );
-        data->str_value = mpw_strdup( str );
+        spectre_free_string( &data->str_value );
+        data->str_value = spectre_strdup( str );
     }
 
     // Clean up children
     if (type != json_type_object && type != json_type_array) {
-        mpw_marshal_data_filter( data, mpw_marshal_data_filter_empty, NULL );
+        spectre_marshal_data_filter( data, spectre_marshal_data_filter_empty, NULL );
     }
     else if (type == json_type_array) {
-        mpw_marshal_data_filter( data, mpw_marshal_data_filter_unkeyed, NULL );
+        spectre_marshal_data_filter( data, spectre_marshal_data_filter_unkeyed, NULL );
     }
     else /* type == json_type_object */ {
-        mpw_marshal_data_filter( data, mpw_marshal_data_filter_keyed, NULL );
+        spectre_marshal_data_filter( data, spectre_marshal_data_filter_keyed, NULL );
     }
 
     // Object
     if (type == json_type_object) {
         json_object_iter entry;
         json_object_object_foreachC( obj, entry ) {
-            MPMarshalledData *child = NULL;
+            SpectreMarshalledData *child = NULL;
 
             // Find existing child.
             for (size_t c = 0; c < data->children_count; ++c)
@@ -190,36 +190,36 @@ void mpw_set_json_data(
 
             // Create new child.
             if (!child) {
-                if (!mpw_realloc( &data->children, NULL, MPMarshalledData, ++data->children_count )) {
+                if (!spectre_realloc( &data->children, NULL, SpectreMarshalledData, ++data->children_count )) {
                     --data->children_count;
                     continue;
                 }
-                *(child = &data->children[data->children_count - 1]) = (MPMarshalledData){ .obj_key = mpw_strdup( entry.key ) };
-                mpw_marshal_data_set_null( child, NULL );
+                *(child = &data->children[data->children_count - 1]) = (SpectreMarshalledData){ .obj_key = spectre_strdup( entry.key ) };
+                spectre_marshal_data_set_null( child, NULL );
             }
 
-            mpw_set_json_data( child, entry.val );
+            spectre_set_json_data( child, entry.val );
         }
     }
 
     // Array
     if (type == json_type_array) {
         for (size_t index = 0; index < json_object_array_length( obj ); ++index) {
-            MPMarshalledData *child = NULL;
+            SpectreMarshalledData *child = NULL;
 
             if (index < data->children_count)
                 child = &data->children[index];
 
             else {
-                if (!mpw_realloc( &data->children, NULL, MPMarshalledData, ++data->children_count )) {
+                if (!spectre_realloc( &data->children, NULL, SpectreMarshalledData, ++data->children_count )) {
                     --data->children_count;
                     continue;
                 }
-                *(child = &data->children[data->children_count - 1]) = (MPMarshalledData){ .arr_index = index };
-                mpw_marshal_data_set_null( child, NULL );
+                *(child = &data->children[data->children_count - 1]) = (SpectreMarshalledData){ .arr_index = index };
+                spectre_marshal_data_set_null( child, NULL );
             }
 
-            mpw_set_json_data( child, json_object_array_get_idx( obj, index ) );
+            spectre_set_json_data( child, json_object_array_get_idx( obj, index ) );
         }
     }
 }

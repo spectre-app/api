@@ -78,7 +78,7 @@ static const uint8_t b64ToBits[256] =
                 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
         };
 
-size_t mpw_base64_decode_max(const char *b64Text) {
+size_t spectre_base64_decode_max(const char *b64Text) {
 
     register const char *b64Cursor = b64Text;
     for (; b64ToBits[(uint8_t)*b64Cursor] <= 63; ++b64Cursor);
@@ -88,7 +88,7 @@ size_t mpw_base64_decode_max(const char *b64Text) {
     return 3 /*bytes*/ * ((b64Size + 4 /*chars*/ - 1) / 4 /*chars*/);
 }
 
-size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf) {
+size_t spectre_base64_decode(const char *b64Text, uint8_t *plainBuf) {
 
     register const uint8_t *b64Cursor = (const uint8_t *)b64Text;
     for (; b64ToBits[*b64Cursor] <= 63; ++b64Cursor);
@@ -118,13 +118,13 @@ size_t mpw_base64_decode(const char *b64Text, uint8_t *plainBuf) {
 static const char basis_64[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-size_t mpw_base64_encode_max(size_t plainSize) {
+size_t spectre_base64_encode_max(size_t plainSize) {
 
     // Every 3 plain bytes yield 4 b64 chars => len = 4 * ceil(plainSize / 3)
     return 4 /*chars*/ * (plainSize + 3 /*bytes*/ - 1) / 3 /*bytes*/;
 }
 
-size_t mpw_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text) {
+size_t spectre_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text) {
 
     size_t plainCursor = 0;
     char *b64Cursor = b64Text;
