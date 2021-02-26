@@ -311,6 +311,42 @@ const char *spectre_type_template(const SpectreResultType type, const uint8_t te
     return template;
 }
 
+const char *spectre_algorithm_short_name(const SpectreAlgorithm algorithm) {
+
+    switch (algorithm) {
+        case SpectreAlgorithmV0:
+            return "v0";
+        case SpectreAlgorithmV1:
+            return "v1";
+        case SpectreAlgorithmV2:
+            return "v2";
+        case SpectreAlgorithmV3:
+            return "v3";
+        default: {
+            dbg( "Unknown algorithm: %d", algorithm );
+            return NULL;
+        }
+    }
+}
+
+const char *spectre_algorithm_long_name(const SpectreAlgorithm algorithm) {
+
+    switch (algorithm) {
+        case SpectreAlgorithmV0:
+            return "v0 (2012-03)";
+        case SpectreAlgorithmV1:
+            return "v1 (2012-07)";
+        case SpectreAlgorithmV2:
+            return "v2 (2014-09)";
+        case SpectreAlgorithmV3:
+            return "v3 (2015-01)";
+        default: {
+            dbg( "Unknown algorithm: %d", algorithm );
+            return NULL;
+        }
+    }
+}
+
 const SpectreKeyPurpose spectre_purpose_named(const char *purposeName) {
 
     if (spectre_strncasecmp( spectre_purpose_name( SpectreKeyPurposeAuthentication ), purposeName, strlen( purposeName ) ) == OK)

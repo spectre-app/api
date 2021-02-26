@@ -54,13 +54,13 @@ SPECTRE_LIBS_END
 //// Types.
 
 typedef spectre_enum( unsigned int, SpectreAlgorithm ) {
-    /** V0 incorrectly performed host-endian math with bytes translated into 16-bit network-endian. */
+    /** (2012-03-05) V0 incorrectly performed host-endian math with bytes translated into 16-bit network-endian. */
     SpectreAlgorithmV0,
-    /** V1 incorrectly sized site name fields by character count rather than byte count. */
+    /** (2012-07-17) V1 incorrectly sized site name fields by character count rather than byte count. */
     SpectreAlgorithmV1,
-    /** V2 incorrectly sized user name fields by character count rather than byte count. */
+    /** (2014-09-24) V2 incorrectly sized user name fields by character count rather than byte count. */
     SpectreAlgorithmV2,
-    /** V3 is the current version. */
+    /** (2015-01-15) V3 is the current version. */
     SpectreAlgorithmV3,
 
     SpectreAlgorithmCurrent = SpectreAlgorithmV3,
@@ -204,6 +204,15 @@ bool spectre_id_equals(const SpectreKeyID *id1, const SpectreKeyID *id2);
 const SpectreKeyID spectre_id_buf(const uint8_t *buf, const size_t size);
 /** Reconstruct a fingerprint from its hexadecimal string representation. */
 const SpectreKeyID spectre_id_str(const char hex[static 65]);
+
+/**
+ * @return The standard identifying name (static) for the given algorithm or NULL if the algorithm is not known.
+ */
+const char *spectre_algorithm_short_name(const SpectreAlgorithm algorithm);
+/**
+ * @return The descriptive name (static) for the given algorithm or NULL if the algorithm is not known.
+ */
+const char *spectre_algorithm_long_name(const SpectreAlgorithm algorithm);
 
 /**
  * @return The purpose represented by the given name or ERR if the name does not represent a known purpose.
