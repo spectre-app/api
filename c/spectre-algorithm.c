@@ -148,59 +148,73 @@ const char *spectre_site_result(
     trc( "resultType: %d (%s)", resultType, spectre_type_short_name( resultType ) );
     trc( "resultParam: %s", resultParam );
 
+    const char *result = NULL;
     if (resultType == SpectreResultNone) {
-        return NULL;
+        result = NULL;
     }
     else if (resultType & SpectreResultClassTemplate) {
         switch (userKey->algorithm) {
             case SpectreAlgorithmV0:
-                return spectre_site_template_password_v0( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_template_password_v0( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV1:
-                return spectre_site_template_password_v1( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_template_password_v1( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV2:
-                return spectre_site_template_password_v2( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_template_password_v2( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV3:
-                return spectre_site_template_password_v3( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_template_password_v3( userKey, siteKey, resultType, resultParam );
+                break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
-                return NULL;
+                break;
         }
     }
     else if (resultType & SpectreResultClassStateful) {
         switch (userKey->algorithm) {
             case SpectreAlgorithmV0:
-                return spectre_site_crypted_password_v0( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_crypted_password_v0( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV1:
-                return spectre_site_crypted_password_v1( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_crypted_password_v1( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV2:
-                return spectre_site_crypted_password_v2( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_crypted_password_v2( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV3:
-                return spectre_site_crypted_password_v3( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_crypted_password_v3( userKey, siteKey, resultType, resultParam );
+                break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
-                return NULL;
+                break;
         }
     }
     else if (resultType & SpectreResultClassDerive) {
         switch (userKey->algorithm) {
             case SpectreAlgorithmV0:
-                return spectre_site_derived_password_v0( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_derived_password_v0( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV1:
-                return spectre_site_derived_password_v1( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_derived_password_v1( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV2:
-                return spectre_site_derived_password_v2( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_derived_password_v2( userKey, siteKey, resultType, resultParam );
+                break;
             case SpectreAlgorithmV3:
-                return spectre_site_derived_password_v3( userKey, siteKey, resultType, resultParam );
+                result = spectre_site_derived_password_v3( userKey, siteKey, resultType, resultParam );
+                break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
-                return NULL;
+                break;
         }
     }
     else {
         err( "Unsupported password type: %d", resultType );
     }
 
-    return NULL;
+    spectre_free( &siteKey, sizeof( SpectreSiteKey ) );
+    return result;
 }
 
 const char *spectre_site_state(
@@ -216,14 +230,14 @@ const char *spectre_site_state(
         err( "Missing userKey" );
         return NULL;
     }
+    if (!resultParam) {
+        err( "Missing resultParam" );
+        return NULL;
+    }
 
     const SpectreSiteKey *siteKey = spectre_site_key( userKey, siteName, keyCounter, keyPurpose, keyContext );
     if (!siteKey) {
         err( "Missing siteKey" );
-        return NULL;
-    }
-    if (!resultParam) {
-        err( "Missing resultParam" );
         return NULL;
     }
 
@@ -231,23 +245,32 @@ const char *spectre_site_state(
     trc( "resultType: %d (%s)", resultType, spectre_type_short_name( resultType ) );
     trc( "resultParam: %zu bytes = %s", resultParam? strlen( resultParam ): 0, resultParam );
 
+    const char *result = NULL;
     if (resultType == SpectreResultNone) {
-        return NULL;
+        result = NULL;
+    }
+    else {
+        switch (userKey->algorithm) {
+            case SpectreAlgorithmV0:
+                result = spectre_site_state_v0( userKey, siteKey, resultType, resultParam );
+                break;
+            case SpectreAlgorithmV1:
+                result = spectre_site_state_v1( userKey, siteKey, resultType, resultParam );
+                break;
+            case SpectreAlgorithmV2:
+                result = spectre_site_state_v2( userKey, siteKey, resultType, resultParam );
+                break;
+            case SpectreAlgorithmV3:
+                result = spectre_site_state_v3( userKey, siteKey, resultType, resultParam );
+                break;
+            default:
+                err( "Unsupported version: %d", userKey->algorithm );
+                break;
+        }
     }
 
-    switch (userKey->algorithm) {
-        case SpectreAlgorithmV0:
-            return spectre_site_state_v0( userKey, siteKey, resultType, resultParam );
-        case SpectreAlgorithmV1:
-            return spectre_site_state_v1( userKey, siteKey, resultType, resultParam );
-        case SpectreAlgorithmV2:
-            return spectre_site_state_v2( userKey, siteKey, resultType, resultParam );
-        case SpectreAlgorithmV3:
-            return spectre_site_state_v3( userKey, siteKey, resultType, resultParam );
-        default:
-            err( "Unsupported version: %d", userKey->algorithm );
-            return NULL;
-    }
+    spectre_free( &siteKey, sizeof( SpectreSiteKey ) );
+    return result;
 }
 
 static const char *spectre_identicon_leftArms[] = { "╔", "╚", "╰", "═" };

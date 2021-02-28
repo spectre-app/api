@@ -157,7 +157,7 @@ typedef spectre_enum( uint32_t, SpectreResultType ) {
     SpectreResultDefaultLogin = SpectreResultTemplateName,
 };
 
-typedef spectre_enum ( uint32_t, SpectreCounter ) {
+typedef spectre_enum( uint32_t, SpectreCounter ) {
     /** Use a time-based counter value, resulting in a TOTP generator. */
     SpectreCounterTOTP = 0,
     /** The initial value for a site's counter. */
