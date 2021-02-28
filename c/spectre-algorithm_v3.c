@@ -24,10 +24,10 @@ SPECTRE_LIBS_BEGIN
 #include <errno.h>
 SPECTRE_LIBS_END
 
-#define MP_N                32768LU
-#define MP_r                8U
-#define MP_p                2U
-#define MP_otp_window       5 * 60 /* s */
+#define Spectre_N                32768LU
+#define Spectre_r                8U
+#define Spectre_p                2U
+#define Spectre_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
 bool spectre_user_key_v3(
@@ -51,9 +51,9 @@ bool spectre_user_key_v3(
     trc( "  => userKeySalt.id: %s", spectre_id_buf( userKeySalt, userKeySaltSize ).hex );
 
     // Calculate the user key.
-    trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", MP_N, MP_r, MP_p );
+    trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", Spectre_N, Spectre_r, Spectre_p );
     bool success = spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
-            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, MP_N, MP_r, MP_p );
+            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, Spectre_N, Spectre_r, Spectre_p );
     spectre_free( &userKeySalt, userKeySaltSize );
 
     if (!success)

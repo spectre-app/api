@@ -23,10 +23,10 @@ SPECTRE_LIBS_BEGIN
 #include <string.h>
 SPECTRE_LIBS_END
 
-#define MP_N                32768LU
-#define MP_r                8U
-#define MP_p                2U
-#define MP_otp_window       5 * 60 /* s */
+#define Spectre_N                32768LU
+#define Spectre_r                8U
+#define Spectre_p                2U
+#define Spectre_otp_window       5 * 60 /* s */
 
 // Algorithm version overrides.
 bool spectre_user_key_v1(
