@@ -18,7 +18,6 @@
 
 #include "spectre-algorithm_v0.h"
 #include "spectre-util.h"
-#include "base64.h"
 
 SPECTRE_LIBS_BEGIN
 #include <string.h>
@@ -231,8 +230,7 @@ const char *spectre_site_derived_password_v0(
             }
 
             // Base64-encode
-            size_t b64Max = spectre_base64_encode_max( sizeof( resultKey ) );
-            char *b64Key = calloc( 1, b64Max + 1 );
+            char *b64Key = calloc( 1, spectre_base64_encode_max( sizeof( resultKey ) ) );
             if (spectre_base64_encode( resultKey, sizeof( resultKey ), b64Key ) < 0) {
                 err( "Base64 encoding error." );
                 spectre_free_string( &b64Key );
@@ -263,8 +261,7 @@ const char *spectre_site_state_v0(
     trc( "cipherBuf: %zu bytes = %s", bufSize, hex = spectre_hex( cipherBuf, bufSize, hex, &hexSize ) );
 
     // Base64-encode
-    size_t b64Max = spectre_base64_encode_max( bufSize );
-    char *cipherText = calloc( 1, b64Max + 1 );
+    char *cipherText = calloc( 1, spectre_base64_encode_max( bufSize ) );
     if (spectre_base64_encode( cipherBuf, bufSize, cipherText ) < 0) {
         err( "Base64 encoding error." );
         spectre_free_string( &cipherText );

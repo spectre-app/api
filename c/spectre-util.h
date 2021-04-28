@@ -307,6 +307,20 @@ const char *spectre_hex_l(const uint32_t number, char hex[static 9]);
  * @return A buffer (allocated, *size); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
 const uint8_t *spectre_unhex(const char *hex, size_t *size);
 
+/** @return The amount of bytes needed to decode the given b64Text. */
+size_t spectre_base64_decode_max(const char *b64Text);
+/** Decodes a base-64 encoded string into a plain byte buffer.
+  * @param plainBuf a byte buffer, size should be at least spectre_base64_decode_max(b64Text)
+  * @return The amount of bytes that were written to plainBuf or 0 if the base-64 string couldn't be fully decoded. */
+size_t spectre_base64_decode(const char *b64Text, uint8_t *plainBuf);
+
+/** @return The amount of bytes needed to encode a plainBuf of the given size as base-64 (including a terminating NUL). */
+size_t spectre_base64_encode_max(size_t plainSize);
+/** Encodes a plain byte buffer into a base-64 encoded string.
+  * @param b64Text a character buffer, size should be at least spectre_base64_encode_max(plainSize)
+  * @return The amount of characters that were written to b64Text, excluding the terminating NUL. */
+size_t spectre_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text);
+
 //// String utilities.
 
 /** @return The byte size of the UTF-8 character at the start of the given string or 0 if it is NULL, empty or not a legal UTF-8 character. */
