@@ -35,10 +35,14 @@ SPECTRE_LIBS_END
 #define __unused
 #endif
 
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+
 #ifdef NS_ENUM
 #define spectre_enum(_type, _name) NS_ENUM(_type, _name)
 #elif __clang__ || __has_feature( c_fixed_enum ) || __has_feature( objc_fixed_enum ) || __has_feature( cxx_fixed_enum )
-#define spectre_enum(_type, _name) enum _name : _type _name; enum _name : _type
+#define spectre_enum(_type, _name) _type _name; enum _name : _type
 #else
 #define spectre_enum(_type, _name) _type _name; enum _name
 #endif
@@ -46,7 +50,7 @@ SPECTRE_LIBS_END
 #ifdef NS_OPTIONS
 #define spectre_opts(_type, _name) NS_OPTIONS(_type, _name)
 #elif __clang__ || __has_feature( c_fixed_enum ) || __has_feature( objc_fixed_enum ) || __has_feature( cxx_fixed_enum )
-#define spectre_opts(_type, _name) enum _name : _type _name; enum _name : _type
+#define spectre_opts(_type, _name) _type _name; enum _name : _type
 #else
 #define spectre_opts(_type, _name) _type _name; enum _name
 #endif
