@@ -29,8 +29,9 @@ SPECTRE_LIBS_BEGIN
 #elif SPECTRE_SODIUM
 #include "sodium.h"
 #endif
-#define AES_ECB 0
-#define AES_CBC 1
+#define ECB 0
+#define CBC 1
+#define CTR 0
 #include "aes.h"
 SPECTRE_LIBS_END
 
@@ -404,44 +405,47 @@ bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const 
 
 const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
-    if (!key || keySize < AES_BLOCK_SIZE || !bufSize || !*bufSize)
+    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize)
         return NULL;
 
     // IV = zero
-    static const uint8_t iv[AES_BLOCK_SIZE] = { 0 };
+    static const uint8_t iv[AES_BLOCKLEN] = { 0 };
 
     // Add PKCS#7 padding
-    uint32_t aesSize = (uint32_t)*bufSize, blockRemainder = aesSize % AES_BLOCK_SIZE;
+    uint32_t aesSize = (uint32_t)*bufSize, blockRemainder = aesSize % AES_BLOCKLEN;
     if (blockRemainder) // round up to block size.
-        aesSize += AES_BLOCK_SIZE - blockRemainder;
+        aesSize += AES_BLOCKLEN - blockRemainder;
     else if (encrypt) // add pad block if plain text fits block size.
-        aesSize += AES_BLOCK_SIZE;
-    uint8_t *resultBuf = calloc( aesSize, sizeof( uint8_t ) );
-    if (!resultBuf)
-        return NULL;
+        aesSize += AES_BLOCKLEN;
+//    uint8_t *resultBuf = calloc( aesSize, sizeof( uint8_t ) );
+//    if (!resultBuf)
+//        return NULL;
     uint8_t *aesBuf = malloc( aesSize );
     if (!aesBuf) {
-        spectre_free( &resultBuf, aesSize );
+//        spectre_free( &resultBuf, aesSize );
         return NULL;
     }
 
     memcpy( aesBuf, buf, *bufSize );
     memset( aesBuf + *bufSize, (int)(aesSize - *bufSize), aesSize - *bufSize );
 
+    struct AES_ctx aes;
+    AES_init_ctx_iv( &aes, key, iv );
+
     if (encrypt)
-        AES_CBC_encrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
+        AES_CBC_encrypt_buffer( &aes, aesBuf, aesSize );
     else
-        AES_CBC_decrypt_buffer( resultBuf, aesBuf, aesSize, key, iv );
-    spectre_free( &aesBuf, aesSize );
+        AES_CBC_decrypt_buffer( &aes, aesBuf, aesSize );
+//    spectre_free( &aesBuf, aesSize );
 
     // Truncate PKCS#7 padding
     if (encrypt)
         *bufSize = aesSize;
-    else if (resultBuf[aesSize - 1] <= AES_BLOCK_SIZE)
-        *bufSize -= resultBuf[aesSize - 1];
-    memset( resultBuf + *bufSize, 0, aesSize - *bufSize );
+    else if (aesBuf[aesSize - 1] <= AES_BLOCKLEN)
+        *bufSize -= aesBuf[aesSize - 1];
+    memset( aesBuf + *bufSize, 0, aesSize - *bufSize );
 
-    return resultBuf;
+    return aesBuf;
 }
 
 const uint8_t *spectre_aes_encrypt(const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize) {
