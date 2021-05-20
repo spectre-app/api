@@ -568,33 +568,33 @@ const uint8_t *spectre_unhex(const char *hex, size_t *size) {
     return buf;
 }
 
-size_t spectre_base64_decode_max(const char *b64Text) {
+size_t spectre_base64_decode_max(size_t b64Length) {
 
     // Every 4 b64 chars yield 3 plain bytes => len = 3 * ceil(b64Size / 4)
-    return b64Text? 3 /*bytes*/ * ((strlen( b64Text ) + 4 /*chars*/ - 1) / 4 /*chars*/): 0;
+    return 3 /*bytes*/ * ((b64Length + 4 /*chars*/ - 1) / 4 /*chars*/);
 }
 
-size_t spectre_base64_decode(const char *b64Text, uint8_t *plainBuf) {
+size_t spectre_base64_decode(const char *b64Text, uint8_t *byteBuf) {
 
-    size_t plainSize = 0;
-    if (sodium_base642bin( plainBuf, spectre_base64_decode_max( b64Text ), b64Text, strlen( b64Text ),
+    size_t b64Length = strlen( b64Text ), plainSize = 0;
+    if (sodium_base642bin( byteBuf, spectre_base64_decode_max( b64Length ), b64Text, b64Length,
             " \n\r\t\v", &plainSize, NULL, sodium_base64_VARIANT_ORIGINAL ) == ERR)
         return 0;
 
     return plainSize;
 }
 
-size_t spectre_base64_encode_max(size_t plainSize) {
+size_t spectre_base64_encode_max(size_t byteSize) {
 
-    return sodium_base64_ENCODED_LEN( plainSize, sodium_base64_VARIANT_ORIGINAL );
+    return sodium_base64_ENCODED_LEN( byteSize, sodium_base64_VARIANT_ORIGINAL );
 }
 
-size_t spectre_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text) {
+size_t spectre_base64_encode(const uint8_t *byteBuf, size_t byteSize, char *b64Text) {
 
     return strlen(
             sodium_bin2base64(
-                    b64Text, spectre_base64_encode_max( plainSize ),
-                    plainBuf, plainSize, sodium_base64_VARIANT_ORIGINAL ) );
+                    b64Text, spectre_base64_encode_max( byteSize ),
+                    byteBuf, byteSize, sodium_base64_VARIANT_ORIGINAL ) );
 }
 
 size_t spectre_utf8_char_size(const char *utf8String) {

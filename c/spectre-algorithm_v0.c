@@ -169,7 +169,8 @@ const char *spectre_site_crypted_password_v0(
         err( "Missing encrypted state." );
         return NULL;
     }
-    if (strlen( cipherText ) % 4 != 0) {
+    size_t cipherLength = strlen( cipherText );
+    if (cipherLength % 4 != 0) {
         wrn( "Malformed encrypted state, not base64." );
         // This can happen if state was stored in a non-encrypted form, eg. login in old mpsites.
         return spectre_strdup( cipherText );
@@ -177,11 +178,11 @@ const char *spectre_site_crypted_password_v0(
 
     // Base64-decode
     char *hex = NULL;
-    uint8_t *cipherBuf = calloc( 1, spectre_base64_decode_max( cipherText ) );
+    uint8_t *cipherBuf = calloc( 1, spectre_base64_decode_max( cipherLength ) );
     size_t bufSize = spectre_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
     if ((int)bufSize < 0) {
         err( "Base64 decoding error." );
-        spectre_free( &cipherBuf, spectre_base64_decode_max( cipherText ) );
+        spectre_free( &cipherBuf, spectre_base64_decode_max( cipherLength ) );
         return NULL;
     }
     trc( "b64 decoded: %zu bytes = %s", bufSize, hex = spectre_hex( cipherBuf, bufSize, hex, &hexSize ) );

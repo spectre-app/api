@@ -122,7 +122,7 @@ bool spectre_elog(SpectreLogEvent *event);
 #endif
 
 
-//// Utilities
+//// Utilities.
 
 #ifndef OK
 #define OK 0
@@ -259,7 +259,8 @@ bool __spectre_free_strings(
 void spectre_zero(
         void *buffer, const size_t bufferSize);
 
-//// Cryptographic functions.
+
+//// Cryptography.
 
 /** Derive a key from the given secret and salt using the scrypt KDF.
  * @return A buffer (allocated, keySize) containing the key or NULL if secret or salt is missing, key could not be allocated or the KDF failed. */
@@ -292,7 +293,8 @@ const char *spectre_hotp(
         const uint8_t *key, size_t keySize, uint64_t movingFactor, uint8_t digits, uint8_t truncationOffset);
 #endif
 
-//// Visualizers.
+
+//// Encoding.
 
 /** Compose a formatted string.
  * @return A C-string (allocated); or NULL if the format is missing or the result could not be allocated or formatted. */
@@ -307,26 +309,25 @@ const char *spectre_hex_l(const uint32_t number, char hex[static 9]);
  * @return A buffer (allocated, *size); or NULL if hex is NULL, empty, or not an even-length hexadecimal string. */
 const uint8_t *spectre_unhex(const char *hex, size_t *size);
 
-/** @return The amount of bytes needed to decode the given b64Text. */
-size_t spectre_base64_decode_max(const char *b64Text);
-/** Decodes a base-64 encoded string into a plain byte buffer.
-  * @param plainBuf a byte buffer, size should be at least spectre_base64_decode_max(b64Text)
-  * @return The amount of bytes that were written to plainBuf or 0 if the base-64 string couldn't be fully decoded. */
-size_t spectre_base64_decode(const char *b64Text, uint8_t *plainBuf);
+/** @return The amount of bytes needed to decode b64Length amount of base-64 characters. */
+size_t spectre_base64_decode_max(size_t b64Length);
+/** Decodes a base-64 encoded string into a byte buffer.
+  * @param byteBuf a byte buffer, size should be at least spectre_base64_decode_max(strlen(b64Text))
+  * @return The amount of bytes that were written to byteBuf or 0 if the base-64 string couldn't be fully decoded. */
+size_t spectre_base64_decode(const char *b64Text, uint8_t *byteBuf);
 
-/** @return The amount of bytes needed to encode a plainBuf of the given size as base-64 (including a terminating NUL). */
-size_t spectre_base64_encode_max(size_t plainSize);
-/** Encodes a plain byte buffer into a base-64 encoded string.
-  * @param b64Text a character buffer, size should be at least spectre_base64_encode_max(plainSize)
+/** @return The amount of bytes needed to encode a byteBuf of the given size as base-64 (including a terminating NUL). */
+size_t spectre_base64_encode_max(size_t byteSize);
+/** Encodes a byte buffer into a base-64 encoded string.
+  * @param b64Text a character buffer, size should be at least spectre_base64_encode_max(byteSize)
   * @return The amount of characters that were written to b64Text, excluding the terminating NUL. */
-size_t spectre_base64_encode(const uint8_t *plainBuf, size_t plainSize, char *b64Text);
-
-//// String utilities.
+size_t spectre_base64_encode(const uint8_t *byteBuf, size_t byteSize, char *b64Text);
 
 /** @return The byte size of the UTF-8 character at the start of the given string or 0 if it is NULL, empty or not a legal UTF-8 character. */
 size_t spectre_utf8_char_size(const char *utf8String);
 /** @return The amount of UTF-8 characters in the given string or 0 if it is NULL, empty, or contains bytes that are not legal in UTF-8. */
 size_t spectre_utf8_char_count(const char *utf8String);
+
 
 //// Compatibility.
 
