@@ -51,7 +51,7 @@ const char *spectre_site_template_password_v1(
     trc( "template: %u => %s", seedByte, template );
     if (!template)
         return NULL;
-    if (strlen( template ) > sizeof( siteKey->bytes )) {
+    if (strlen( template ) > sizeof( siteKey->bytes ) - 1) {
         err( "Template too long for password seed: %zu", strlen( template ) );
         return NULL;
     }
