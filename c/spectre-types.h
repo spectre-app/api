@@ -82,7 +82,7 @@ extern const SpectreKeyID SpectreKeyIDUnset;
 
 typedef struct {
     /** The cryptographic key */
-    const uint8_t bytes[64];
+    const uint8_t bytes[512 / 8];
     /** The key's identity */
     const SpectreKeyID keyID;
     /** The algorithm the key was made by & for */
