@@ -150,7 +150,7 @@ const SpectreResultType spectre_type_named(const char *typeName) {
     if (spectre_strncasecmp( spectre_type_short_name( SpectreResultDeriveKey ), typeName, strlen( typeName ) ) == OK)
         return SpectreResultDeriveKey;
 
-    dbg( "Not a generated type name: %s", typeName );
+    wrn( "Not a generated type name: %s", typeName );
     return (SpectreResultType)ERR;
 }
 
@@ -182,7 +182,7 @@ const char *spectre_type_abbreviation(const SpectreResultType resultType) {
         case SpectreResultDeriveKey:
             return "key";
         default: {
-            dbg( "Unknown password type: %d", resultType );
+            wrn( "Unknown password type: %d", resultType );
             return NULL;
         }
     }
@@ -216,7 +216,7 @@ const char *spectre_type_short_name(const SpectreResultType resultType) {
         case SpectreResultDeriveKey:
             return "key";
         default: {
-            dbg( "Unknown password type: %d", resultType );
+            wrn( "Unknown password type: %d", resultType );
             return NULL;
         }
     }
@@ -250,7 +250,7 @@ const char *spectre_type_long_name(const SpectreResultType resultType) {
         case SpectreResultDeriveKey:
             return "Crypto Key";
         default: {
-            dbg( "Unknown password type: %d", resultType );
+            wrn( "Unknown password type: %d", resultType );
             return NULL;
         }
     }
@@ -259,7 +259,7 @@ const char *spectre_type_long_name(const SpectreResultType resultType) {
 const char **spectre_type_templates(const SpectreResultType type, size_t *count) {
 
     if (!(type & SpectreResultClassTemplate)) {
-        dbg( "Not a generated type: %d", type );
+        wrn( "Not a generated type: %d", type );
         return NULL;
     }
 
@@ -295,7 +295,7 @@ const char **spectre_type_templates(const SpectreResultType type, size_t *count)
             return spectre_strings( count,
                     "cvcc cvc cvccvcv cvc", "cvc cvccvcvcv cvcv", "cv cvccv cvc cvcvccv", NULL );
         default: {
-            dbg( "Unknown generated type: %d", type );
+            wrn( "Unknown generated type: %d", type );
             return NULL;
         }
     }
@@ -323,7 +323,7 @@ const char *spectre_algorithm_short_name(const SpectreAlgorithm algorithm) {
         case SpectreAlgorithmV3:
             return "v3";
         default: {
-            dbg( "Unknown algorithm: %d", algorithm );
+            wrn( "Unknown algorithm: %d", algorithm );
             return NULL;
         }
     }
@@ -341,7 +341,7 @@ const char *spectre_algorithm_long_name(const SpectreAlgorithm algorithm) {
         case SpectreAlgorithmV3:
             return "v3 (2015-01)";
         default: {
-            dbg( "Unknown algorithm: %d", algorithm );
+            wrn( "Unknown algorithm: %d", algorithm );
             return NULL;
         }
     }
@@ -356,7 +356,7 @@ const SpectreKeyPurpose spectre_purpose_named(const char *purposeName) {
     if (spectre_strncasecmp( spectre_purpose_name( SpectreKeyPurposeRecovery ), purposeName, strlen( purposeName ) ) == OK)
         return SpectreKeyPurposeRecovery;
 
-    dbg( "Not a purpose name: %s", purposeName );
+    wrn( "Not a purpose name: %s", purposeName );
     return (SpectreKeyPurpose)ERR;
 }
 
@@ -370,7 +370,7 @@ const char *spectre_purpose_name(const SpectreKeyPurpose purpose) {
         case SpectreKeyPurposeRecovery:
             return "recovery";
         default: {
-            dbg( "Unknown purpose: %d", purpose );
+            wrn( "Unknown purpose: %d", purpose );
             return NULL;
         }
     }
@@ -386,7 +386,7 @@ const char *spectre_purpose_scope(const SpectreKeyPurpose purpose) {
         case SpectreKeyPurposeRecovery:
             return "com.lyndir.masterpassword.answer";
         default: {
-            dbg( "Unknown purpose: %d", purpose );
+            wrn( "Unknown purpose: %d", purpose );
             return NULL;
         }
     }
@@ -416,7 +416,7 @@ const char *spectre_class_characters(const char characterClass) {
         case ' ':
             return " ";
         default: {
-            dbg( "Unknown character class: %c", characterClass );
+            wrn( "Unknown character class: %c", characterClass );
             return NULL;
         }
     }

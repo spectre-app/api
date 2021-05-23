@@ -1465,7 +1465,7 @@ const SpectreFormat spectre_format_named(
     if (spectre_strncasecmp( spectre_format_name( SpectreFormatJSON ), formatName, strlen( formatName ) ) == OK)
         return SpectreFormatJSON;
 
-    dbg( "Not a format name: %s", formatName );
+    wrn( "Not a format name: %s", formatName );
     return (SpectreFormat)ERR;
 }
 
@@ -1480,7 +1480,7 @@ const char *spectre_format_name(
         case SpectreFormatJSON:
             return "json";
         default: {
-            dbg( "Unknown format: %d", format );
+            wrn( "Unknown format: %d", format );
             return NULL;
         }
     }
@@ -1497,7 +1497,7 @@ const char *spectre_format_extension(
         case SpectreFormatJSON:
             return "mpjson";
         default: {
-            dbg( "Unknown format: %d", format );
+            wrn( "Unknown format: %d", format );
             return NULL;
         }
     }
@@ -1517,7 +1517,7 @@ const char **spectre_format_extensions(
             return spectre_strings( count,
                     spectre_format_extension( format ), "mpsites.json", "json", NULL );
         default: {
-            dbg( "Unknown format: %d", format );
+            wrn( "Unknown format: %d", format );
             return NULL;
         }
     }
