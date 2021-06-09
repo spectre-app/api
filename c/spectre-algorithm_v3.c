@@ -1,19 +1,13 @@
 //==============================================================================
+// Created by Maarten Billemont on 2014-05-05.
+// Copyright (c) 2011, Maarten Billemont.
+//
 // This file is part of Spectre.
-// Copyright (c) 2011-2017, Maarten Billemont.
+// Spectre is free software. You can modify it under the terms of
+// the GNU General Public License, either version 3 or any later version.
+// See the LICENSE file for details or consult <http://www.gnu.org/licenses/>.
 //
-// Spectre is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Spectre is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You can find a copy of the GNU General Public License in the
-// LICENSE file.  Alternatively, see <http://www.gnu.org/licenses/>.
+// Note: this grant does not include any rights for use of Spectre's trademarks.
 //==============================================================================
 
 #include "spectre-algorithm_v3.h"

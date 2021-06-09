@@ -1,3 +1,9 @@
+/*
+Source: https://github.com/kokke/tiny-AES-c
+
+This is free and unencumbered software released into the public domain.
+For details, see https://github.com/kokke/tiny-AES-c/blob/master/unlicense.txt
+*/
 #ifndef _AES_H_
 #define _AES_H_
 

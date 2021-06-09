@@ -1,6 +1,9 @@
 /*
 Source: https://github.com/kokke/tiny-AES-c
 
+This is free and unencumbered software released into the public domain.
+For details, see https://github.com/kokke/tiny-AES-c/blob/master/unlicense.txt
+
 This is an implementation of the AES algorithm, specifically ECB, CTR and CBC mode.
 Block size can be chosen in aes.h - available choices are AES128, AES192, AES256.
 
