@@ -113,6 +113,7 @@ typedef spectre_opts( uint16_t, SpectreResultClass ) {
 
 // bit 10 - 15
 typedef spectre_opts( uint16_t, SpectreResultFeature ) {
+    SpectreResultFeatureNone = 0,
     /** Export the key-protected content data. */
     SpectreResultFeatureExportContent = 1 << 10,
     /** Never export content. */
@@ -127,21 +128,21 @@ typedef spectre_enum( uint32_t, SpectreResultType ) {
     SpectreResultNone = 0,
 
     /** 16: pg^VMAUBk5x3p%HP%i4= */
-    SpectreResultTemplateMaximum = 0x0 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateMaximum = 0x0 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 17: BiroYena8:Kixa */
-    SpectreResultTemplateLong = 0x1 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateLong = 0x1 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 18: BirSuj0- */
-    SpectreResultTemplateMedium = 0x2 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateMedium = 0x2 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 19: Bir8 */
-    SpectreResultTemplateShort = 0x3 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateShort = 0x3 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 20: pO98MoD0 */
-    SpectreResultTemplateBasic = 0x4 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateBasic = 0x4 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 21: 2798 */
-    SpectreResultTemplatePIN = 0x5 | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplatePIN = 0x5 | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 30: birsujano */
-    SpectreResultTemplateName = 0xE | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplateName = 0xE | SpectreResultClassTemplate | SpectreResultFeatureNone,
     /** 31: bir yennoquce fefi */
-    SpectreResultTemplatePhrase = 0xF | SpectreResultClassTemplate | 0x0,
+    SpectreResultTemplatePhrase = 0xF | SpectreResultClassTemplate | SpectreResultFeatureNone,
 
     /** 1056: Custom saved result. */
     SpectreResultStatePersonal = 0x0 | SpectreResultClassStateful | SpectreResultFeatureExportContent,
