@@ -185,15 +185,15 @@ const char *spectre_site_crypted_password_v0(
     const uint8_t *plainBytes = spectre_aes_decrypt( userKey->bytes, sizeof( userKey->bytes ), cipherBuf, &bufSize );
     spectre_free( &cipherBuf, cipherBufSize );
     const char *plainText = spectre_strndup( (char *)plainBytes, bufSize );
-    spectre_free( &plainBytes, bufSize );
     if (!plainText)
         err( "AES decryption error: %s", strerror( errno ) );
     else if (!spectre_utf8_char_count( plainText ))
-        wrn( "decrypted -> plainText: %zu bytes = illegal UTF-8 = %s",
-                bufSize, hex = spectre_hex( plainBytes, bufSize, hex, &hexSize ) );
+        trc( "decrypted -> plainText: %zu chars = (illegal UTF-8) :: %zu bytes = %s",
+                strlen( plainText ), bufSize, hex = spectre_hex( plainBytes, bufSize, hex, &hexSize ) );
     else
         trc( "decrypted -> plainText: %zu chars = %s :: %zu bytes = %s",
                 strlen( plainText ), plainText, bufSize, hex = spectre_hex( plainBytes, bufSize, hex, &hexSize ) );
+    spectre_free( &plainBytes, bufSize );
     spectre_free_string( &hex );
 
     return plainText;
