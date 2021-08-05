@@ -1,4 +1,4 @@
-//==============================================================================
+// =============================================================================
 // Created by Maarten Billemont on 2012-01-04.
 // Copyright (c) 2011, Maarten Billemont.
 //
@@ -8,7 +8,7 @@
 // See the LICENSE file for details or consult <http://www.gnu.org/licenses/>.
 //
 // Note: this grant does not include any rights for use of Spectre's trademarks.
-//==============================================================================
+// =============================================================================
 
 #include "spectre-types.h"
 #include "spectre-util.h"
@@ -252,6 +252,7 @@ const char *spectre_type_long_name(const SpectreResultType resultType) {
 
 const char **spectre_type_templates(const SpectreResultType type, size_t *count) {
 
+    *count = 0;
     if (!(type & SpectreResultClassTemplate)) {
         wrn( "Not a generated type: %d", type );
         return NULL;
