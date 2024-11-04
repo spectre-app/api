@@ -39,7 +39,7 @@ bool spectre_get_bool(const char *in) {
 
 time_t spectre_get_timegm(const char *in) {
 
-    // TODO: Support for parsing non-UTC time strings
+    // TODO: Support for parsing non-UTC time strings & broader RFC format support
     // Parse as a UTC timestamp, into a tm.
     struct tm tm = { .tm_isdst = -1 };
     if (in && sscanf( in, "%4d-%2d-%2dT%2d:%2d:%2dZ",
@@ -55,6 +55,21 @@ time_t spectre_get_timegm(const char *in) {
     }
 
     return ERR;
+}
+
+const char *spectre_set_timegm(time_t time) {
+
+    if (time == ERR)
+        return NULL;
+
+    static char dateString[21] = { 0 };
+    struct tm *tm = gmtime( &time );
+    size_t dateLength = strftime( dateString, sizeof( dateString ), "%FT%TZ", tm );
+    if (!dateLength || dateLength + 1 < sizeof( dateString )) {
+        return NULL;
+    }
+
+    return dateString;
 }
 
 bool spectre_update_user_key(const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,

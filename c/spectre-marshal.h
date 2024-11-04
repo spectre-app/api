@@ -190,7 +190,7 @@ typedef struct SpectreMarshalledUser {
     /** A unique identifier (hex) for the user key, primarily for authentication/verification. */
     SpectreKeyID keyID;
     /** The initial result type to use for new sites created by the user. */
-    SpectreResultType defaultType;
+    SpectreResultType resultType;
     /** The result type to use for generating the user's standard login. */
     SpectreResultType loginType;
     /** State data (base64), if any, necessary for generating the user's standard login. */
@@ -286,16 +286,22 @@ void spectre_marshal_file_free(
 SpectreMarshalledData *spectre_marshal_data_new(void);
 /** Get or create a value for the given path in the data store.
  * @return The value at this path (shared), or NULL if the value didn't exist and couldn't be created. */
-SpectreMarshalledData *spectre_marshal_data_get(
+SpectreMarshalledData *spectre_marshal_data_obtain(
         SpectreMarshalledData *data, ...);
-SpectreMarshalledData *spectre_marshal_data_vget(
+SpectreMarshalledData *spectre_marshal_data_vobtain(
         SpectreMarshalledData *data, va_list nodes);
 /** Look up the value at the given path in the data store.
  * @return The value at this path (shared), or NULL if there is no value at this path. */
-const SpectreMarshalledData *spectre_marshal_data_find(
+const SpectreMarshalledData *spectre_marshal_data_get(
         const SpectreMarshalledData *data, ...);
-const SpectreMarshalledData *spectre_marshal_data_vfind(
+const SpectreMarshalledData *spectre_marshal_data_vget(
         const SpectreMarshalledData *data, va_list nodes);
+/** Set a value at the given path in the data store.
+ * @return true if the object was successfully modified. */
+bool spectre_marshal_data_set(
+        const SpectreMarshalledData *value, SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset(
+        const SpectreMarshalledData *value, SpectreMarshalledData *data, va_list nodes);
 /** Check if the data represents a NULL value.
  * @return true if the value at this path is null or is missing, false if it is a non-null type. */
 bool spectre_marshal_data_is_null(

@@ -76,7 +76,7 @@ typedef struct SpectreLogEvent {
     const char *file;
     int line;
     const char *function;
-    /** @return A C-string (allocated), cached in .formatted, of the .args interpolated into the .format message. */
+    /** @return A C-string (allocated) message, optionally cached in .formatted, of the .args interpolated into the .format. */
     const char *(*formatter)(struct SpectreLogEvent *);
     const char *formatted;
     const char *format;

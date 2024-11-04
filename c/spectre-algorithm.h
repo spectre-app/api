@@ -42,13 +42,13 @@ const SpectreSiteKey *spectre_site_key(
         const SpectreUserKey *userKey, const char *siteName,
         const SpectreCounter keyCounter, const SpectreKeyPurpose keyPurpose, const char *keyContext);
 
-/** @return An identicon (static) that represents the user's identity. */
+/** @return An identicon that represents the user's identity. */
 const SpectreIdenticon spectre_identicon(
         const char *userName, const char *userSecret);
 /** @return A C-string encoded representation (allocated) of the given identicon or NULL if the identicon is unset. */
 const char *spectre_identicon_encode(
         const SpectreIdenticon identicon);
-/** @return An identicon (static) decoded from the given encoded identicon representation or an identicon with empty fields if the identicon could not be parsed. */
+/** @return An identicon decoded from the given encoded identicon representation or an identicon with empty fields if the identicon could not be parsed. */
 const SpectreIdenticon spectre_identicon_encoded(
         const char *encoding);
 

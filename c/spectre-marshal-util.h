@@ -19,7 +19,7 @@
 SPECTRE_LIBS_BEGIN
 #include <time.h>
 #if SPECTRE_JSON
-#include "json-c/json.h"
+#include "json.h"
 #endif
 SPECTRE_LIBS_END
 
@@ -38,6 +38,10 @@ bool spectre_get_bool(
  * @return ERR if the string could not be parsed. */
 time_t spectre_get_timegm(
         const char *in);
+/** Convert epoch time into an RFC 3339 time string.
+ * @return An RFC 3339 encoded string (static). */
+const char *spectre_set_timegm(
+        time_t time);
 
 
 /// Spectre.

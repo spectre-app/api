@@ -18,8 +18,8 @@ SPECTRE_LIBS_BEGIN
 #include <ctype.h>
 
 #if SPECTRE_CPERCIVA
-#include <scrypt/crypto_scrypt.h>
-#include <scrypt/sha256.h>
+#include "scrypt/crypto_scrypt.h"
+#include "scrypt/sha256.h"
 #elif SPECTRE_SODIUM
 #include "sodium.h"
 #endif
