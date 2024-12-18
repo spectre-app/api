@@ -164,6 +164,8 @@ typedef struct SpectreMarshalledSite {
 
     /** Site metadata: URL location where the site can be accessed. */
     const char *url;
+    /** Site metadata: comma-separated list of domain names where the site's credentials may be used. */
+    const char *domains;
     /** Site metadata: Amount of times an action has been taken for this site. */
     unsigned int uses;
     /** Site metadata: Date of the most recent action taken on this site. */

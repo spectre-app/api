@@ -912,6 +912,7 @@ const char *spectre_marshal_write(
             }
 
             spectre_marshal_data_set_str( site->url, data_sites, site->siteName, "_ext_spectre", "url", NULL );
+            spectre_marshal_data_set_str( site->domains, data_sites, site->siteName, "_ext_spectre", "domains", NULL );
             spectre_free_strings( &resultState, &loginState, NULL );
         }
     }
@@ -1449,6 +1450,7 @@ SpectreMarshalledUser *spectre_marshal_auth(
         }
 
         const char *siteURL = spectre_marshal_data_get_str( siteData, "_ext_spectre", "url", NULL );
+        const char *siteDomains = spectre_marshal_data_get_str( siteData, "_ext_spectre", "domains", NULL );
 
         SpectreMarshalledSite *site = spectre_marshal_site( user, siteName, siteResultType, siteCounter, algorithm );
         if (!site) {
@@ -1461,6 +1463,7 @@ SpectreMarshalledUser *spectre_marshal_auth(
 
         site->loginType = siteLoginType;
         site->url = siteURL? spectre_strdup( siteURL ): NULL;
+        site->domains = siteDomains? spectre_strdup( siteDomains ): NULL;
         site->uses = siteUses;
         site->lastUsed = siteLastUsed;
         if (!user->redacted) {
