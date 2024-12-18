@@ -55,6 +55,8 @@ bool spectre_log_sink_unregister(SpectreLogSink *sink) {
         }
     }
 
+    wrn( "Log sink is not registered." );
+    errno = EINVAL;
     return false;
 }
 
@@ -98,9 +100,7 @@ bool spectre_vlog(SpectreLogLevel level, const char *file, int line, const char 
             .args = args,
             .formatter = &spectre_log_formatter,
     };
-    bool sunk = spectre_elog( &event );
-
-    return sunk;
+    return spectre_elog( &event );
 }
 
 bool spectre_elog(SpectreLogEvent *event) {
@@ -120,12 +120,19 @@ bool spectre_elog(SpectreLogEvent *event) {
                 sunk |= sink( event );
         }
 
-    if (event->level <= SpectreLogLevelWarning) {
+#if DEBUG
+    if (event->level <= SpectreLogLevelWarning)
+#if __has_builtin(__builtin_debugtrap)
+        __builtin_debugtrap();
+#elif __has_builtin(__debugbreak)
+        __debugbreak();
+#else
         (void)event->level/* error breakpoint opportunity */;
-    }
-    spectre_free_string( &event->formatted );
+#endif
+#endif
     if (event->level <= SpectreLogLevelFatal)
         abort();
+    spectre_free_string( &event->formatted );
 
     return sunk;
 }
@@ -135,34 +142,25 @@ bool spectre_log_sink_file(SpectreLogEvent *event) {
     if (!spectre_log_sink_file_target)
         spectre_log_sink_file_target = stderr;
 
-    if (spectre_verbosity >= SpectreLogLevelDebug) {
-        switch (event->level) {
-            case SpectreLogLevelTrace:
-                fprintf( spectre_log_sink_file_target, "[TRC] " );
-                break;
-            case SpectreLogLevelDebug:
-                fprintf( spectre_log_sink_file_target, "[DBG] " );
-                break;
-            case SpectreLogLevelInfo:
-                fprintf( spectre_log_sink_file_target, "[INF] " );
-                break;
-            case SpectreLogLevelWarning:
-                fprintf( spectre_log_sink_file_target, "[WRN] " );
-                break;
-            case SpectreLogLevelError:
-                fprintf( spectre_log_sink_file_target, "[ERR] " );
-                break;
-            case SpectreLogLevelFatal:
-                fprintf( spectre_log_sink_file_target, "[FTL] " );
-                break;
-            default:
-                fprintf( spectre_log_sink_file_target, "[???] " );
-                break;
-        }
-    }
+    if (spectre_verbosity < SpectreLogLevelDebug)
+        return fprintf( spectre_log_sink_file_target, "%s\n", event->formatter( event ) ) > 0;
 
-    fprintf( spectre_log_sink_file_target, "%s\n", event->formatter( event ) );
-    return true;
+    switch (event->level) {
+        case SpectreLogLevelTrace:
+            return fprintf( spectre_log_sink_file_target, "[TRC] %s\n", event->formatter( event ) ) > 0;
+        case SpectreLogLevelDebug:
+            return fprintf( spectre_log_sink_file_target, "[DBG] %s\n", event->formatter( event ) ) > 0;
+        case SpectreLogLevelInfo:
+            return fprintf( spectre_log_sink_file_target, "[INF] %s\n", event->formatter( event ) ) > 0;
+        case SpectreLogLevelWarning:
+            return fprintf( spectre_log_sink_file_target, "[WRN] %s\n", event->formatter( event ) ) > 0;
+        case SpectreLogLevelError:
+            return fprintf( spectre_log_sink_file_target, "[ERR] %s\n", event->formatter( event ) ) > 0;
+        case SpectreLogLevelFatal:
+            return fprintf( spectre_log_sink_file_target, "[FTL] %s\n", event->formatter( event ) ) > 0;
+        default:
+            return fprintf( spectre_log_sink_file_target, "[???] %s\n", event->formatter( event ) ) > 0;
+    }
 }
 
 void spectre_uint16(const uint16_t number, uint8_t buf[static 2]) {
@@ -202,7 +200,7 @@ const char **spectre_strings(size_t *count, const char *strings, ...) {
     for (const char *string = strings; string; (string = va_arg( args, const char * ))) {
         size_t cursor = *count;
 
-        if (!spectre_realloc( &array, &size, const char *, cursor + 1 )) {
+        if (!spectre_realloc( &array, &size, const char *, cursor + 1 ) || !array) {
             spectre_free( &array, size );
             break;
         }
@@ -217,14 +215,20 @@ const char **spectre_strings(size_t *count, const char *strings, ...) {
 
 bool spectre_buf_push_buf(uint8_t **buffer, size_t *bufferSize, const uint8_t *pushBuffer, const size_t pushSize) {
 
-    if (!buffer || !bufferSize || !pushBuffer || !pushSize)
+    if (!buffer || !bufferSize || !pushBuffer || !pushSize) {
+        errno = EINVAL;
         return false;
-    if (*bufferSize == (size_t)ERR)
+    }
+    if (*bufferSize == (size_t)ERR) {
         // The buffer was marked as broken, it is missing a previous push.  Abort to avoid corrupt content.
+        wrn( "Buffer is unusable." );
+        errno = EINVAL;
         return false;
+    }
 
     if (!spectre_realloc( buffer, bufferSize, uint8_t, (*bufferSize + pushSize) / sizeof( uint8_t ) )) {
         // realloc failed, we can't push.  Mark the buffer as broken.
+        wrn( "Buffer couldn't be expanded by %zu: %s", pushSize, strerror( errno ) );
         spectre_free( buffer, *bufferSize );
         *bufferSize = (size_t)ERR;
         return false;
@@ -244,16 +248,23 @@ bool spectre_buf_push_uint32(uint8_t **buffer, size_t *bufferSize, const uint32_
 
 bool spectre_buf_push_str(uint8_t **buffer, size_t *bufferSize, const char *pushString) {
 
-    return pushString && spectre_buf_push( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
+    if (!pushString) {
+        errno = EINVAL;
+        return false;
+    }
+
+    return spectre_buf_push( buffer, bufferSize, (const uint8_t *)pushString, strlen( pushString ) );
 }
 
 bool spectre_string_push(char **string, const char *pushString) {
 
-    if (!string || !pushString)
+    if (!string || !pushString) {
+        errno = EINVAL;
         return false;
+    }
 
     // We overwrite an existing trailing NUL byte.
-    return pushString && spectre_buf_push( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
+    return spectre_buf_push( (uint8_t **const)string, &((size_t){ *string? strlen( *string ): 0 }),
             (const uint8_t *)pushString, strlen( pushString ) + 1 );
 }
 
@@ -271,8 +282,10 @@ bool spectre_string_pushf(char **string, const char *pushFormat, ...) {
 
 bool __spectre_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
 
-    if (!buffer)
+    if (!buffer) {
+        errno = EINVAL;
         return false;
+    }
     if (*buffer && bufferSize && *bufferSize == targetSize)
         return true;
 
@@ -328,8 +341,10 @@ bool __spectre_free_strings(char **strings, ...) {
 bool spectre_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secret, const size_t secretSize, const uint8_t *salt, const size_t saltSize,
         const uint64_t N, const uint32_t r, const uint32_t p) {
 
-    if (!key || !keySize || !secret || !secretSize || !salt || !saltSize)
+    if (!key || !keySize || !secret || !secretSize || !salt || !saltSize) {
+        errno = EINVAL;
         return false;
+    }
 
 #if SPECTRE_CPERCIVA
     if (crypto_scrypt( (const void *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
@@ -381,8 +396,10 @@ bool spectre_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t
 
 bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const size_t keySize, const uint8_t *message, const size_t messageSize) {
 
-    if (!mac || !key || !keySize || !message || !messageSize)
+    if (!mac || !key || !keySize || !message || !messageSize) {
+        errno = EINVAL;
         return false;
+    }
 
 #if SPECTRE_CPERCIVA
     HMAC_SHA256_Buf( key, keySize, message, messageSize, mac );
@@ -399,29 +416,26 @@ bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const 
 
 const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
-    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize)
+    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize) {
+        errno = EINVAL;
         return NULL;
+    }
 
     // IV = zero
     static const uint8_t iv[AES_BLOCKLEN] = { 0 };
 
     // Add PKCS#7 padding
-    uint32_t aesSize = (uint32_t)*bufSize, blockRemainder = aesSize % AES_BLOCKLEN;
+    size_t aesSize = *bufSize, blockRemainder = aesSize % AES_BLOCKLEN;
     if (blockRemainder) // round up to block size.
         aesSize += AES_BLOCKLEN - blockRemainder;
     else if (encrypt) // add pad block if plain text fits block size.
         aesSize += AES_BLOCKLEN;
-//    uint8_t *resultBuf = calloc( aesSize, sizeof( uint8_t ) );
-//    if (!resultBuf)
-//        return NULL;
     uint8_t *aesBuf = malloc( aesSize );
-    if (!aesBuf) {
-//        spectre_free( &resultBuf, aesSize );
+    if (!aesBuf)
         return NULL;
-    }
 
-    memcpy( aesBuf, buf, *bufSize );
-    memset( aesBuf + *bufSize, (int)(aesSize - *bufSize), aesSize - *bufSize );
+    memcpy( aesBuf, buf, *bufSize ); // input
+    memset( aesBuf + *bufSize, (int)(aesSize - *bufSize), aesSize - *bufSize ); // padding
 
     struct AES_ctx aes;
     AES_init_ctx_iv( &aes, key, iv );
@@ -430,7 +444,6 @@ const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t
         AES_CBC_encrypt_buffer( &aes, aesBuf, aesSize );
     else
         AES_CBC_decrypt_buffer( &aes, aesBuf, aesSize );
-//    spectre_free( &aesBuf, aesSize );
 
     // Truncate PKCS#7 padding
     if (encrypt)
@@ -493,8 +506,10 @@ const char *spectre_str(const char *format, ...) {
 
 const char *spectre_vstr(const char *format, va_list args) {
 
-    if (!format || !*format)
+    if (!format || !*format) {
+        errno = EINVAL;
         return NULL;
+    }
 
     char *str = NULL;
     size_t size = 0;
@@ -519,13 +534,18 @@ const char *spectre_vstr(const char *format, va_list args) {
 
 char *spectre_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize) {
 
-    if (!buf || !size)
+    if (!buf || !size) {
+        errno = EINVAL;
         return NULL;
+    }
     if (!spectre_realloc( &hex, hexSize, char, size * 2 + 1 ))
         return NULL;
 
     for (size_t kH = 0; kH < size; kH++)
-        sprintf( &(hex[kH * 2]), "%.2hhX", buf[kH] );
+        if (sprintf( &(hex[kH * 2]), "%.2hhX", buf[kH] ) != 2) {
+            wrn( "Could not encode %u: %s", buf[kH], strerror( errno ) );
+            return NULL;
+        }
 
     return hex;
 }
@@ -541,12 +561,16 @@ const char *spectre_hex_l(const uint32_t number, char hex[static 9]) {
 
 const uint8_t *spectre_unhex(const char *hex, size_t *size) {
 
-    if (!hex)
+    if (!hex) {
+        errno = EINVAL;
         return NULL;
+    }
 
     size_t hexLength = strlen( hex );
-    if (hexLength == 0 || hexLength % 2 != 0)
+    if (hexLength == 0 || hexLength % 2 != 0) {
+        errno = EINVAL;
         return NULL;
+    }
 
     size_t bufSize = hexLength / 2;
     if (size)
@@ -555,7 +579,9 @@ const uint8_t *spectre_unhex(const char *hex, size_t *size) {
     uint8_t *buf = malloc( bufSize );
     for (size_t b = 0; b < bufSize; ++b)
         if (sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
+            wrn( "Illegal hex character at: %s", hex + b * 2 );
             spectre_free( &buf, bufSize );
+            errno = EINVAL;
             return NULL;
         }
 
@@ -585,6 +611,12 @@ size_t spectre_base64_encode_max(size_t byteSize) {
 
 size_t spectre_base64_encode(const uint8_t *byteBuf, size_t byteSize, char *b64Text) {
 
+    if (!b64Text) {
+        errno = EINVAL;
+        return 0;
+    }
+
+    b64Text[0] = 0;
     return strlen(
             sodium_bin2base64(
                     b64Text, spectre_base64_encode_max( byteSize ),

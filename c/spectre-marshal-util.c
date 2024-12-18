@@ -16,6 +16,7 @@
 SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <math.h>
+#include <errno.h>
 SPECTRE_LIBS_END
 
 const char *spectre_get_token(const char **in, const char *eol, const char *delim) {
@@ -54,13 +55,16 @@ time_t spectre_get_timegm(const char *in) {
         return local_time + gmtoff;
     }
 
+    errno = EINVAL;
     return ERR;
 }
 
 const char *spectre_set_timegm(time_t time) {
 
-    if (time == ERR)
+    if (time == ERR) {
+        errno = EINVAL;
         return NULL;
+    }
 
     static char dateString[21] = { 0 };
     struct tm *tm = gmtime( &time );
@@ -75,8 +79,10 @@ const char *spectre_set_timegm(time_t time) {
 bool spectre_update_user_key(const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,
         const char *userName, const char *userSecret) {
 
-    if (!userKey || !userKeyAlgorithm)
+    if (!userKey || !userKeyAlgorithm) {
+        errno = EINVAL;
         return false;
+    }
 
     if (!*userKey || *userKeyAlgorithm != targetKeyAlgorithm) {
         spectre_free( userKey, sizeof( **userKey ) );
@@ -96,11 +102,11 @@ json_object *spectre_get_json_object(
         return NULL;
 
     json_object *json_value = NULL;
-    if (!json_object_object_get_ex( obj, key, &json_value ) || !json_value)
-        if (!create || json_object_object_add( obj, key, json_value = json_object_new_object() ) != OK) {
-            trc( "Missing value for: %s", key );
-            json_value = NULL;
-        }
+    if (!json_object_object_get_ex( obj, key, &json_value ) || !json_value) {
+        if (create && json_object_object_add( obj, key, json_value = json_object_new_object() ) != OK)
+            wrn( "Couldn't add object at: %s", key );
+        json_value = NULL;
+    }
 
     return json_value;
 }

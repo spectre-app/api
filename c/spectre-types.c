@@ -16,6 +16,7 @@
 SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 #if SPECTRE_CPERCIVA
 #include "scrypt/crypto_scrypt.h"
@@ -64,20 +65,24 @@ const SpectreKeyID spectre_id_buf(const uint8_t *buf, const size_t size) {
 #endif
 
     size_t hexSize = sizeof( keyID.hex );
-    if (spectre_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexSize ) != keyID.hex)
-        err( "KeyID string pointer mismatch." );
+    if (spectre_hex( keyID.bytes, sizeof( keyID.bytes ), keyID.hex, &hexSize ) != keyID.hex) {
+        err( "KeyID hex size mismatch." );
+        errno = EOVERFLOW;
+    }
 
     return keyID;
 }
 
-const SpectreKeyID spectre_id_str(const char hex[static 65]) {
+const SpectreKeyID spectre_id_str(const char hex[static 2 * (256 / 8) + 1]) {
 
     SpectreKeyID keyID = SpectreKeyIDUnset;
 
     size_t hexSize = 0;
     const uint8_t *hexBytes = spectre_unhex( hex, &hexSize );
-    if (hexSize != sizeof( keyID.bytes ))
+    if (hexSize != sizeof( keyID.bytes )) {
         wrn( "Not a valid key ID: %s", hex );
+        errno = EINVAL;
+    }
 
     else {
         memcpy( keyID.bytes, hexBytes, sizeof( keyID.bytes ) );
@@ -145,6 +150,7 @@ const SpectreResultType spectre_type_named(const char *typeName) {
         return SpectreResultDeriveKey;
 
     wrn( "Not a generated type name: %s", typeName );
+    errno = EINVAL;
     return (SpectreResultType)ERR;
 }
 
@@ -177,6 +183,7 @@ const char *spectre_type_abbreviation(const SpectreResultType resultType) {
             return "key";
         default: {
             wrn( "Unknown password type: %d", resultType );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -211,6 +218,7 @@ const char *spectre_type_short_name(const SpectreResultType resultType) {
             return "key";
         default: {
             wrn( "Unknown password type: %d", resultType );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -245,6 +253,7 @@ const char *spectre_type_long_name(const SpectreResultType resultType) {
             return "Crypto Key";
         default: {
             wrn( "Unknown password type: %d", resultType );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -255,6 +264,7 @@ const char **spectre_type_templates(const SpectreResultType type, size_t *count)
     *count = 0;
     if (!(type & SpectreResultClassTemplate)) {
         wrn( "Not a generated type: %d", type );
+        errno = EINVAL;
         return NULL;
     }
 
@@ -291,6 +301,7 @@ const char **spectre_type_templates(const SpectreResultType type, size_t *count)
                     "cvcc cvc cvccvcv cvc", "cvc cvccvcvcv cvcv", "cv cvccv cvc cvcvccv", NULL );
         default: {
             wrn( "Unknown generated type: %d", type );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -319,6 +330,7 @@ const char *spectre_algorithm_short_name(const SpectreAlgorithm algorithm) {
             return "v3";
         default: {
             wrn( "Unknown algorithm: %d", algorithm );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -337,6 +349,7 @@ const char *spectre_algorithm_long_name(const SpectreAlgorithm algorithm) {
             return "v3 (2015-01)";
         default: {
             wrn( "Unknown algorithm: %d", algorithm );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -352,6 +365,7 @@ const SpectreKeyPurpose spectre_purpose_named(const char *purposeName) {
         return SpectreKeyPurposeRecovery;
 
     wrn( "Not a purpose name: %s", purposeName );
+    errno = EINVAL;
     return (SpectreKeyPurpose)ERR;
 }
 
@@ -366,6 +380,7 @@ const char *spectre_purpose_name(const SpectreKeyPurpose purpose) {
             return "recovery";
         default: {
             wrn( "Unknown purpose: %d", purpose );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -382,6 +397,7 @@ const char *spectre_purpose_scope(const SpectreKeyPurpose purpose) {
             return "com.lyndir.masterpassword.answer";
         default: {
             wrn( "Unknown purpose: %d", purpose );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -412,6 +428,7 @@ const char *spectre_class_characters(const char characterClass) {
             return " ";
         default: {
             wrn( "Unknown character class: %c", characterClass );
+            errno = EINVAL;
             return NULL;
         }
     }

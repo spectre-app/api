@@ -59,26 +59,27 @@ bool spectre_user_key_v0(
     if (!(spectre_buf_push( &userKeySalt, &userKeySaltSize, keyScope ) &&
           spectre_buf_push( &userKeySalt, &userKeySaltSize, (uint32_t)spectre_utf8_char_count( userName ) ) &&
           spectre_buf_push( &userKeySalt, &userKeySaltSize, userName )) || !userKeySalt) {
-        spectre_free( &userKeySalt, userKeySaltSize );
         err( "Could not allocate user key salt: %s", strerror( errno ) );
+        spectre_free( &userKeySalt, userKeySaltSize );
         return false;
     }
     trc( "  => userKeySalt.id: %s", spectre_id_buf( userKeySalt, userKeySaltSize ).hex );
 
     // Calculate the user key.
     trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", Spectre_N, Spectre_r, Spectre_p );
-    bool success = spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
-            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, Spectre_N, Spectre_r, Spectre_p );
-    spectre_free( &userKeySalt, userKeySaltSize );
-
-    if (!success)
+    if (!spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
+            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, Spectre_N, Spectre_r, Spectre_p ) ) {
         err( "Could not derive user key: %s", strerror( errno ) );
-    else {
-        SpectreKeyID keyID = spectre_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
-        memcpy( (SpectreKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
-        trc( "  => userKey.id: %s (algorithm: %d:0)", userKey->keyID.hex, userKey->algorithm );
+        spectre_zero( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ) );
+        spectre_free( &userKeySalt, userKeySaltSize );
+        return false;
     }
-    return success;
+
+    spectre_free( &userKeySalt, userKeySaltSize );
+    SpectreKeyID keyID = spectre_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
+    memcpy( (SpectreKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
+    trc( "  => userKey.id: %s (algorithm: %d:0)", userKey->keyID.hex, userKey->algorithm );
+    return true;
 }
 
 bool spectre_site_key_v0(
@@ -112,18 +113,19 @@ bool spectre_site_key_v0(
     trc( "  => siteSalt.id: %s", spectre_id_buf( siteSalt, siteSaltSize ).hex );
 
     trc( "siteKey: hmac-sha256( userKey.id=%s, siteSalt )", userKey->keyID.hex );
-    bool success = spectre_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
-            userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize );
-    spectre_free( &siteSalt, siteSaltSize );
-
-    if (!success)
+    if (!spectre_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
+            userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize )) {
         err( "Could not derive site key: %s", strerror( errno ) );
-    else {
-        SpectreKeyID keyID = spectre_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
-        memcpy( (SpectreKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
-        trc( "  => siteKey.id: %s (algorithm: %d:0)", siteKey->keyID.hex, siteKey->algorithm );
+        spectre_zero( (uint8_t *)siteKey->bytes, sizeof( siteKey->bytes ) );
+        spectre_free( &siteSalt, siteSaltSize );
+        return false;
     }
-    return success;
+
+    spectre_free( &siteSalt, siteSaltSize );
+    SpectreKeyID keyID = spectre_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
+    memcpy( (SpectreKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
+    trc( "  => siteKey.id: %s (algorithm: %d:0)", siteKey->keyID.hex, siteKey->algorithm );
+    return true;
 }
 
 const char *spectre_site_template_password_v0(
@@ -136,10 +138,13 @@ const char *spectre_site_template_password_v0(
     spectre_uint16( (uint16_t)_siteKey[0], (uint8_t *)&seedByte );
     const char *template = spectre_type_template_v0( resultType, seedByte );
     trc( "template: %u => %s", seedByte, template );
-    if (!template)
+    if (!template) {
+        err( "No template for type: %d: %s", resultType, strerror( errno ) );
         return NULL;
+    }
     if (strlen( template ) > sizeof( siteKey->bytes ) - 1) {
         err( "Template too long for password seed: %zu", strlen( template ) );
+        errno = EOVERFLOW;
         return NULL;
     }
 
@@ -161,11 +166,13 @@ const char *spectre_site_crypted_password_v0(
 
     if (!cipherText) {
         err( "Missing encrypted state." );
+        errno = EINVAL;
         return NULL;
     }
     size_t cipherLength = strlen( cipherText );
     if (cipherLength % 4 != 0) {
         wrn( "Malformed encrypted state, not base64." );
+        errno = EINVAL;
         // This can happen if state was stored in a non-encrypted form, eg. login in old mpsites.
         return spectre_strdup( cipherText );
     }
@@ -175,7 +182,7 @@ const char *spectre_site_crypted_password_v0(
     uint8_t *cipherBuf = calloc( 1, spectre_base64_decode_max( cipherLength ) );
     size_t bufSize = spectre_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
     if ((int)bufSize < 0) {
-        err( "Base64 decoding error." );
+        err( "Encrypted state is not legal base64: %s", strerror( errno ) );
         spectre_free( &cipherBuf, spectre_base64_decode_max( cipherLength ) );
         return NULL;
     }
@@ -206,6 +213,7 @@ const char *spectre_site_derived_password_v0(
         case SpectreResultDeriveKey: {
             if (!resultParam) {
                 err( "Missing key size parameter." );
+                errno = EINVAL;
                 return NULL;
             }
             long parameter = strtol( resultParam, NULL, 10 );
@@ -213,6 +221,7 @@ const char *spectre_site_derived_password_v0(
                 parameter = 512;
             if (parameter < 128 || parameter > 512 || parameter % 8 != 0) {
                 err( "Parameter is not a valid key size (should be 128 - 512): %s", resultParam );
+                errno = ERANGE;
                 return NULL;
             }
 
@@ -226,8 +235,8 @@ const char *spectre_site_derived_password_v0(
 
             // Base64-encode
             char *b64Key = calloc( 1, spectre_base64_encode_max( sizeof( resultKey ) ) );
-            if (spectre_base64_encode( resultKey, sizeof( resultKey ), b64Key ) < 0) {
-                err( "Base64 encoding error." );
+            if (spectre_base64_encode( resultKey, sizeof( resultKey ), b64Key ) == 0) {
+                err( "Couldn't base64-encode derived key: %s", strerror( errno ) );
                 spectre_free_string( &b64Key );
             }
             else
@@ -238,6 +247,7 @@ const char *spectre_site_derived_password_v0(
         }
         default:
             err( "Unsupported derived password type: %d", resultType );
+            errno = EINVAL;
             return NULL;
     }
 }
@@ -257,8 +267,8 @@ const char *spectre_site_state_v0(
 
     // Base64-encode
     char *cipherText = calloc( 1, spectre_base64_encode_max( bufSize ) );
-    if (spectre_base64_encode( cipherBuf, bufSize, cipherText ) < 0) {
-        err( "Base64 encoding error." );
+    if (spectre_base64_encode( cipherBuf, bufSize, cipherText ) == 0) {
+        err( "Couldn't base64-encode site state: %s", strerror( errno ) );
         spectre_free_string( &cipherText );
     }
     else

@@ -60,11 +60,11 @@ typedef spectre_enum( int, SpectreLogLevel ) {
     SpectreLogLevelDebug = 2,
     /** User messages. */
     SpectreLogLevelInfo = 1,
-    /** Recoverable issues and user suggestions. */
+    /** Utility is unable to satisfy the request and user advisories. */
     SpectreLogLevelWarning = 0,
-    /** Unrecoverable issues. */
+    /** Application is unable to satisfy the request and unexpected states. */
     SpectreLogLevelError = -1,
-    /** Issues that lead to abortion. */
+    /** Inpermissible, unrecoverable state pollution requiring abortion. */
     SpectreLogLevelFatal = -2,
 };
 extern SpectreLogLevel spectre_verbosity;
@@ -83,7 +83,8 @@ typedef struct SpectreLogEvent {
     const va_list *args;
 } SpectreLogEvent;
 
-/** A log sink describes a function that can receive log events. */
+/** A log sink describes a function that can receive log events.
+ * @return false if the sink declines to process this event or failed to do so. */
 typedef bool (SpectreLogSink)(SpectreLogEvent *event);
 
 /** spectre_log_sink_file is a sink that writes log messages to the spectre_log_sink_file_target, which defaults to stderr. */

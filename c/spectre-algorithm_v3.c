@@ -38,26 +38,27 @@ bool spectre_user_key_v3(
     if (!(spectre_buf_push( &userKeySalt, &userKeySaltSize, keyScope ) &&
           spectre_buf_push( &userKeySalt, &userKeySaltSize, (uint32_t)strlen( userName ) ) &&
           spectre_buf_push( &userKeySalt, &userKeySaltSize, userName )) || !userKeySalt) {
-        spectre_free( &userKeySalt, userKeySaltSize );
         err( "Could not allocate user key salt: %s", strerror( errno ) );
+        spectre_free( &userKeySalt, userKeySaltSize );
         return false;
     }
     trc( "  => userKeySalt.id: %s", spectre_id_buf( userKeySalt, userKeySaltSize ).hex );
 
     // Calculate the user key.
     trc( "userKey: scrypt( userSecret, userKeySalt, N=%lu, r=%u, p=%u )", Spectre_N, Spectre_r, Spectre_p );
-    bool success = spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
-            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, Spectre_N, Spectre_r, Spectre_p );
-    spectre_free( &userKeySalt, userKeySaltSize );
-
-    if (!success)
+    if (!spectre_kdf_scrypt( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ),
+            (uint8_t *)userSecret, strlen( userSecret ), userKeySalt, userKeySaltSize, Spectre_N, Spectre_r, Spectre_p )) {
         err( "Could not derive user key: %s", strerror( errno ) );
-    else {
-        SpectreKeyID keyID = spectre_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
-        memcpy( (SpectreKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
-        trc( "  => userKey.id: %s (algorithm: %d:3)", userKey->keyID.hex, userKey->algorithm );
+        spectre_zero( (uint8_t *)userKey->bytes, sizeof( userKey->bytes ) );
+        spectre_free( &userKeySalt, userKeySaltSize );
+        return false;
     }
-    return success;
+
+    spectre_free( &userKeySalt, userKeySaltSize );
+    SpectreKeyID keyID = spectre_id_buf( userKey->bytes, sizeof( userKey->bytes ) );
+    memcpy( (SpectreKeyID *)&userKey->keyID, &keyID, sizeof( userKey->keyID ) );
+    trc( "  => userKey.id: %s (algorithm: %d:3)", userKey->keyID.hex, userKey->algorithm );
+    return true;
 }
 
 bool spectre_site_key_v3(

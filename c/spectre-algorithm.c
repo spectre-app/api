@@ -19,6 +19,7 @@
 
 SPECTRE_LIBS_BEGIN
 #include <string.h>
+#include <errno.h>
 SPECTRE_LIBS_END
 
 const SpectreUserKey *spectre_user_key(
@@ -34,10 +35,12 @@ const SpectreUserKey *spectre_user_key(
     trc( "userSecret.id: %s", userSecret? spectre_id_buf( (uint8_t *)userSecret, strlen( userSecret ) ).hex: NULL );
     if (!userName) {
         err( "Missing userName" );
+        errno = EINVAL;
         return NULL;
     }
     if (!userSecret) {
         err( "Missing userSecret" );
+        errno = EINVAL;
         return NULL;
     }
 
@@ -60,6 +63,7 @@ const SpectreUserKey *spectre_user_key(
             break;
         default:
             err( "Unsupported version: %d", algorithmVersion );
+            errno = EINVAL;
     }
 
     if (success)
@@ -77,10 +81,12 @@ const SpectreSiteKey *spectre_site_key(
         keyContext = NULL;
     if (!userKey) {
         err( "Missing userKey" );
+        errno = EINVAL;
         return NULL;
     }
     if (!siteName) {
         err( "Missing siteName" );
+        errno = EINVAL;
         return NULL;
     }
 
@@ -109,6 +115,7 @@ const SpectreSiteKey *spectre_site_key(
             break;
         default:
             err( "Unsupported version: %d", userKey->algorithm );
+            errno = EINVAL;
     }
 
     if (success)
@@ -129,12 +136,14 @@ const char *spectre_site_result(
         resultParam = NULL;
     if (!userKey) {
         err( "Missing userKey" );
+        errno = EINVAL;
         return NULL;
     }
 
     const SpectreSiteKey *siteKey = spectre_site_key( userKey, siteName, keyCounter, keyPurpose, keyContext );
     if (!siteKey) {
         err( "Missing siteKey" );
+        errno = EINVAL;
         return NULL;
     }
 
@@ -162,6 +171,7 @@ const char *spectre_site_result(
                 break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
+                errno = EINVAL;
                 break;
         }
     }
@@ -181,6 +191,7 @@ const char *spectre_site_result(
                 break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
+                errno = EINVAL;
                 break;
         }
     }
@@ -200,11 +211,13 @@ const char *spectre_site_result(
                 break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
+                errno = EINVAL;
                 break;
         }
     }
     else {
         err( "Unsupported password type: %d", resultType );
+        errno = EINVAL;
     }
 
     spectre_free( &siteKey, sizeof( SpectreSiteKey ) );
@@ -222,16 +235,19 @@ const char *spectre_site_state(
         resultParam = NULL;
     if (!userKey) {
         err( "Missing userKey" );
+        errno = EINVAL;
         return NULL;
     }
     if (!resultParam) {
         err( "Missing resultParam" );
+        errno = EINVAL;
         return NULL;
     }
 
     const SpectreSiteKey *siteKey = spectre_site_key( userKey, siteName, keyCounter, keyPurpose, keyContext );
     if (!siteKey) {
         err( "Missing siteKey" );
+        errno = EINVAL;
         return NULL;
     }
 
@@ -259,6 +275,7 @@ const char *spectre_site_state(
                 break;
             default:
                 err( "Unsupported version: %d", userKey->algorithm );
+                errno = EINVAL;
                 break;
         }
     }

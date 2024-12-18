@@ -60,7 +60,7 @@ bool spectre_update_user_key(
 /** Search for an object in a JSON object tree.
  * @param key A JSON object key for the child in this object.
  * @param create If true, create and insert new objects for any missing path components.
- * @return An object (shared) or a new object (shared) installed in the tree if the path's object path was not found. */
+ * @return An object (shared) or if the path's object path was not found, a new object (shared) installed in the tree or NULL if not creating new objects in the tree. */
 json_object *spectre_get_json_object(
         json_object *obj, const char *key, const bool create);
 /** Search for a string in a JSON object tree.

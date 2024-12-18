@@ -20,6 +20,7 @@ SPECTRE_LIBS_BEGIN
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <errno.h>
 SPECTRE_LIBS_END
 
 static SpectreKeyProviderProxy __spectre_proxy_provider_current = NULL;
@@ -81,8 +82,10 @@ SpectreMarshalledUser *spectre_marshal_user(
         const char *userName, SpectreKeyProvider userKeyProvider, const SpectreAlgorithm algorithmVersion) {
 
     SpectreMarshalledUser *user;
-    if (!userName || !(user = malloc( sizeof( SpectreMarshalledUser ) )))
+    if (!userName || !(user = malloc( sizeof( SpectreMarshalledUser ) ))) {
+        errno = EINVAL;
         return NULL;
+    }
 
     *user = (SpectreMarshalledUser){
             .userKeyProvider = userKeyProvider,
@@ -108,8 +111,10 @@ SpectreMarshalledSite *spectre_marshal_site(
         SpectreMarshalledUser *user, const char *siteName, const SpectreResultType resultType,
         const SpectreCounter keyCounter, const SpectreAlgorithm algorithmVersion) {
 
-    if (!siteName)
+    if (!siteName) {
+        errno = EINVAL;
         return NULL;
+    }
     if (!spectre_realloc( &user->sites, NULL, SpectreMarshalledSite, ++user->sites_count )) {
         user->sites_count--;
         return NULL;
@@ -183,8 +188,7 @@ SpectreMarshalledFile *spectre_marshal_file(
 SpectreMarshalledFile *spectre_marshal_error(
         SpectreMarshalledFile *file, SpectreMarshalErrorType type, const char *format, ...) {
 
-    file = spectre_marshal_file( file, NULL, NULL );
-    if (!file)
+    if (!(file = spectre_marshal_file( file, NULL, NULL )))
         return NULL;
 
     va_list args;
@@ -1525,6 +1529,7 @@ const SpectreFormat spectre_format_named(
         return SpectreFormatJSON;
 
     wrn( "Not a format name: %s", formatName );
+    errno = EINVAL;
     return (SpectreFormat)ERR;
 }
 
@@ -1540,6 +1545,7 @@ const char *spectre_format_name(
             return "json";
         default: {
             wrn( "Unknown format: %d", format );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -1557,6 +1563,7 @@ const char *spectre_format_extension(
             return "mpjson";
         default: {
             wrn( "Unknown format: %d", format );
+            errno = EINVAL;
             return NULL;
         }
     }
@@ -1577,6 +1584,7 @@ const char **spectre_format_extensions(
                     spectre_format_extension( format ), "mpsites.json", "json", NULL );
         default: {
             wrn( "Unknown format: %d", format );
+            errno = EINVAL;
             return NULL;
         }
     }

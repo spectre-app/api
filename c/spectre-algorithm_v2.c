@@ -61,18 +61,19 @@ bool spectre_site_key_v2(
     trc( "  => siteSalt.id: %s", spectre_id_buf( siteSalt, siteSaltSize ).hex );
 
     trc( "siteKey: hmac-sha256( userKey.id=%s, siteSalt )", userKey->keyID.hex );
-    bool success = spectre_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
-            userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize );
-    spectre_free( &siteSalt, siteSaltSize );
-
-    if (!success)
+    if (!spectre_hash_hmac_sha256( (uint8_t *)siteKey->bytes,
+            userKey->bytes, sizeof( userKey->bytes ), siteSalt, siteSaltSize )) {
         err( "Could not derive site key: %s", strerror( errno ) );
-    else {
-        SpectreKeyID keyID = spectre_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
-        memcpy( (SpectreKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
-        trc( "  => siteKey.id: %s (algorithm: %d:2)", siteKey->keyID.hex, siteKey->algorithm );
+        spectre_zero( (uint8_t *)siteKey->bytes, sizeof( siteKey->bytes ) );
+        spectre_free( &siteSalt, siteSaltSize );
+        return false;
     }
-    return success;
+
+    spectre_free( &siteSalt, siteSaltSize );
+    SpectreKeyID keyID = spectre_id_buf( siteKey->bytes, sizeof( siteKey->bytes ) );
+    memcpy( (SpectreKeyID *)&siteKey->keyID, &keyID, sizeof( siteKey->keyID ) );
+    trc( "  => siteKey.id: %s (algorithm: %d:2)", siteKey->keyID.hex, siteKey->algorithm );
+    return true;
 }
 
 const char *spectre_site_template_password_v2(
