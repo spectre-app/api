@@ -42,7 +42,7 @@ public class MPUserKey {
     private boolean invalidated;
 
     /**
-     * @param userSecret The characters of the user's master password.
+     * @param userSecret The characters of the user's secret.
      *
      * @apiNote This method destroys the contents of the {@code userSecret} array.
      */
@@ -60,7 +60,7 @@ public class MPUserKey {
             throws Throwable {
 
         if (isValid()) {
-            logger.wrn( "A master key for %s was abandoned without being invalidated.", getUserName() );
+            logger.wrn( "A user key for %s was abandoned without being invalidated.", getUserName() );
             invalidate();
         }
 
@@ -74,7 +74,7 @@ public class MPUserKey {
     }
 
     /**
-     * Calculate an identifier for the master key.
+     * Calculate an identifier for the user key.
      *
      * @throws MPKeyUnavailableException {@link #invalidate()} has been called on this object.
      */
@@ -106,14 +106,14 @@ public class MPUserKey {
         Preconditions.checkArgument( userSecret.length > 0 );
 
         if (!isValid())
-            throw new MPKeyUnavailableException( "Master key was invalidated." );
+            throw new MPKeyUnavailableException( "User key was invalidated." );
 
         byte[] userKey = keyByVersion.get( algorithm.version() );
         if (userKey == null) {
             keyByVersion.put( algorithm.version(), userKey = algorithm.userKey( userName, userSecret ) );
         }
         if (userKey == null)
-            throw new MPAlgorithmException( "Could not derive master key." );
+            throw new MPAlgorithmException( "Could not derive user key." );
 
         return userKey;
     }

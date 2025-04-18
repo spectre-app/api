@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
 public interface MPAlgorithm {
 
     /**
-     * Derive a master key that describes a user's identity.
+     * Derive a user key that describes a user's identity.
      *
      * @param userName       The name of the user whose identity is described by the key.
      * @param userSecret The user's secret that authenticates his access to the identity.
