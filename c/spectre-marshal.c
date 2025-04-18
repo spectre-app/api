@@ -1188,9 +1188,9 @@ static void spectre_marshal_read_json(
     // version 2 fixes:
     if (spectre_marshal_data_get_num( file->data, "export", "format", NULL ) <= 2) {
         // Move user.default_type to user.result_type.
-        SpectreResultType defaultType = (SpectreResultType)spectre_marshal_data_get_num( file->data, "user", "default_type", NULL );
+        double defaultType = spectre_marshal_data_get_num( file->data, "user", "default_type", NULL );
         if (!isnan(defaultType)) {
-            SpectreResultType resultType = (SpectreResultType)spectre_marshal_data_get_num( file->data, "user", "result_type", NULL );
+            double resultType = spectre_marshal_data_get_num( file->data, "user", "result_type", NULL );
             if (isnan(resultType)) {
                 spectre_marshal_data_set_num( defaultType, file->data, "user", "result_type", NULL );
             }
