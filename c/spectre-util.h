@@ -204,7 +204,7 @@ bool spectre_string_pushf(
  * On success, the bufferSize pointer will be updated to the buffer's new byte size and the buffer pointer may be updated to a new memory address.
  * On failure, the pointers will remain unaffected.
  * @param buffer A pointer to the buffer (allocated, bufferSize) to reallocate.
- * @param bufferSize A pointer to the buffer's current size, or NULL.
+ * @param bufferSize A pointer to the buffer's current size, or NULL. When given, the original buffer is zero'ed if moved.
  * @param targetSize The amount to reallocate the buffer's size into.
  * @return true if successful, false if reallocation failed.
  */
@@ -277,8 +277,10 @@ bool spectre_hash_hmac_sha256(
 const uint8_t *spectre_aes_encrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *plainBuffer, size_t *bufferSize);
 /** Decrypt a cipherBuffer with the given key using AES-128-CBC.
+ * PKCS#7 padding is removed only if the plain text carries it; plain text written without padding is returned in full.
  * @param bufferSize A pointer to the size of the cipher buffer on input, and the size of the returned plain buffer on output.
- * @return A buffer (allocated, bufferSize) containing the plainBuffer or NULL if the key or buffer is missing, the key size is out of bounds or the result could not be allocated. */
+ * @return A buffer (allocated, bufferSize) containing the plainBuffer or NULL if the key or buffer is missing, the key size is out of bounds,
+ *         the cipher's size doesn't align with AES' block size, or the result could not be allocated. */
 const uint8_t *spectre_aes_decrypt(
         const uint8_t *key, const size_t keySize, const uint8_t *cipherBuffer, size_t *bufferSize);
 #if UNUSED

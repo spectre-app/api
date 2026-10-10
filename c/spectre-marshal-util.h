@@ -27,6 +27,7 @@ SPECTRE_LIBS_END
 
 /** Get a token from a string by searching until the first character in delim, no farther than eol.
  * The input string reference is advanced beyond the token delimitor if one is found.
+ * @param eol Pointer to the final character in the string to search, or NULL to search the full string.
  * @return A C-string (allocated) containing the token or NULL if the delim wasn't found before eol. */
 const char *spectre_get_token(
         const char **in, const char *eol, const char *delim);
@@ -34,6 +35,10 @@ const char *spectre_get_token(
  * @return true if the string is not NULL and holds a number larger than 0, or starts with a t (for true) or y (for yes). */
 bool spectre_get_bool(
         const char *in);
+/** Get an unsigned 32-bit integer as expressed by the given string.
+ * @return The integer held by the string if between [min, max], or (uint32_t)ERR otherwise. */
+uint32_t spectre_get_u32(
+        const char *in, const uint32_t min, const uint32_t max);
 /** Convert an RFC 3339 time string into epoch time.
  * @return ERR if the string could not be parsed. */
 time_t spectre_get_timegm(
@@ -46,38 +51,17 @@ const char *spectre_set_timegm(
 
 /// Spectre.
 
-/** Calculate a user key if the target user key algorithm is different from the given user key algorithm.
- * @param userKey A buffer (allocated).
+/** Calculate a user key, unless the given user key is already current for the inputs.
+ * @param userKey A buffer (allocated); replaced by a newly derived key if necessary.
  * @return false if an error occurred during the derivation of the user key. */
 bool spectre_update_user_key(
-        const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,
+        const SpectreUserKey **userKey, const SpectreAlgorithm algorithm,
         const char *userName, const char *userSecret);
 
 
 /// JSON parsing.
 
 #if SPECTRE_JSON
-/** Search for an object in a JSON object tree.
- * @param key A JSON object key for the child in this object.
- * @param create If true, create and insert new objects for any missing path components.
- * @return An object (shared) or if the path's object path was not found, a new object (shared) installed in the tree or NULL if not creating new objects in the tree. */
-json_object *spectre_get_json_object(
-        json_object *obj, const char *key, const bool create);
-/** Search for a string in a JSON object tree.
- * @param key A dot-delimited list of JSON object keys to walk toward the child object.
- * @return A C-string (shared) or defaultValue if one of the path's object keys was not found in the source object's tree. */
-const char *spectre_get_json_string(
-        json_object *obj, const char *key, const char *defaultValue);
-/** Search for an integer in a JSON object tree.
- * @param key A dot-delimited list of JSON object keys to walk toward the child object.
- * @return The integer value or defaultValue if one of the path's object keys was not found in the source object's tree. */
-int64_t spectre_get_json_int(
-        json_object *obj, const char *key, const int64_t defaultValue);
-/** Search for a boolean in a JSON object tree.
- * @param key A dot-delimited list of JSON object keys to walk toward the child object.
- * @return The boolean value or defaultValue if one of the path's object keys was not found in the source object's tree. */
-bool spectre_get_json_boolean(
-        json_object *obj, const char *key, const bool defaultValue);
 /** Translate a JSON object tree into a source-agnostic data object.
  * @param data A Spectre data object or NULL.
  * @param obj A JSON object tree or NULL. */

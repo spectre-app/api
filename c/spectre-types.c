@@ -59,6 +59,8 @@ const SpectreKeyID spectre_id_buf(const uint8_t *buf, const size_t size) {
 #if SPECTRE_CPERCIVA
     SHA256_Buf( buf, size, keyID.bytes );
 #elif SPECTRE_SODIUM
+    if (sodium_init() == ERR)
+        return keyID;
     crypto_hash_sha256( keyID.bytes, buf, size );
 #else
 #error No crypto support for spectre_id_buf.
@@ -73,13 +75,15 @@ const SpectreKeyID spectre_id_buf(const uint8_t *buf, const size_t size) {
     return keyID;
 }
 
-const SpectreKeyID spectre_id_str(const char hex[static 2 * (256 / 8) + 1]) {
+const SpectreKeyID spectre_id_str(const char *hex) {
 
     SpectreKeyID keyID = SpectreKeyIDUnset;
+    if (!hex || !strlen( hex ))
+        return keyID;
 
     size_t hexSize = 0;
     const uint8_t *hexBytes = spectre_unhex( hex, &hexSize );
-    if (hexSize != sizeof( keyID.bytes )) {
+    if (!hexBytes || hexSize != sizeof( keyID.bytes )) {
         wrn( "Not a valid key ID: %s", hex );
         errno = EINVAL;
     }
@@ -94,6 +98,11 @@ const SpectreKeyID spectre_id_str(const char hex[static 2 * (256 / 8) + 1]) {
 }
 
 const SpectreResultType spectre_type_named(const char *typeName) {
+
+    if (!typeName || !strlen( typeName )) {
+        errno = EINVAL;
+        return (SpectreResultType)ERR;
+    }
 
     // Find what password type is represented by the type letter.
     if (strlen( typeName ) == 1) {
@@ -356,6 +365,11 @@ const char *spectre_algorithm_long_name(const SpectreAlgorithm algorithm) {
 }
 
 const SpectreKeyPurpose spectre_purpose_named(const char *purposeName) {
+
+    if (!purposeName || !strlen( purposeName )) {
+        errno = EINVAL;
+        return (SpectreKeyPurpose)ERR;
+    }
 
     if (spectre_strncasecmp( spectre_purpose_name( SpectreKeyPurposeAuthentication ), purposeName, strlen( purposeName ) ) == OK)
         return SpectreKeyPurposeAuthentication;

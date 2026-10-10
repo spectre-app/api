@@ -54,6 +54,8 @@ const char *spectre_site_template_password_v1(
 
     // Encode the password from the seed using the template.
     char *const sitePassword = calloc( strlen( template ) + 1, sizeof( char ) );
+    if (!sitePassword)
+        return NULL;
     for (size_t c = 0; c < strlen( template ); ++c) {
         seedByte = siteKey->bytes[c + 1];
         sitePassword[c] = spectre_class_character( template[c], seedByte );

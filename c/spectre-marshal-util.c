@@ -21,6 +21,9 @@ SPECTRE_LIBS_END
 
 const char *spectre_get_token(const char **in, const char *eol, const char *delim) {
 
+    if (!eol)
+        eol = *in + strlen( *in );
+
     // Skip leading spaces.
     for (; **in == ' '; ++*in);
 
@@ -36,6 +39,18 @@ const char *spectre_get_token(const char **in, const char *eol, const char *deli
 bool spectre_get_bool(const char *in) {
 
     return in && (in[0] == 'y' || in[0] == 't' || strtol( in, NULL, 10 ) > 0);
+}
+
+uint32_t spectre_get_u32(const char *in, const uint32_t min, const uint32_t max) {
+
+    char *end = NULL;
+    long long value = in? strtoll( in, &end, 10 ): ERR;
+    if (!in || end == in || *end || value < min || value > max) {
+        errno = EINVAL;
+        return (uint32_t)ERR;
+    }
+
+    return (uint32_t)value;
 }
 
 time_t spectre_get_timegm(const char *in) {
@@ -76,70 +91,27 @@ const char *spectre_set_timegm(time_t time) {
     return dateString;
 }
 
-bool spectre_update_user_key(const SpectreUserKey **userKey, SpectreAlgorithm *userKeyAlgorithm, const SpectreAlgorithm targetKeyAlgorithm,
+bool spectre_update_user_key(const SpectreUserKey **userKey, const SpectreAlgorithm algorithm,
         const char *userName, const char *userSecret) {
 
-    if (!userKey || !userKeyAlgorithm) {
+    if (!userKey) {
         errno = EINVAL;
         return false;
     }
 
-    if (!*userKey || *userKeyAlgorithm != targetKeyAlgorithm) {
-        spectre_free( userKey, sizeof( **userKey ) );
-        *userKeyAlgorithm = targetKeyAlgorithm;
-        *userKey = spectre_user_key( userName, userSecret, *userKeyAlgorithm );
+    if (*userKey && userName && (*userKey)->algorithm == algorithm) {
+        SpectreKeyID userID = spectre_id_buf( (const uint8_t *)userName, strlen( userName ) );
+        if (spectre_id_equals( &(*userKey)->userID, &userID ))
+            return true;
     }
+
+    spectre_free( userKey, sizeof( **userKey ) );
+    *userKey = spectre_user_key( userName, userSecret, algorithm );
 
     return *userKey != NULL;
 }
 
 #if SPECTRE_JSON
-
-json_object *spectre_get_json_object(
-        json_object *obj, const char *key, const bool create) {
-
-    if (!obj)
-        return NULL;
-
-    json_object *json_value = NULL;
-    if (!json_object_object_get_ex( obj, key, &json_value ) || !json_value) {
-        if (create && json_object_object_add( obj, key, json_value = json_object_new_object() ) != OK)
-            wrn( "Couldn't add object at: %s", key );
-        json_value = NULL;
-    }
-
-    return json_value;
-}
-
-const char *spectre_get_json_string(
-        json_object *obj, const char *key, const char *defaultValue) {
-
-    json_object *json_value = spectre_get_json_object( obj, key, false );
-    if (!json_value)
-        return defaultValue;
-
-    return json_object_get_string( json_value );
-}
-
-int64_t spectre_get_json_int(
-        json_object *obj, const char *key, const int64_t defaultValue) {
-
-    json_object *json_value = spectre_get_json_object( obj, key, false );
-    if (!json_value)
-        return defaultValue;
-
-    return json_object_get_int64( json_value );
-}
-
-bool spectre_get_json_boolean(
-        json_object *obj, const char *key, const bool defaultValue) {
-
-    json_object *json_value = spectre_get_json_object( obj, key, false );
-    if (!json_value)
-        return defaultValue;
-
-    return json_object_get_boolean( json_value ) == true;
-}
 
 static bool spectre_marshal_data_filter_keyed(SpectreMarshalledData *child, __unused void *args) {
 

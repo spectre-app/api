@@ -48,9 +48,10 @@ bool spectre_log_sink_register(SpectreLogSink *sink) {
 
 bool spectre_log_sink_unregister(SpectreLogSink *sink) {
 
-    for (unsigned int r = 0; r < sinks_count; ++r) {
+    for (size_t r = 0; r < sinks_count; ++r) {
         if (sinks[r] == sink) {
-            sinks[r] = NULL;
+            --sinks_count;
+            memmove( &sinks[r], &sinks[r + 1], (sinks_count - r) * sizeof( *sinks ) );
             return true;
         }
     }
@@ -113,12 +114,8 @@ bool spectre_elog(SpectreLogEvent *event) {
         sunk = spectre_log_sink_file( event );
 
     else
-        for (unsigned int s = 0; s < sinks_count; ++s) {
-            SpectreLogSink *sink = sinks[s];
-
-            if (sink)
-                sunk |= sink( event );
-        }
+        for (size_t s = 0; s < sinks_count; ++s)
+            sunk |= sinks[s]( event );
 
 #if DEBUG
     if (event->level <= SpectreLogLevelWarning)
@@ -289,9 +286,13 @@ bool __spectre_realloc(void **buffer, size_t *bufferSize, const size_t targetSiz
     if (*buffer && bufferSize && *bufferSize == targetSize)
         return true;
 
-    void *newBuffer = realloc( *buffer, targetSize );
+    void *newBuffer = bufferSize? malloc( targetSize ): realloc( *buffer, targetSize );
     if (!newBuffer)
         return false;
+    if (bufferSize && *buffer) {
+        memcpy( newBuffer, *buffer, min( *bufferSize, targetSize ) );
+        spectre_free( buffer, *bufferSize );
+    }
 
     *buffer = newBuffer;
     if (bufferSize)
@@ -302,9 +303,13 @@ bool __spectre_realloc(void **buffer, size_t *bufferSize, const size_t targetSiz
 
 void spectre_zero(void *buffer, size_t bufferSize) {
 
-    uint8_t *b = buffer;
+#if SPECTRE_SODIUM
+    sodium_memzero( buffer, bufferSize );
+#else
+    volatile uint8_t *b = buffer;
     for (; bufferSize > 0; --bufferSize)
         *b++ = 0;
+#endif
 }
 
 bool __spectre_free(void **buffer, const size_t bufferSize) {
@@ -351,7 +356,7 @@ bool spectre_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secre
         return false;
     }
 #elif SPECTRE_SODIUM
-    if (crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != OK) {
+    if (sodium_init() == ERR || crypto_pwhash_scryptsalsa208sha256_ll( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) != OK) {
         return false;
     }
 #else
@@ -385,7 +390,8 @@ bool spectre_kdf_blake2b(uint8_t *subkey, const size_t subkeySize, const uint8_t
     if (personal && strlen( personal ))
         memcpy( personalBuf, personal, min( sizeof( personalBuf ), strlen( personal ) ) );
 
-    if (crypto_generichash_blake2b_salt_personal( subkey, subkeySize, context, contextSize, key, keySize, saltBuf, personalBuf ) != OK)
+    if (sodium_init() == ERR ||
+        crypto_generichash_blake2b_salt_personal( subkey, subkeySize, context, contextSize, key, keySize, saltBuf, personalBuf ) != OK)
         return false;
 #else
 #error No crypto support for spectre_kdf_blake2b.
@@ -406,7 +412,8 @@ bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const 
     return true;
 #elif SPECTRE_SODIUM
     crypto_auth_hmacsha256_state state;
-    return crypto_auth_hmacsha256_init( &state, key, keySize ) == OK &&
+    return sodium_init() != ERR &&
+           crypto_auth_hmacsha256_init( &state, key, keySize ) == OK &&
            crypto_auth_hmacsha256_update( &state, message, messageSize ) == OK &&
            crypto_auth_hmacsha256_final( &state, mac ) == OK;
 #else
@@ -416,7 +423,7 @@ bool spectre_hash_hmac_sha256(uint8_t mac[static 32], const uint8_t *key, const 
 
 const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t keySize, const uint8_t *buf, size_t *bufSize) {
 
-    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize) {
+    if (!key || keySize < AES_BLOCKLEN || !bufSize || !*bufSize || (!encrypt && *bufSize % AES_BLOCKLEN)) {
         errno = EINVAL;
         return NULL;
     }
@@ -425,11 +432,9 @@ const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t
     static const uint8_t iv[AES_BLOCKLEN] = { 0 };
 
     // Add PKCS#7 padding
-    size_t aesSize = *bufSize, blockRemainder = aesSize % AES_BLOCKLEN;
-    if (blockRemainder) // round up to block size.
-        aesSize += AES_BLOCKLEN - blockRemainder;
-    else if (encrypt) // add pad block if plain text fits block size.
-        aesSize += AES_BLOCKLEN;
+    size_t aesSize = *bufSize;
+    if (encrypt) // pad plain text up to the next block, adding a block if it already fits.
+        aesSize += AES_BLOCKLEN - *bufSize % AES_BLOCKLEN;
     uint8_t *aesBuf = malloc( aesSize );
     if (!aesBuf)
         return NULL;
@@ -445,11 +450,20 @@ const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t
     else
         AES_CBC_decrypt_buffer( &aes, aesBuf, aesSize );
 
-    // Truncate PKCS#7 padding
+    // Truncate verified PKCS#7 padding; plain text that carries none is returned in full.
     if (encrypt)
         *bufSize = aesSize;
-    else if (aesBuf[aesSize - 1] <= AES_BLOCKLEN)
-        *bufSize -= aesBuf[aesSize - 1];
+    else {
+        size_t padSize = aesBuf[aesSize - 1];
+        if (padSize && padSize <= AES_BLOCKLEN) {
+            for (size_t p = aesSize - padSize; p < aesSize; ++p)
+                if (aesBuf[p] != padSize) {
+                    padSize = 0;
+                    break;
+                }
+            *bufSize -= padSize;
+        }
+    }
     memset( aesBuf + *bufSize, 0, aesSize - *bufSize );
 
     return aesBuf;
@@ -511,25 +525,28 @@ const char *spectre_vstr(const char *format, va_list args) {
         return NULL;
     }
 
+    va_list sizingArgs;
+    va_copy( sizingArgs, args );
+    int chars = vsnprintf( NULL, 0, format, sizingArgs );
+    va_end( sizingArgs );
+    if (chars < 0)
+        return NULL;
+
     char *str = NULL;
     size_t size = 0;
+    if (!spectre_realloc( &str, &size, char, (size_t)chars + 1 ))
+        return NULL;
 
-    while (true) {
-        va_list _args;
-        va_copy( _args, args );
-        size_t chars = (size_t)vsnprintf( str, size, format, _args );
-        va_end( _args );
-
-        if (chars < 0)
-            break;
-        if (chars < size)
-            return str;
-        if (!spectre_realloc( &str, &size, char, chars + 1 ))
-            break;
+    va_list writingArgs;
+    va_copy( writingArgs, args );
+    int written = vsnprintf( str, size, format, writingArgs );
+    va_end( writingArgs );
+    if (written != chars) {
+        spectre_free( &str, size );
+        return NULL;
     }
 
-    spectre_free( &str, size );
-    return NULL;
+    return str;
 }
 
 char *spectre_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexSize) {
@@ -538,7 +555,7 @@ char *spectre_hex(const uint8_t *buf, const size_t size, char *hex, size_t *hexS
         errno = EINVAL;
         return NULL;
     }
-    if (!spectre_realloc( &hex, hexSize, char, size * 2 + 1 ))
+    if ((!hex || !hexSize || *hexSize < size * 2 + 1) && !spectre_realloc( &hex, hexSize, char, size * 2 + 1 ))
         return NULL;
 
     for (size_t kH = 0; kH < size; kH++)
@@ -573,10 +590,10 @@ const uint8_t *spectre_unhex(const char *hex, size_t *size) {
     }
 
     size_t bufSize = hexLength / 2;
-    if (size)
-        *size = bufSize;
-
     uint8_t *buf = malloc( bufSize );
+    if (!buf)
+        return NULL;
+
     for (size_t b = 0; b < bufSize; ++b)
         if (sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
             wrn( "Illegal hex character at: %s", hex + b * 2 );
@@ -584,6 +601,9 @@ const uint8_t *spectre_unhex(const char *hex, size_t *size) {
             errno = EINVAL;
             return NULL;
         }
+
+    if (size)
+        *size = bufSize;
 
     return buf;
 }
@@ -596,10 +616,18 @@ size_t spectre_base64_decode_max(size_t b64Length) {
 
 size_t spectre_base64_decode(const char *b64Text, uint8_t *byteBuf) {
 
-    size_t b64Length = strlen( b64Text ), plainSize = 0;
-    if (sodium_base642bin( byteBuf, spectre_base64_decode_max( b64Length ), b64Text, b64Length,
-            " \n\r\t\v", &plainSize, NULL, sodium_base64_VARIANT_ORIGINAL ) == ERR)
+    if (!b64Text || !byteBuf) {
+        errno = EINVAL;
         return 0;
+    }
+
+    size_t b64Length = strlen( b64Text ), plainSize = 0;
+    if (sodium_init() == ERR ||
+        sodium_base642bin( byteBuf, spectre_base64_decode_max( b64Length ), b64Text, b64Length,
+                " \n\r\t\v", &plainSize, NULL, sodium_base64_VARIANT_ORIGINAL ) == ERR) {
+        errno = EINVAL;
+        return 0;
+    }
 
     return plainSize;
 }
@@ -617,6 +645,9 @@ size_t spectre_base64_encode(const uint8_t *byteBuf, size_t byteSize, char *b64T
     }
 
     b64Text[0] = 0;
+    if (sodium_init() == ERR)
+        return 0;
+
     return strlen(
             sodium_bin2base64(
                     b64Text, spectre_base64_encode_max( byteSize ),
@@ -629,17 +660,34 @@ size_t spectre_utf8_char_size(const char *utf8String) {
         return 0U;
 
     // Legal UTF-8 byte sequences: <http://www.unicode.org/unicode/uni2errata/UTF-8_Corrigendum.html>
-    unsigned char utf8Char = (unsigned char)*utf8String;
-    if (utf8Char >= 0x00 && utf8Char <= 0x7F)
-        return min( 1U, strlen( utf8String ) );
-    if (utf8Char >= 0xC2 && utf8Char <= 0xDF)
-        return min( 2U, strlen( utf8String ) );
-    if (utf8Char >= 0xE0 && utf8Char <= 0xEF)
-        return min( 3U, strlen( utf8String ) );
-    if (utf8Char >= 0xF0 && utf8Char <= 0xF4)
-        return min( 4U, strlen( utf8String ) );
+    size_t size;
+    uint32_t codePoint, minimum;
+    const unsigned char *utf8Char = (const unsigned char *)utf8String;
+    if (utf8Char[0] <= 0x7F)
+        size = 1U, codePoint = utf8Char[0], minimum = 0x0U;
+    else if (utf8Char[0] >= 0xC2 && utf8Char[0] <= 0xDF)
+        size = 2U, codePoint = utf8Char[0] & 0x1FU, minimum = 0x80U;
+    else if (utf8Char[0] >= 0xE0 && utf8Char[0] <= 0xEF)
+        size = 3U, codePoint = utf8Char[0] & 0x0FU, minimum = 0x800U;
+    else if (utf8Char[0] >= 0xF0 && utf8Char[0] <= 0xF4)
+        size = 4U, codePoint = utf8Char[0] & 0x07U, minimum = 0x10000U;
+    else
+        return 0U;
 
-    return 0U;
+    // Every byte after the lead must be a continuation byte.
+    // A string that ends mid-sequence fails here, since its terminator (NUL) is not one.
+    for (size_t b = 1; b < size; ++b) {
+        if (utf8Char[b] < 0x80 || utf8Char[b] > 0xBF)
+            return 0U;
+
+        codePoint = codePoint << 6 | (utf8Char[b] & 0x3FU);
+    }
+
+    // Reject a sequence longer than its code point needs, the UTF-16 surrogates, and anything out of range.
+    if (codePoint < minimum || codePoint > 0x10FFFFU || (codePoint >= 0xD800U && codePoint <= 0xDFFFU))
+        return 0U;
+
+    return size;
 }
 
 size_t spectre_utf8_char_count(const char *utf8String) {
@@ -690,17 +738,21 @@ const char *spectre_strndup(const char *src, const size_t max) {
 
 int spectre_strcasecmp(const char *s1, const char *s2) {
 
-    return spectre_strncasecmp( s1, s2, s1 && s2? min( strlen( s1 ), strlen( s2 ) ): 0 );
+    return spectre_strncasecmp( s1, s2, SIZE_MAX );
 }
 
 int spectre_strncasecmp(const char *s1, const char *s2, size_t max) {
 
     if (s1 == s2)
         return 0;
+    if (!s1 || !s2)
+        return s1? 1: -1;
 
-    int cmp = s1 && s2 && max > 0? 0: s1? 1: -1;
-    for (; !cmp && max && max-- > 0 && s1 && s2; ++s1, ++s2)
-        cmp = tolower( (unsigned char)*s1 ) - tolower( (unsigned char)*s2 );
+    for (; max > 0; --max, ++s1, ++s2) {
+        int cmp = tolower( (unsigned char)*s1 ) - tolower( (unsigned char)*s2 );
+        if (cmp || !*s1)
+            return cmp;
+    }
 
-    return cmp;
+    return 0;
 }

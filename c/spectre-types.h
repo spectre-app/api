@@ -86,7 +86,9 @@ typedef struct {
     const uint8_t bytes[512 / 8]; // KDF-SCRYPT
     /** The key's identity */
     const SpectreKeyID keyID;
-    /** The algorithm the key was made by & for */
+    /** The name (identity) of the user the key was made for */
+    const SpectreKeyID userID;
+    /** The algorithm the key was made for */
     const SpectreAlgorithm algorithm;
 } SpectreUserKey;
 
@@ -171,7 +173,8 @@ typedef spectre_enum( uint32_t, SpectreCounter ) {
 
     SpectreCounterDefault = SpectreCounterInitial,
     SpectreCounterFirst = SpectreCounterTOTP,
-    SpectreCounterLast = UINT32_MAX,
+    /** The last valid counter value; UINT32_MAX is (SpectreCounter)ERR. */
+    SpectreCounterLast = UINT32_MAX - 1,
 };
 
 /** These colours are compatible with the original ANSI SGR. */
@@ -208,8 +211,9 @@ bool spectre_id_valid(const SpectreKeyID *id1);
 bool spectre_id_equals(const SpectreKeyID *id1, const SpectreKeyID *id2);
 /** Encode a fingerprint for a buffer. */
 const SpectreKeyID spectre_id_buf(const uint8_t *buf, const size_t size);
-/** Reconstruct a fingerprint from its hexadecimal string representation. */
-const SpectreKeyID spectre_id_str(const char hex[static 65]);
+/** Reconstruct a fingerprint from its hexadecimal string representation.
+ * @return SpectreKeyIDUnset if hex is absent, empty, or not a full fingerprint. */
+const SpectreKeyID spectre_id_str(const char *hex);
 
 /**
  * @return The standard identifying name (static) for the given algorithm or NULL if the algorithm is not known.

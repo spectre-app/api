@@ -45,7 +45,10 @@ const SpectreUserKey *spectre_user_key(
     }
 
     SpectreUserKey *userKey = memcpy( malloc( sizeof( SpectreUserKey ) ),
-            &(SpectreUserKey){ .algorithm = algorithmVersion }, sizeof( SpectreUserKey ) );
+            &(SpectreUserKey){
+                    .algorithm = algorithmVersion,
+                    .userID = spectre_id_buf( (const uint8_t *)userName, strlen( userName ) ),
+            }, sizeof( SpectreUserKey ) );
 
     bool success = false;
     switch (algorithmVersion) {
@@ -219,6 +222,11 @@ const char *spectre_site_result(
         err( "Unsupported password type: %d", resultType );
         errno = EINVAL;
     }
+    if (result && strlen( result ) && !spectre_utf8_char_count( result )) {
+        err( "Result is not valid UTF-8." );
+        errno = EINVAL;
+        spectre_free_string( &result );
+    }
 
     spectre_free( &siteKey, sizeof( SpectreSiteKey ) );
     return result;
@@ -278,6 +286,11 @@ const char *spectre_site_state(
                 errno = EINVAL;
                 break;
         }
+    }
+    if (result && strlen( result ) && !spectre_utf8_char_count( result )) {
+        err( "Result is not valid UTF-8." );
+        errno = EINVAL;
+        spectre_free_string( &result );
     }
 
     spectre_free( &siteKey, sizeof( SpectreSiteKey ) );

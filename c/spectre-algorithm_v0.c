@@ -150,6 +150,8 @@ const char *spectre_site_template_password_v0(
 
     // Encode the password from the seed using the template.
     char *const sitePassword = calloc( strlen( template ) + 1, sizeof( char ) );
+    if (!sitePassword)
+        return NULL;
     for (size_t c = 0; c < strlen( template ); ++c) {
         spectre_uint16( (uint16_t)_siteKey[c + 1], (uint8_t *)&seedByte );
         sitePassword[c] = spectre_class_character_v0( template[c], seedByte );
@@ -179,11 +181,16 @@ const char *spectre_site_crypted_password_v0(
 
     // Base64-decode
     char *hex = NULL;
-    uint8_t *cipherBuf = calloc( 1, spectre_base64_decode_max( cipherLength ) );
-    size_t bufSize = spectre_base64_decode( cipherText, cipherBuf ), cipherBufSize = bufSize, hexSize = 0;
-    if ((int)bufSize < 0) {
+    size_t cipherBufSize = spectre_base64_decode_max( cipherLength ), hexSize = 0;
+    uint8_t *cipherBuf = calloc( 1, cipherBufSize );
+    if (!cipherBuf) {
+        err( "Couldn't allocate for the encrypted state: %s", strerror( errno ) );
+        return NULL;
+    }
+    size_t bufSize = spectre_base64_decode( cipherText, cipherBuf );
+    if (!bufSize) {
         err( "Encrypted state is not legal base64: %s", strerror( errno ) );
-        spectre_free( &cipherBuf, spectre_base64_decode_max( cipherLength ) );
+        spectre_free( &cipherBuf, cipherBufSize );
         return NULL;
     }
     trc( "b64 decoded: %zu bytes = %s", bufSize, hex = spectre_hex( cipherBuf, bufSize, hex, &hexSize ) );

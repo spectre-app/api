@@ -39,6 +39,32 @@ typedef spectre_enum( unsigned int, SpectreFormat ) {
     SpectreFormatLast = SpectreFormatJSON,
 };
 
+typedef spectre_enum( unsigned int, SpectreFormatFlatVersion ) {
+    /** Sites have a type and algorithm version, but no counter or login name. */
+    SpectreFormatFlatV0,
+    /** Sites add a counter and a login name. */
+    SpectreFormatFlatV1,
+    /** The user's result type header is named "Result Type" rather than "Default Type". */
+    SpectreFormatFlatV2,
+
+    SpectreFormatFlatCurrent = SpectreFormatFlatV2,
+    SpectreFormatFlatFirst = SpectreFormatFlatV0,
+    SpectreFormatFlatLast = SpectreFormatFlatV2,
+};
+
+typedef spectre_enum( unsigned int, SpectreFormatJSONVersion ) {
+    /** Sites record the default login type, "name", as if it were their own. */
+    SpectreFormatJSONV1 = 1,
+    /** Sites no longer record the default login type, and may be named "services" rather than "sites". */
+    SpectreFormatJSONV2,
+    /** The user's result type is named "result_type" rather than "default_type", and sites are named "sites". */
+    SpectreFormatJSONV3,
+
+    SpectreFormatJSONCurrent = SpectreFormatJSONV3,
+    SpectreFormatJSONFirst = SpectreFormatJSONV1,
+    SpectreFormatJSONLast = SpectreFormatJSONV3,
+};
+
 typedef spectre_enum( unsigned int, SpectreMarshalErrorType ) {
     /** The marshalling operation completed successfully. */
     SpectreMarshalSuccess,
@@ -70,22 +96,21 @@ typedef const SpectreUserKey *(*SpectreKeyProvider)(
 /** A function that updates the currentKey with the userKey of the given algorithm for the user with the given name.
  * @param currentKey A pointer to where the current userKey (allocated) can be found and a new one can be placed.
  *                   Free the old value if you update it. If NULL, the proxy is invalidated and should free any state it holds.
- * @param currentAlgorithm A pointer to where the algorithm of the current userKey is found and can be updated.
  * @param algorithm The algorithm of the userKey that should be placed in currentKey.
  * @param userName The name of the user whose userKey should be placed in currentKey.
  * @return false if not able to resolve the requested userKey. */
 typedef bool (*SpectreKeyProviderProxy)(
-        const SpectreUserKey **currentKey, SpectreAlgorithm *currentAlgorithm, SpectreAlgorithm algorithm, const char *userName);
+        const SpectreUserKey **currentKey, SpectreAlgorithm algorithm, const char *userName);
 
-/** Create a key provider which handles key generation by proxying the given function.
- * The proxy function receives the currently cached key and its algorithm.  If those are NULL, the proxy function should clean up its state. */
+/** Get the proxy key provider after configuring it with the given function as its source.
+ * The proxy provider caches its last key for re-use, avoiding future calls into the source unless the requested key has changed. */
 SpectreKeyProvider spectre_proxy_provider_set(
         const SpectreKeyProviderProxy proxy);
-/** Create a key provider that computes a user key for the given user secret. */
+/** Get the proxy key provider after configuring it with the given user secret as its source. */
 SpectreKeyProvider spectre_proxy_provider_set_secret(
         const char *userSecret);
 
-/** Unset the active proxy and free the proxy provider. */
+/** Clear the proxy key provider and any cached state it holds. */
 void spectre_proxy_provider_unset(void);
 
 /** Free the key provider's internal state. */
@@ -298,11 +323,11 @@ const SpectreMarshalledData *spectre_marshal_data_get(
         const SpectreMarshalledData *data, ...);
 const SpectreMarshalledData *spectre_marshal_data_vget(
         const SpectreMarshalledData *data, va_list nodes);
-/** Set a value at the given path in the data store.
+/** Set a copy of the given node at the given path in the data store.
  * @return true if the object was successfully modified. */
-bool spectre_marshal_data_set(
+bool spectre_marshal_data_set_node(
         const SpectreMarshalledData *value, SpectreMarshalledData *data, ...);
-bool spectre_marshal_data_vset(
+bool spectre_marshal_data_vset_node(
         const SpectreMarshalledData *value, SpectreMarshalledData *data, va_list nodes);
 /** Check if the data represents a NULL value.
  * @return true if the value at this path is null or is missing, false if it is a non-null type. */
@@ -334,6 +359,8 @@ double spectre_marshal_data_get_num(
         const SpectreMarshalledData *data, ...);
 double spectre_marshal_data_vget_num(
         const SpectreMarshalledData *data, va_list nodes);
+/** Set a numeric value (with 15 significant digits) at the given path in the data store.
+ * @return true if the object was successfully modified. */
 bool spectre_marshal_data_set_num(
         const double value, SpectreMarshalledData *data, ...);
 bool spectre_marshal_data_vset_num(
@@ -350,6 +377,13 @@ const char *spectre_marshal_data_vget_str(
 bool spectre_marshal_data_set_str(
         const char *value, SpectreMarshalledData *data, ...);
 bool spectre_marshal_data_vset_str(
+        const char *value, SpectreMarshalledData *data, va_list nodes);
+/** Save the value at the given path into the data store as a number if it is one, NULL if it is empty, or a C-string otherwise.
+ * @param value The string representation of the value to save into the data store.  The data store will hold a copy of it.
+ * @return true if the value has been saved into the data store.  false if a node at the path didn't exist and couldn't be created or initialized. */
+bool spectre_marshal_data_set(
+        const char *value, SpectreMarshalledData *data, ...);
+bool spectre_marshal_data_vset(
         const char *value, SpectreMarshalledData *data, va_list nodes);
 /** Keep only the data children that pass the filter test. */
 void spectre_marshal_data_filter(

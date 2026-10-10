@@ -22,7 +22,7 @@ const SpectreUserKey *spectre_user_key(
 
 /** Generate a result token for a user from the user's user key and result parameters.
  * @param resultParam A parameter for the resultType.  For stateful result types, the output of spectre_site_state.
- * @return A C-string (allocated) or NULL if the userKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
+ * @return A UTF-8 C-string (allocated) or NULL if the userKey or siteName is missing, the algorithm is unknown, or an algorithm error occurred. */
 const char *spectre_site_result(
         const SpectreUserKey *userKey, const char *siteName,
         const SpectreResultType resultType, const char *resultParam,
@@ -30,7 +30,7 @@ const char *spectre_site_result(
 
 /** Encrypt a result token for stateful persistence.
  * @param resultParam A parameter for the resultType.  For stateful result types, the desired spectre_site_result.
- * @return A C-string (allocated) or NULL if the userKey, siteName or resultType's resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
+ * @return A UTF-8 C-string (allocated) or NULL if the userKey, siteName or resultType's resultParam is missing, the algorithm is unknown, or an algorithm error occurred. */
 const char *spectre_site_state(
         const SpectreUserKey *userKey, const char *siteName,
         const SpectreResultType resultType, const char *resultParam,
