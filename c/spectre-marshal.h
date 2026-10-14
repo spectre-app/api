@@ -102,8 +102,7 @@ typedef const SpectreUserKey *(*SpectreKeyProvider)(
 typedef bool (*SpectreKeyProviderProxy)(
         const SpectreUserKey **currentKey, SpectreAlgorithm algorithm, const char *userName);
 
-/** Get the proxy key provider after configuring it with the given function as its source.
- * The proxy provider caches its last key for re-use, avoiding future calls into the source unless the requested key has changed. */
+/** Get the proxy key provider after configuring it with the given function as its source. */
 SpectreKeyProvider spectre_proxy_provider_set(
         const SpectreKeyProviderProxy proxy);
 /** Get the proxy key provider after configuring it with the given user secret as its source. */
@@ -267,13 +266,13 @@ SpectreMarshalledUser *spectre_marshal_user(
         const char *userName, const SpectreKeyProvider userKeyProvider, const SpectreAlgorithm algorithmVersion);
 /** Create a new site attached to the given user object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
- * @return A site object (allocated), or NULL if the siteName is missing or the marshalled site couldn't be allocated. */
+ * @return A site object (shared, invalidated when the user's sites change), or NULL if the siteName is missing or the marshalled site couldn't be allocated. */
 SpectreMarshalledSite *spectre_marshal_site(
         SpectreMarshalledUser *user,
         const char *siteName, const SpectreResultType resultType, const SpectreCounter keyCounter, const SpectreAlgorithm algorithmVersion);
 /** Create a new question attached to the given site object, ready for marshalling.
  * @note This object stores copies of the strings assigned to it and manages their deallocation internally.
- * @return A question object (allocated), or NULL if the marshalled question couldn't be allocated. */
+ * @return A question object (shared, invalidated when the site's questions change), or NULL if the marshalled question couldn't be allocated. */
 SpectreMarshalledQuestion *spectre_marshal_question(
         SpectreMarshalledSite *site, const char *keyword);
 /** Create or update a marshal file descriptor.
@@ -312,13 +311,13 @@ void spectre_marshal_file_free(
  * @return A new data value (allocated), initialized to a null value, or NULL if the value couldn't be allocated. */
 SpectreMarshalledData *spectre_marshal_data_new(void);
 /** Get or create a value for the given path in the data store.
- * @return The value at this path (shared), or NULL if the value didn't exist and couldn't be created. */
+ * @return The value at this path (shared, invalidated when its parent's children change), or NULL if the value didn't exist and couldn't be created. */
 SpectreMarshalledData *spectre_marshal_data_obtain(
         SpectreMarshalledData *data, ...);
 SpectreMarshalledData *spectre_marshal_data_vobtain(
         SpectreMarshalledData *data, va_list nodes);
 /** Look up the value at the given path in the data store.
- * @return The value at this path (shared), or NULL if there is no value at this path. */
+ * @return The value at this path (shared, invalidated when its parent's children change), or NULL if there is no value at this path. */
 const SpectreMarshalledData *spectre_marshal_data_get(
         const SpectreMarshalledData *data, ...);
 const SpectreMarshalledData *spectre_marshal_data_vget(
@@ -366,7 +365,7 @@ bool spectre_marshal_data_set_num(
 bool spectre_marshal_data_vset_num(
         const double value, SpectreMarshalledData *data, va_list nodes);
 /** Look up string value at the given path in the data store.
- * @return The string value (shared) or string representation of the number at this path; NULL if there is no such value at this path. */
+ * @return The string value (shared, invalidated when the value changes) or string representation of the number at this path; NULL if there is no such value at this path. */
 const char *spectre_marshal_data_get_str(
         const SpectreMarshalledData *data, ...);
 const char *spectre_marshal_data_vget_str(

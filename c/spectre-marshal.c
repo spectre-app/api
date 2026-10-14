@@ -327,10 +327,15 @@ SpectreMarshalledData *spectre_marshal_data_vobtain(
         }
 
         if (!child) {
+            // Create a new child node only in parents that are objects.
+            if (!isnan( parent->num_value ) || parent->str_value ||
+                (parent->children_count && !parent->children[0].obj_key))
+                break;
             if (!spectre_realloc( &parent->children, NULL, SpectreMarshalledData, ++parent->children_count )) {
                 --parent->children_count;
                 break;
             }
+            parent->is_null = false;
             *(child = &parent->children[parent->children_count - 1]) = (SpectreMarshalledData){ .obj_key = spectre_strdup( node ) };
             spectre_marshal_data_set_null( child, NULL );
             child->is_null = false;
@@ -497,10 +502,8 @@ bool spectre_marshal_data_vset_bool(
         const bool value, SpectreMarshalledData *data, va_list nodes) {
 
     SpectreMarshalledData *child = spectre_marshal_data_vobtain( data, nodes );
-    if (!child || !spectre_marshal_data_set_null( child, NULL )) {
-        spectre_marshal_free( &child );
+    if (!child || !spectre_marshal_data_set_null( child, NULL ))
         return false;
-    }
 
     child->is_null = false;
     child->is_bool = true;
@@ -541,10 +544,8 @@ bool spectre_marshal_data_vset_num(
         const double value, SpectreMarshalledData *data, va_list nodes) {
 
     SpectreMarshalledData *child = spectre_marshal_data_vobtain( data, nodes );
-    if (!child || !spectre_marshal_data_set_null( child, NULL )) {
-        spectre_marshal_free( &child );
+    if (!child || !spectre_marshal_data_set_null( child, NULL ))
         return false;
-    }
 
     if (!isnan(value)) {
         child->is_null = false;
@@ -588,10 +589,8 @@ bool spectre_marshal_data_vset_str(
         const char *value, SpectreMarshalledData *data, va_list nodes) {
 
     SpectreMarshalledData *child = spectre_marshal_data_vobtain( data, nodes );
-    if (!child || !spectre_marshal_data_set_null( child, NULL )) {
-        spectre_marshal_free( &child );
+    if (!child || !spectre_marshal_data_set_null( child, NULL ))
         return false;
-    }
 
     if (value) {
         child->is_null = false;
@@ -615,21 +614,12 @@ bool spectre_marshal_data_set_str(
 bool spectre_marshal_data_vset(
         const char *value, SpectreMarshalledData *data, va_list nodes) {
 
-    SpectreMarshalledData *child = spectre_marshal_data_vobtain( data, nodes );
-    if (!child || !spectre_marshal_data_set_null( child, NULL )) {
-        spectre_marshal_free( &child );
-        return false;
-    }
+    char *end = NULL;
+    double number = value? strtod( value, &end ): NAN;
+    if (end != value && !*end && isfinite( number ))
+        return spectre_marshal_data_vset_num( number, data, nodes );
 
-    if (value && *value) {
-        char *end = NULL;
-        double number = strtod( value, &end );
-        child->is_null = false;
-        child->str_value = spectre_strdup( value );
-        child->num_value = end != value && !*end? number: NAN;
-    }
-
-    return true;
+    return spectre_marshal_data_vset_str( value && *value? value: NULL, data, nodes );
 }
 
 bool spectre_marshal_data_set(
@@ -645,6 +635,9 @@ bool spectre_marshal_data_set(
 
 void spectre_marshal_data_filter(
         SpectreMarshalledData *data, bool (*filter)(SpectreMarshalledData *, void *), void *args) {
+
+    if (!data)
+        return;
 
     size_t children_count = 0;
     SpectreMarshalledData *children = NULL;
@@ -740,6 +733,12 @@ static const char *spectre_marshal_write_flat(
     const SpectreMarshalledData *sites = spectre_marshal_data_get( data, "sites", NULL );
     for (size_t s = 0; s < (sites? sites->children_count: 0); ++s) {
         const SpectreMarshalledData *site = &sites->children[s];
+        if (!site->obj_key) {
+            spectre_marshal_error( file, SpectreMarshalErrorMissing,
+                    "Missing value for site name." );
+            spectre_free_string( &out );
+            return NULL;
+        }
         const char *loginName = spectre_default( "", spectre_marshal_data_get_str( site, "login_name", NULL ) );
         const char *password = spectre_default( "", spectre_marshal_data_get_str( site, "password", NULL ) );
         if (strpbrk( loginName, "\t\n" ) || *loginName == ' ' ||
@@ -843,6 +842,8 @@ static bool spectre_marshal_data_filter_site_exists(
 
     SpectreMarshalledUser *user = args;
 
+    if (!child->obj_key)
+        return false;
     for (size_t s = 0; s < user->sites_count; ++s) {
         if (strcmp( (&user->sites[s])->siteName, child->obj_key ) == OK)
             return true;
@@ -856,6 +857,8 @@ static bool spectre_marshal_data_filter_question_exists(
 
     SpectreMarshalledSite *site = args;
 
+    if (!child->obj_key)
+        return false;
     for (size_t s = 0; s < site->questions_count; ++s) {
         if (strcmp( (&site->questions[s])->keyword, child->obj_key ) == OK)
             return true;
@@ -883,6 +886,7 @@ const char *spectre_marshal_write(
     }
     spectre_marshal_error( file, SpectreMarshalSuccess, NULL );
 
+    bool written = true;
     if (user) {
         if (!user->userName || !strlen( user->userName )) {
             if (!file_)
@@ -894,19 +898,16 @@ const char *spectre_marshal_write(
         }
 
         const SpectreUserKey *userKey = NULL;
-        if (user->userKeyProvider)
-            userKey = user->userKeyProvider( user->algorithm, user->userName );
 
         // Section: "export"
         SpectreMarshalledData *data_export = spectre_marshal_data_obtain( file->data, "export", NULL );
-        spectre_marshal_data_set_str( spectre_set_timegm( time( NULL ) ), data_export, "date", NULL );
-        spectre_marshal_data_set_bool( user->redacted, data_export, "redacted", NULL );
+        written &= spectre_marshal_data_set_str( spectre_set_time( time( NULL ) ), data_export, "date", NULL );
+        written &= spectre_marshal_data_set_bool( user->redacted, data_export, "redacted", NULL );
 
         // Section: "user"
         const char *loginState = NULL;
         if (!user->redacted) {
             // Clear Text
-            spectre_free( &userKey, sizeof( *userKey ) );
             if (!user->userKeyProvider || !(userKey = user->userKeyProvider( user->algorithm, user->userName ))) {
                 if (!file_)
                     spectre_marshal_free( &file );
@@ -916,8 +917,9 @@ const char *spectre_marshal_write(
                 return NULL;
             }
 
-            loginState = spectre_site_result( userKey, user->userName, user->loginType, user->loginState,
-                    SpectreCounterInitial, SpectreKeyPurposeIdentification, NULL );
+            if (!(user->loginType & SpectreResultFeatureDevicePrivate))
+                loginState = spectre_site_result( userKey, user->userName, user->loginType, user->loginState,
+                        SpectreCounterInitial, SpectreKeyPurposeIdentification, NULL );
         }
         else {
             // Redacted
@@ -927,15 +929,15 @@ const char *spectre_marshal_write(
 
         const char *identiconString = spectre_identicon_encode( user->identicon );
         SpectreMarshalledData *data_user = spectre_marshal_data_obtain( file->data, "user", NULL );
-        spectre_marshal_data_set_num( user->avatar, data_user, "avatar", NULL );
-        spectre_marshal_data_set_str( user->userName, data_user, "full_name", NULL );
-        spectre_marshal_data_set_str( identiconString, data_user, "identicon", NULL );
-        spectre_marshal_data_set_num( user->algorithm, data_user, "algorithm", NULL );
-        spectre_marshal_data_set_str( user->keyID.hex, data_user, "key_id", NULL );
-        spectre_marshal_data_set_num( user->resultType, data_user, "result_type", NULL );
-        spectre_marshal_data_set_num( user->loginType, data_user, "login_type", NULL );
-        spectre_marshal_data_set_str( loginState, data_user, "login_name", NULL );
-        spectre_marshal_data_set_str( spectre_set_timegm( user->lastUsed ), data_user, "last_used", NULL );
+        written &= spectre_marshal_data_set_num( user->avatar, data_user, "avatar", NULL );
+        written &= spectre_marshal_data_set_str( user->userName, data_user, "full_name", NULL );
+        written &= spectre_marshal_data_set_str( identiconString, data_user, "identicon", NULL );
+        written &= spectre_marshal_data_set_num( user->algorithm, data_user, "algorithm", NULL );
+        written &= spectre_marshal_data_set_str( user->keyID.hex, data_user, "key_id", NULL );
+        written &= spectre_marshal_data_set_num( user->resultType, data_user, "result_type", NULL );
+        written &= spectre_marshal_data_set_num( user->loginType, data_user, "login_type", NULL );
+        written &= spectre_marshal_data_set_str( loginState, data_user, "login_name", NULL );
+        written &= spectre_marshal_data_set_str( spectre_set_time( user->lastUsed ), data_user, "last_used", NULL );
         spectre_free_strings( &identiconString, &loginState, NULL );
 
         // Section "sites"
@@ -959,10 +961,12 @@ const char *spectre_marshal_write(
                     return NULL;
                 }
 
-                resultState = spectre_site_result( userKey, site->siteName,
-                        site->resultType, site->resultState, site->counter, SpectreKeyPurposeAuthentication, NULL );
-                loginState = spectre_site_result( userKey, site->siteName,
-                        site->loginType, site->loginState, SpectreCounterInitial, SpectreKeyPurposeIdentification, NULL );
+                if (!(site->resultType & SpectreResultFeatureDevicePrivate))
+                    resultState = spectre_site_result( userKey, site->siteName,
+                            site->resultType, site->resultState, site->counter, SpectreKeyPurposeAuthentication, NULL );
+                if (!(site->loginType & SpectreResultFeatureDevicePrivate))
+                    loginState = spectre_site_result( userKey, site->siteName,
+                            site->loginType, site->loginState, SpectreCounterInitial, SpectreKeyPurposeIdentification, NULL );
             }
             else {
                 // Redacted
@@ -972,14 +976,14 @@ const char *spectre_marshal_write(
                     loginState = spectre_strdup( site->loginState );
             }
 
-            spectre_marshal_data_set_num( site->counter, data_sites, site->siteName, "counter", NULL );
-            spectre_marshal_data_set_num( site->algorithm, data_sites, site->siteName, "algorithm", NULL );
-            spectre_marshal_data_set_num( site->resultType, data_sites, site->siteName, "type", NULL );
-            spectre_marshal_data_set_str( resultState, data_sites, site->siteName, "password", NULL );
-            spectre_marshal_data_set_num( spectre_default(NAN, site->loginType), data_sites, site->siteName, "login_type", NULL );
-            spectre_marshal_data_set_str( loginState, data_sites, site->siteName, "login_name", NULL );
-            spectre_marshal_data_set_num( spectre_default(NAN, site->uses), data_sites, site->siteName, "uses", NULL );
-            spectre_marshal_data_set_str( spectre_set_timegm( site->lastUsed ), data_sites, site->siteName, "last_used", NULL );
+            written &= spectre_marshal_data_set_num( site->counter, data_sites, site->siteName, "counter", NULL );
+            written &= spectre_marshal_data_set_num( site->algorithm, data_sites, site->siteName, "algorithm", NULL );
+            written &= spectre_marshal_data_set_num( site->resultType, data_sites, site->siteName, "type", NULL );
+            written &= spectre_marshal_data_set_str( resultState, data_sites, site->siteName, "password", NULL );
+            written &= spectre_marshal_data_set_num( spectre_default(NAN, site->loginType), data_sites, site->siteName, "login_type", NULL );
+            written &= spectre_marshal_data_set_str( loginState, data_sites, site->siteName, "login_name", NULL );
+            written &= spectre_marshal_data_set_num( spectre_default(NAN, site->uses), data_sites, site->siteName, "uses", NULL );
+            written &= spectre_marshal_data_set_str( spectre_set_time( site->lastUsed ), data_sites, site->siteName, "last_used", NULL );
 
             SpectreMarshalledData *data_questions = spectre_marshal_data_obtain( file->data, "sites", site->siteName, "questions", NULL );
             spectre_marshal_data_filter( data_questions, spectre_marshal_data_filter_question_exists, site );
@@ -991,24 +995,35 @@ const char *spectre_marshal_write(
                 const char *answer = NULL;
                 if (!user->redacted) {
                     // Clear Text
-                    answer = spectre_site_result( userKey, site->siteName,
-                            question->type, question->state, SpectreCounterInitial, SpectreKeyPurposeRecovery, question->keyword );
+                    if (!(question->type & SpectreResultFeatureDevicePrivate))
+                        answer = spectre_site_result( userKey, site->siteName,
+                                question->type, question->state, SpectreCounterInitial, SpectreKeyPurposeRecovery, question->keyword );
                 }
                 else {
                     // Redacted
-                    if (question->state && strlen( question->state ) && site->resultType & SpectreResultFeatureExportContent)
+                    if (question->type & SpectreResultFeatureExportContent && question->state && strlen( question->state ))
                         answer = spectre_strdup( question->state );
                 }
 
-                spectre_marshal_data_set_num( question->type, data_questions, question->keyword, "type", NULL );
-                spectre_marshal_data_set_str( answer, data_questions, question->keyword, "answer", NULL );
+                written &= spectre_marshal_data_set_num( question->type, data_questions, question->keyword, "type", NULL );
+                written &= spectre_marshal_data_set_str( answer, data_questions, question->keyword, "answer", NULL );
                 spectre_free_strings( &answer, NULL );
             }
 
-            spectre_marshal_data_set_str( site->url, data_sites, site->siteName, "_ext_spectre", "url", NULL );
-            spectre_marshal_data_set_str( site->domains, data_sites, site->siteName, "_ext_spectre", "domains", NULL );
+            written &= spectre_marshal_data_set_str( site->url, data_sites, site->siteName, "_ext_spectre", "url", NULL );
+            written &= spectre_marshal_data_set_str( site->domains, data_sites, site->siteName, "_ext_spectre", "domains", NULL );
             spectre_free_strings( &resultState, &loginState, NULL );
         }
+        spectre_free( &userKey, sizeof( *userKey ) );
+    }
+
+    if (!written) {
+        if (!file_)
+            spectre_marshal_free( &file );
+        else
+            spectre_marshal_error( file, SpectreMarshalErrorStructure,
+                    "Couldn't write the user into the file's data." );
+        return NULL;
     }
 
     const char *out = NULL;
@@ -1254,8 +1269,8 @@ static void spectre_marshal_read_json(
         for (size_t s = 0; s < (services? services->children_count: 0); ++s) {
             const SpectreMarshalledData *service = &services->children[s];
 
-            time_t service_lastUsed = spectre_get_timegm( spectre_marshal_data_get_str( service, "last_used", NULL ) );
-            time_t site_lastUsed = spectre_get_timegm( spectre_marshal_data_get_str( sites, service->obj_key, "last_used", NULL ) );
+            time_t service_lastUsed = spectre_get_time( spectre_marshal_data_get_str( service, "last_used", NULL ) );
+            time_t site_lastUsed = spectre_get_time( spectre_marshal_data_get_str( sites, service->obj_key, "last_used", NULL ) );
             if (site_lastUsed == ERR || service_lastUsed == ERR || difftime( service_lastUsed, site_lastUsed ) > 0) {
                 spectre_marshal_data_set_node( service, file->data, "sites", service->obj_key, NULL );
             }
@@ -1284,24 +1299,28 @@ SpectreMarshalledFile *spectre_marshal_read(
     }
 
     *info = (SpectreMarshalledInfo){ .format = SpectreFormatNone, .identicon = SpectreIdenticonUnset };
-    if (in && strlen( in )) {
-        if (in[0] == '#') {
-            info->format = SpectreFormatFlat;
-            spectre_marshal_read_flat( file, in );
-        }
-        else if (in[0] == '{') {
-            info->format = SpectreFormatJSON;
-#if SPECTRE_JSON
-            spectre_marshal_read_json( file, in );
-#else
-            spectre_marshal_error( file, SpectreMarshalErrorFormat,
-                    "JSON support is not enabled." );
-#endif
-        }
+    if (!in || !strlen( in ))
+        spectre_marshal_error( file, SpectreMarshalErrorMissing,
+                "No input data." );
+    else if (in[0] == '#') {
+        info->format = SpectreFormatFlat;
+        spectre_marshal_read_flat( file, in );
     }
+    else if (in[0] == '{') {
+        info->format = SpectreFormatJSON;
+#if SPECTRE_JSON
+        spectre_marshal_read_json( file, in );
+#else
+        spectre_marshal_error( file, SpectreMarshalErrorFormat,
+                "JSON support is not enabled." );
+#endif
+    }
+    else
+        spectre_marshal_error( file, SpectreMarshalErrorFormat,
+                "Unrecognized format." );
 
     // Section: "export"
-    info->exportDate = spectre_get_timegm( spectre_marshal_data_get_str( file->data, "export", "date", NULL ) );
+    info->exportDate = spectre_get_time( spectre_marshal_data_get_str( file->data, "export", "date", NULL ) );
     info->redacted = spectre_marshal_data_get_bool( file->data, "export", "redacted", NULL )
                      || spectre_marshal_data_is_null( file->data, "export", "redacted", NULL );
 
@@ -1311,7 +1330,7 @@ SpectreMarshalledFile *spectre_marshal_read(
     info->userName = spectre_strdup( spectre_marshal_data_get_str( file->data, "user", "full_name", NULL ) );
     info->identicon = spectre_identicon_encoded( spectre_marshal_data_get_str( file->data, "user", "identicon", NULL ) );
     info->keyID = spectre_id_str( spectre_marshal_data_get_str( file->data, "user", "key_id", NULL ) );
-    info->lastUsed = spectre_get_timegm( spectre_marshal_data_get_str( file->data, "user", "last_used", NULL ) );
+    info->lastUsed = spectre_get_time( spectre_marshal_data_get_str( file->data, "user", "last_used", NULL ) );
 
     return file;
 }
@@ -1384,7 +1403,7 @@ SpectreMarshalledUser *spectre_marshal_auth(
 
     const char *str_lastUsed = spectre_marshal_data_get_str( userData, "last_used", NULL );
 
-    time_t lastUsed = spectre_get_timegm( str_lastUsed );
+    time_t lastUsed = spectre_get_time( str_lastUsed );
     if (lastUsed == ERR) {
         spectre_marshal_error( file, SpectreMarshalErrorIllegal,
                 "Invalid user last used: %s", str_lastUsed );
@@ -1485,7 +1504,7 @@ SpectreMarshalledUser *spectre_marshal_auth(
             return NULL;
         }
         str_lastUsed = spectre_marshal_data_get_str( siteData, "last_used", NULL );
-        time_t siteLastUsed = spectre_get_timegm( str_lastUsed );
+        time_t siteLastUsed = spectre_get_time( str_lastUsed );
         if (siteLastUsed == ERR) {
             spectre_marshal_error( file, SpectreMarshalErrorIllegal,
                     "Invalid site last used: %s: %s", siteName, str_lastUsed );

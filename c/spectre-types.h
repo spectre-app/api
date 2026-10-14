@@ -59,7 +59,7 @@ SPECTRE_LIBS_END
 //// Types.
 
 typedef spectre_enum( unsigned int, SpectreAlgorithm ) {
-    /** (2012-03-05) V0 incorrectly performed host-endian math with bytes translated into 16-bit network-endian. */
+    /** (2012-03-05) V0 incorrectly performed host-endian math with chars of platform-dependent signedness translated into 16-bit network-endian. */
     SpectreAlgorithmV0,
     /** (2012-07-17) V1 incorrectly sized site name fields by character count rather than byte count. */
     SpectreAlgorithmV1,

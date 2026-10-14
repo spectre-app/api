@@ -39,19 +39,20 @@ bool spectre_get_bool(
  * @return The integer held by the string if between [min, max], or (uint32_t)ERR otherwise. */
 uint32_t spectre_get_u32(
         const char *in, const uint32_t min, const uint32_t max);
-/** Convert an RFC 3339 time string into epoch time.
+/** Convert an RFC 3339 UTC time string (YYYY-MM-DDTHH:MM:SSZ) into Epoch time.
  * @return ERR if the string could not be parsed. */
-time_t spectre_get_timegm(
+time_t spectre_get_time(
         const char *in);
 /** Convert epoch time into an RFC 3339 time string.
- * @return An RFC 3339 encoded string (static). */
-const char *spectre_set_timegm(
+ * @return An RFC 3339 encoded string (static, overwritten by the next call). */
+const char *spectre_set_time(
         time_t time);
 
 
 /// Spectre.
 
-/** Calculate a user key, unless the given user key is already current for the inputs.
+/** Calculate a user key, unless the given user key is already current for the algorithm and user name.
+ * The user secret is not compared: free the user key when the user secret changes.
  * @param userKey A buffer (allocated); replaced by a newly derived key if necessary.
  * @return false if an error occurred during the derivation of the user key. */
 bool spectre_update_user_key(

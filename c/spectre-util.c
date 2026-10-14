@@ -199,6 +199,7 @@ const char **spectre_strings(size_t *count, const char *strings, ...) {
 
         if (!spectre_realloc( &array, &size, const char *, cursor + 1 ) || !array) {
             spectre_free( &array, size );
+            *count = 0;
             break;
         }
 
@@ -279,7 +280,7 @@ bool spectre_string_pushf(char **string, const char *pushFormat, ...) {
 
 bool __spectre_realloc(void **buffer, size_t *bufferSize, const size_t targetSize) {
 
-    if (!buffer) {
+    if (!buffer || !targetSize) {
         errno = EINVAL;
         return false;
     }
@@ -352,7 +353,7 @@ bool spectre_kdf_scrypt(uint8_t *key, const size_t keySize, const uint8_t *secre
     }
 
 #if SPECTRE_CPERCIVA
-    if (crypto_scrypt( (const void *)secret, strlen( secret ), salt, saltSize, N, r, p, key, keySize ) < 0) {
+    if (crypto_scrypt( secret, secretSize, salt, saltSize, N, r, p, key, keySize ) < 0) {
         return false;
     }
 #elif SPECTRE_SODIUM
@@ -449,6 +450,7 @@ const static uint8_t *spectre_aes(bool encrypt, const uint8_t *key, const size_t
         AES_CBC_encrypt_buffer( &aes, aesBuf, aesSize );
     else
         AES_CBC_decrypt_buffer( &aes, aesBuf, aesSize );
+    spectre_zero( &aes, sizeof( aes ) );
 
     // Truncate verified PKCS#7 padding; plain text that carries none is returned in full.
     if (encrypt)
@@ -595,7 +597,8 @@ const uint8_t *spectre_unhex(const char *hex, size_t *size) {
         return NULL;
 
     for (size_t b = 0; b < bufSize; ++b)
-        if (sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
+        if (!isxdigit( (unsigned char)hex[b * 2] ) || !isxdigit( (unsigned char)hex[b * 2 + 1] ) ||
+            sscanf( hex + b * 2, "%02hhX", &buf[b] ) != 1) {
             wrn( "Illegal hex character at: %s", hex + b * 2 );
             spectre_free( &buf, bufSize );
             errno = EINVAL;
@@ -755,4 +758,22 @@ int spectre_strncasecmp(const char *s1, const char *s2, size_t max) {
     }
 
     return 0;
+}
+
+time_t spectre_timegm(struct tm *tm) {
+
+#if __STDC_VERSION__ >= 202311L
+    return timegm( tm );
+#else
+    // POSIX "Seconds Since the Epoch": days of 86400 seconds in the Gregorian calendar, without time zones or leap seconds.
+    static const int daysBeforeMonth[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
+    time_t year = tm->tm_year + tm->tm_mon / 12, month = tm->tm_mon % 12;
+    if (month < 0)
+        month += 12, --year;
+    bool leapYear = (year + 1900) % 4 == 0 && ((year + 1900) % 100 != 0 || (year + 1900) % 400 == 0);
+    time_t yday = daysBeforeMonth[month] + (leapYear && month > 1) + tm->tm_mday - 1;
+
+    return tm->tm_sec + tm->tm_min * 60 + tm->tm_hour * 3600 + yday * 86400 +
+           (year - 70) * 31536000 + ((year - 69) / 4) * 86400 - ((year - 1) / 100) * 86400 + ((year + 299) / 400) * 86400;
+#endif
 }

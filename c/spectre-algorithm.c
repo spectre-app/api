@@ -32,7 +32,6 @@ const SpectreUserKey *spectre_user_key(
 
     trc( "-- spectre_user_key (algorithm: %u)", algorithmVersion );
     trc( "userName: %s", userName );
-    trc( "userSecret.id: %s", userSecret? spectre_id_buf( (uint8_t *)userSecret, strlen( userSecret ) ).hex: NULL );
     if (!userName) {
         err( "Missing userName" );
         errno = EINVAL;
@@ -43,12 +42,18 @@ const SpectreUserKey *spectre_user_key(
         errno = EINVAL;
         return NULL;
     }
+    const char *identicon = NULL;
+    trc( "identicon: %s", identicon = spectre_identicon_encode( spectre_identicon( userName, userSecret ) ) );
+    spectre_free_string( &identicon );
 
-    SpectreUserKey *userKey = memcpy( malloc( sizeof( SpectreUserKey ) ),
-            &(SpectreUserKey){
-                    .algorithm = algorithmVersion,
-                    .userID = spectre_id_buf( (const uint8_t *)userName, strlen( userName ) ),
-            }, sizeof( SpectreUserKey ) );
+    SpectreUserKey *userKey = spectre_memdup( &(SpectreUserKey){
+            .algorithm = algorithmVersion,
+            .userID = spectre_id_buf( (const uint8_t *)userName, strlen( userName ) ),
+    }, sizeof( SpectreUserKey ) );
+    if (!userKey) {
+        err( "Could not allocate user key: %s", strerror( errno ) );
+        return NULL;
+    }
 
     bool success = false;
     switch (algorithmVersion) {
@@ -99,8 +104,11 @@ const SpectreSiteKey *spectre_site_key(
     trc( "keyPurpose: %d (%s)", keyPurpose, spectre_purpose_name( keyPurpose ) );
     trc( "keyContext: %s", keyContext );
 
-    SpectreSiteKey *siteKey = memcpy( malloc( sizeof( SpectreSiteKey ) ),
-            &(SpectreSiteKey){ .algorithm = userKey->algorithm }, sizeof( SpectreSiteKey ) );
+    SpectreSiteKey *siteKey = spectre_memdup( &(SpectreSiteKey){ .algorithm = userKey->algorithm }, sizeof( SpectreSiteKey ) );
+    if (!siteKey) {
+        err( "Could not allocate site key: %s", strerror( errno ) );
+        return NULL;
+    }
 
     bool success = false;
     switch (userKey->algorithm) {
@@ -387,7 +395,7 @@ const SpectreIdenticon spectre_identicon_encoded(
                     break;
                 }
             }
-        if (leftArm && body && rightArm && color >= SpectreIdenticonColorFirst && color <= SpectreIdenticonColorLast)
+        if (leftArm && body && rightArm && accessory && color >= SpectreIdenticonColorFirst && color <= SpectreIdenticonColorLast)
             identicon = (SpectreIdenticon){
                     .leftArm = leftArm,
                     .body = body,

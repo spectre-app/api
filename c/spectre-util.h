@@ -27,7 +27,7 @@ SPECTRE_LIBS_END
 /// 1. trc/dbg/inf/wrn/err/ftl macros initiate a log event.
 ///    They record metadata such as severity, source code and time. Events are recorded as a static message and a set of data arguments.
 ///    The log message should be a static printf(3)-style format string with compatible arguments.
-/// 2. The macros are handled by the SPECTRE_LOG define, which defaults to spectre_log.
+/// 2. The macros are handled by SPECTRE_LOG, which defaults to spectre_log and skips evaluating arguments of events beyond spectre_verbosity.
 ///    It should reference a symbol with the signature:
 ///    (bool) (SpectreLogLevel level, const char *file, int line, const char *function, const char *format, ... args)
 /// 3. spectre_verbosity determines the severity threshold for log processing; any messages above its threshold are discarded.
@@ -103,7 +103,7 @@ bool spectre_elog(SpectreLogEvent *event);
 
 /** The log dispatcher you want to channel log messages into; defaults to spectre_log, enabling the log sink mechanism. */
 #ifndef SPECTRE_LOG
-#define SPECTRE_LOG spectre_log
+#define SPECTRE_LOG(level, ...) do { if (spectre_verbosity >= (level)) spectre_log( level, __VA_ARGS__ ); } while (0)
 #endif
 
 /** Application interface for logging events into the subsystem. */
@@ -341,5 +341,9 @@ const char *spectre_strndup(const char *src, const size_t max);
 int spectre_strcasecmp(const char *s1, const char *s2);
 /** Drop-in for POSIX strncasecmp(3). */
 int spectre_strncasecmp(const char *s1, const char *s2, const size_t max);
+/** Drop-in for C23 timegm(3).
+ * @note Before C23, tm is not updated, assumes tm_year from 1970 on, and cannot detect a time beyond the range of time_t.
+ * @return The UNIX time (seconds since the Epoch, in UTC) represented by tm. */
+time_t spectre_timegm(struct tm *tm);
 
 #endif // _SPECTRE_UTIL_H

@@ -53,28 +53,26 @@ uint32_t spectre_get_u32(const char *in, const uint32_t min, const uint32_t max)
     return (uint32_t)value;
 }
 
-time_t spectre_get_timegm(const char *in) {
+time_t spectre_get_time(const char *in) {
 
     // TODO: Support for parsing non-UTC time strings & broader RFC format support
     // Parse as a UTC timestamp, into a tm.
-    struct tm tm = { .tm_isdst = -1 };
-    if (in && sscanf( in, "%4d-%2d-%2dT%2d:%2d:%2dZ",
+    struct tm tm = { 0 };
+    int end = 0;
+    if (in && sscanf( in, "%4d-%2d-%2dT%2d:%2d:%2dZ%n",
             &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-            &tm.tm_hour, &tm.tm_min, &tm.tm_sec ) == 6) {
+            &tm.tm_hour, &tm.tm_min, &tm.tm_sec, &end ) == 6 && !in[end]) {
         tm.tm_year -= 1900; // tm_year 0 = rfc3339 year  1900
         tm.tm_mon -= 1;     // tm_mon  0 = rfc3339 month 1
 
-        // mktime interprets tm as being local, we need to offset back to UTC (timegm/tm_gmtoff are non-standard).
-        time_t local_time = mktime( &tm ), local_dst = tm.tm_isdst > 0? 3600: 0;
-        time_t gmtoff = local_time + local_dst - mktime( gmtime( &local_time ) );
-        return local_time + gmtoff;
+        return spectre_timegm( &tm );
     }
 
     errno = EINVAL;
     return ERR;
 }
 
-const char *spectre_set_timegm(time_t time) {
+const char *spectre_set_time(time_t time) {
 
     if (time == ERR) {
         errno = EINVAL;
